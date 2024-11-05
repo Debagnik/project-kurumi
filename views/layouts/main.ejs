@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta http-equiv="content-script-type" content="text/html"/>
+        <meta http-equiv="content-script-type" content="text/javascript"/>
+        <meta http-equiv="content-script-type" content="text/css"/>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+        <meta name="description" content="<%= locals.description %>"/>
+        <meta name="keywords" content="Debagnik Kar, Debagnik, Kar, Rak, Kingabed, Rak Kingabed, Rak_Kingabed, Software Developer, programmer, python, HRMatches"/>
+        <meta name="author" content="Debagnik Kar"/>
+        <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta name="robots" content="index, follow">
+        <meta name="revisit-after" content="1 days">
+        <meta name="msapplication-TileColor" content="#da532c">
+        <meta name="theme-color" content="#000000">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <link rel="stylesheet" href="/css/style.css">
+        <script type="text/javascript" defer src="/js/script.js"></script>
+        <title><%= locals.title %></title>
+    </head>
+    <body>
+        <div class="container">
+            <%- include('../partials/header.ejs') %>
+            <main class="main">
+                <%- body %>
+            </main>
+            <%- include('../partials/footer.ejs') %>
+        </div>
+        
+    </body>
+</html>
