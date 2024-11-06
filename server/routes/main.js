@@ -1,29 +1,61 @@
 const express = require('express');
 const router = express.Router();
+const post = require('../models/posts');
+
 
 //Routes
-router.get('', (req, res) => {
-    const locals = {
-        title: "Blogging site",
-        description: "A blogging site created with Node, express and MongoDB"
+/**
+ * GET /
+ * HOME
+ */
+router.get('', async (req, res) => {
+
+    try {
+        const locals = {
+            title: "Blogging site",
+            description: "A blogging site created with Node, express and MongoDB"
+        }
+
+        let perPage = 5;
+        let page = req.query.page || 1;
+
+        const data = await post.aggregate([{ $sort: { createdAt: -1 } }]).skip(perPage * page - perPage)
+            .limit(perPage).exec();
+
+        const count = await post.countDocuments({});
+        const nextPage = parseInt(page) + 1;
+        const hasNextPage = nextPage <= Math.ceil(count / perPage);
+
+
+        res.render('index', { locals, data, current: page, nextPage: hasNextPage ? nextPage : null });
+        console.log(`DB Data fetched`);
+    } catch (error) {
+        console.log(error);
     }
-    res.render('index',{locals});
 });
 
+/**
+ * GET /about
+ * About
+ */
 router.get('/about', (req, res) => {
     const locals = {
         title: "About Us Section",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('about', {locals});
+    res.render('about', { locals });
 });
 
+/**
+ * GET /contact
+ * Contact
+ */
 router.get('/contact', (req, res) => {
     const locals = {
         title: "Contacts us",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('contact', {locals});
+    res.render('contact', { locals });
 });
 
 module.exports = router;
