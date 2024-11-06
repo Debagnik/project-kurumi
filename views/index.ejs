@@ -10,18 +10,18 @@
     </h2>
 
     <ul class="article-ul">
-        <li>
-            <a href="#">
-                <span>Post Title</span>
-                <span class="article-list__date">Date</span>
-            </a>
-        </li>
-        <li>
-            <a href="#">
-                <span>Post Title</span>
-                <span class="article-list__date">Date</span>
-            </a>
-        </li>
+        <% data.forEach(posts => { %>
+            <li>
+                <a href="/post/<%= posts._id %>">
+                    <span><%= posts.title %></span>
+                    <span class="article-list__date"><%= posts.createdAt.toDateString() %></span>
+                    <!--<span class="article-list__tags">tags: <%= posts.tag %></span> to be developed later-->
+                </a>
+            </li>
+        <% }) %> 
     </ul>
-    <a href="#" class="pagination">&lt; View older posts</a>
+
+    <% if (nextPage !== null) { %>
+        <a href="/?page=<%= nextPage %>" class="pagination">&lt; View older posts</a>
+    <% } %>
 </section>
