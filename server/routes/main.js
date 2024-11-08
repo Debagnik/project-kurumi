@@ -16,7 +16,7 @@ router.get('', async (req, res) => {
             description: "A blogging site created with Node, express and MongoDB"
         }
 
-        let perPage = 5;
+        let perPage = 2;
         let page = req.query.page || 1;
 
         const data = await post.aggregate([{ $sort: { createdAt: -1 } }]).skip(perPage * page - perPage)
@@ -56,6 +56,25 @@ router.get('/contact', (req, res) => {
         description: "A blogging site created with Node, express and MongoDB"
     }
     res.render('contact', { locals });
+});
+
+/**
+ * GET /
+ * Posts :id
+ */
+router.get('/post/:id', async (req, res) => {
+    try{
+        let slug = req.params.id;
+        const data = await post.findById({_id: slug});
+        const locals = {
+            title: data.title,
+            description: data.tags
+        }
+        
+        res.render('posts', {locals, data});
+    }catch(error){
+        console.log(error);
+    }
 });
 
 module.exports = router;
