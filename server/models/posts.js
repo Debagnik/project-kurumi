@@ -18,9 +18,9 @@ const postSchema = new schema({
         type: Date,
         default: Date.now
     },
-    tag: {
+    tags: {
         type: String,
-        require: false
+        require: true
     }
 });
 
