@@ -18,10 +18,24 @@ const postSchema = new schema({
         type: Date,
         default: Date.now
     },
+    desc:{
+        type: String
+    },
+    author:{
+        type: String,
+        require: true
+    },
     tags: {
         type: String,
         require: true
     }
 });
+
+postSchema.index({
+    title: 'text',
+    body: 'text',
+    tags: 'text',
+    author: 'text'
+  });
 
 module.exports = mongoose.model('Posts', postSchema);

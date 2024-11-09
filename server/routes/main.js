@@ -63,18 +63,61 @@ router.get('/contact', (req, res) => {
  * Posts :id
  */
 router.get('/post/:id', async (req, res) => {
-    try{
+    try {
         let slug = req.params.id;
-        const data = await post.findById({_id: slug});
+        const data = await post.findById({ _id: slug });
         const locals = {
             title: data.title,
-            description: data.tags
+            description: data.desc,
+            keywords: data.tags
         }
-        
-        res.render('posts', {locals, data});
-    }catch(error){
-        console.log(error);
+
+        res.render('posts', { locals, data });
+    } catch (error) {
+        console.error('Post Fetch error', error);
     }
 });
+
+/**
+ * POST /
+ * Search: Search term
+ */
+router.post('/search', async (req, res) => {
+    try {
+
+        let searchLimit = 20;
+        let searchTerm = req.body.searchTerm;
+        if(!searchTerm || typeof searchTerm !== 'string'){
+            return res.status(400).json({ error: 'Invalid search term' });
+        }
+        if(searchTerm.trim().length == 0){
+            return res.status(400).json({ error: 'Search term cannot be empty' });
+        }
+        const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
+        console.log(new Date(), " - Simple Search - ", searchTerm, " - regex search: ", searchNoSpecialChar);
+
+        const locals = {
+            title: "Search - " + searchTerm,
+            description: "Simple Search Page"
+        }
+
+        const data = await post.find(
+            { $text: { $search: searchNoSpecialChar } },
+            { score: { $meta: 'textScore' } }
+        )
+        .sort({ score: { $meta: 'textScore' } })
+        .limit(searchLimit);
+
+        res.render('search', {data, locals, searchTerm: searchTerm});
+    } catch (error) { 
+        console.error('Search error:', error );
+        res.status(500).render('error', {
+            locals: {
+                title: 'Error'
+            },
+            error: 'Unable to perform search at this time'
+        });
+    }
+})
 
 module.exports = router;
