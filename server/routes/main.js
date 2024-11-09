@@ -63,18 +63,49 @@ router.get('/contact', (req, res) => {
  * Posts :id
  */
 router.get('/post/:id', async (req, res) => {
-    try{
+    try {
         let slug = req.params.id;
-        const data = await post.findById({_id: slug});
+        const data = await post.findById({ _id: slug });
         const locals = {
             title: data.title,
-            description: data.tags
+            description: data.desc,
+            keywords: data.tags
         }
-        
-        res.render('posts', {locals, data});
-    }catch(error){
+
+        res.render('posts', { locals, data });
+    } catch (error) {
         console.log(error);
     }
 });
+
+/**
+ * POST /
+ * Search: Search term
+ */
+router.post('/search', async (req, res) => {
+    try {
+
+        let searchLimit = 20;
+        let searchTerm = req.body.searchTerm;
+        const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
+        console.log(new Date(), " - Simple Search - ", searchTerm, " - regex search: ", searchNoSpecialChar);
+
+        const locals = {
+            title: "Search - " + searchTerm,
+            description: "Simple Search Page"
+        }
+
+        const data = await post.find({
+            $or: [
+                { title: { $regex: new RegExp(searchNoSpecialChar, 'i') }},
+                { body: { $regex: new RegExp(searchNoSpecialChar, 'i') }},
+                { tags: { $regex: new RegExp(searchNoSpecialChar, 'i') }},
+                { author: { $regex: new RegExp(searchNoSpecialChar, 'i') }}
+            ]
+        }).limit(searchLimit);
+
+        res.render('search', {data, locals});
+    } catch (error) { console.log(error); }
+})
 
 module.exports = router;

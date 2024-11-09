@@ -18,6 +18,13 @@ const postSchema = new schema({
         type: Date,
         default: Date.now
     },
+    desc:{
+        type: String
+    },
+    author:{
+        type: String,
+        require: true
+    },
     tags: {
         type: String,
         require: true
