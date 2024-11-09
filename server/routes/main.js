@@ -74,7 +74,7 @@ router.get('/post/:id', async (req, res) => {
 
         res.render('posts', { locals, data });
     } catch (error) {
-        console.log(error);
+        console.error('Post Fetch error', error);
     }
 });
 
