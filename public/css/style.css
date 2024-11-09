@@ -311,6 +311,8 @@ img {
 	right: 0;
 	color: var(--gray-light);
 	padding: 15px;
+	margin-bottom: 1rem;
+
 }
 
 /* Admin Dashboard*/
@@ -345,3 +347,24 @@ img {
 	padding: 4px, 8px;
 	line-height: 2;
 }
+
+.button-link {
+	display: inline-block;
+	padding: 8px 16px;
+	background-color: var(--black);
+	color: var(--white);
+	text-decoration: none;
+	border-radius: 4px;
+	text-align: center;
+  }
+
+  .home-page{
+	width: 100%;
+	text-align: center;
+	margin-top: 10rem;
+  }
+
+  .no-search-result{
+	text-decoration: none;
+	text-align: center;
+  }

@@ -5,12 +5,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     const searchClose = document.getElementById('searchClose');
 
+    if (!searchBar || !searchInput || !searchClose) {
+        console.error("Required elements not found! Don't make me point out such obvious things!");
+        return;
+    }
+
     for (var i = 0; i < allButtons.length; i++) {
         allButtons[i].addEventListener('click', function () {
             searchBar.style.visibility = 'visible';
             searchBar.classList.add('open');
             this.setAttribute('aria-expanded', 'true');
             searchInput.focus();
+            searchInput.value = '';
         });
     }
 
@@ -19,4 +25,11 @@ document.addEventListener('DOMContentLoaded', function () {
         searchBar.classList.remove('open');
         this.setAttribute('aria-expanded', 'false');
     });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && searchBar.classList.contains('open')) {
+            searchClose.click();
+        }
+    });
 });
+

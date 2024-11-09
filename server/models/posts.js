@@ -31,4 +31,11 @@ const postSchema = new schema({
     }
 });
 
+postSchema.index({
+    title: 'text',
+    body: 'text',
+    tags: 'text',
+    author: 'text'
+  });
+
 module.exports = mongoose.model('Posts', postSchema);

@@ -3,14 +3,18 @@
 </div>
 <section class="articles">
     <ul class="article-ul">
-        <% data.forEach(post => { %>
-            <li>
-                <a href="/post/<%= post._id %>">
-                    <span><%= post.title %></span>
-                    <span class="article-list_date"><%= post.createdAt.toDateString() %></span>
-                </a>
-            </li>
-        <% }) %>
+        <% if (data.length > 0) { %>
+            <% data.forEach(post => { %>
+                <li>
+                    <a href="/post/<%= post._id %>">
+                        <span><%= post.title %></span>
+                        <span class="article-list_date"><%= post.createdAt.toDateString() %></span>
+                    </a>
+                </li>
+            <% }) %>
+            <% } else { %>
+             <div class="no-search-result">No results found... (；一_一)</div>
+        <% } %>
     </ul>
 
 </section>

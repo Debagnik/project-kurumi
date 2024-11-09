@@ -1,4 +1,14 @@
-<h1><%= data.title %></h1>
-<div class="post-author"><em>by <%= data.author %></em></div>
-<article class="article"><%= data.body %></article>
-<a href="/"><button>Home Page</button></a>
+<article>
+    <header>
+        <h1>
+            <%= data.title %>
+        </h1>
+        <p class="post-author"><em>by <%= data.author %></em></p>
+    </header>
+    <div class="article-content">
+        <%= data.body %>
+    </div>
+    <div class="home-page">
+        <a href="/" class="button-link">Home Page</a>
+    </div>
+</article>
