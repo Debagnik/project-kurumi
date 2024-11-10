@@ -29,7 +29,10 @@ app.use(session({
         touchAfter: 24 * 60 * 60
     }),
     cookie:{
-        maxAge: 3600000
+        maxAge: 3600000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
     }
 }));
 

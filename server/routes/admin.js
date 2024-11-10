@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 const post = require('../models/posts');
@@ -8,6 +9,35 @@ const user = require('../models/user')
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
+
+if(!jwtSecretKey){
+  throw new Error('JWT_SECRET is not set in Environment variable');
+}
+
+const authLimiter  = rateLimit({
+  windowMs: 15 * 60 * 1000, //15 mins
+  max: 5 // limit each IP to 5 requests per windowMs
+})
+
+/**
+ * Checks login middleware
+ */
+const authToken = (req, res, next) => {
+  const token = req.cookies.token;
+  if(!token){
+    return res.redirect('/admin');
+  }
+
+  try{
+    const decoded = jwt.verify(token, jwtSecretKey);
+    req.userId = decoded.userId;
+    next();
+  } catch (error){
+    console.error(401 ,error);
+    return res.redirect('/admin');
+  }
+}
+
 
 //Routes
 /**
@@ -27,7 +57,6 @@ router.get('/admin', async (req, res) => {
     console.error("Admin Page error", error.message);
     res.status(500).send('Internal Server Error');
   }
-
 });
 
 /**
@@ -161,7 +190,7 @@ router.get('/admin/registration', async (req, res) => {
   res.render('admin/registration', { locals, layout: adminLayout });
 });
 
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', authToken, async (req, res) => {
   res.render('admin/dashboard');
 });
 
