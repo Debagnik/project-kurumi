@@ -125,7 +125,7 @@ router.post('/register', async (req, res) => {
  * POST
  * Admin - Check Login
  */
-router.post('/admin', async (req, res) => {
+router.post('/admin', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
