@@ -1,0 +1,31 @@
+<h3 class="author">Sign in</h3>
+<form action="/admin" method="post">
+    <label for="username"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="username">
+
+    <label for="password"><b>Password</b></label>
+    <input type="password" placeholder="Enter password" name="password">
+
+    <input type="submit" value="Login" class="btn">
+</form>
+
+<% if (isRegistrationEnabled === 'true') { %>
+    <h3>Register</h3>
+<form action="/register" method="post">
+    <label for="name"><b>Name</b></label>
+    <input type="text" placeholder="Enter Full Name or Pen Name" name="name">
+    
+    <label for="username"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="username">
+
+    <label for="password"><b>Password</b></label>
+    <input type="password" placeholder="Enter password" name="password">
+
+    <input type="submit" value="Register" class="btn" ondblclick="myAlert()">
+
+    <script>
+        function myAlert(){
+            alert('user created');
+        }
+    </script>
+<% } %>
