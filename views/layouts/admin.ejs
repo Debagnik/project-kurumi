@@ -2,12 +2,9 @@
 <html lang="en">
     <head>
         <meta charset="utf-8"/>
-        <meta http-equiv="content-script-type" content="text/html"/>
-        <meta http-equiv="content-script-type" content="text/javascript"/>
-        <meta http-equiv="content-script-type" content="text/css"/>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-        <meta name="description" content="<%= locals.description %>"/>
-        <meta name="keywords" content="Debagnik Kar, Debagnik, Kar, Rak, Kingabed, Rak Kingabed, Rak_Kingabed, Software Developer, programmer, python, HRMatches, <%= locals.keywords %>, <%= locals.title %>, <%= locals.description %>"/>
+        <meta name="description" content="<%= [locals.description].filter(Boolean).join(', ') || 'Admin Login to dashboard' %>"/>
+        <meta name="keywords" content=" <%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
         <meta name="author" content="Debagnik Kar"/>
         <meta http-equiv="x-ua-compatible" content="ie=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -21,9 +18,8 @@
         <title><%= locals.title %></title>
     </head>
     <body>
-        <%- include('../partials/search.ejs') %>
         <div class="container">
-            <%- include('../partials/header.ejs') %>
+            <%- include('../partials/header_admin.ejs') %>
             <main class="main">
                 <%- body %>
             </main>

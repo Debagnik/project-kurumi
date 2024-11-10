@@ -28,7 +28,7 @@ router.get('', async (req, res) => {
 
 
         res.render('index', { locals, data, current: page, nextPage: hasNextPage ? nextPage : null });
-        console.log(`DB Data fetched`);
+        console.log(`DB Posts Data fetched`);
     } catch (error) {
         console.log(error);
     }

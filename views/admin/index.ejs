@@ -1,0 +1,46 @@
+<h3 class="author">Sign in</h3>
+<% if (errors_login && errors_login.length > 0) { %>
+    <% errors_login.forEach(function(error) { %>
+        <div class="alert">
+            <%= error.msg %>
+            <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+        </div>
+    <% }); %>
+<% } %>
+<form action="/admin" method="post" autocomplete="on">
+    <label for="username"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="username" id="username" autocomplete="username" required minlength="3" maxlength="20">
+
+    <label for="password"><b>Password</b></label>
+    <input type="password" placeholder="Enter password" name="password" autocomplete="current-password" required minlength="8">
+
+    <input type="submit" value="Login" class="btn">
+</form>
+
+<% if (isRegistrationEnabled==='true' ) { %>
+    <h3>Register</h3>
+    <% if (errors && errors.length > 0) { %>
+        <% errors.forEach(function(error) { %>
+            <div class="alert">
+                <%= error.msg %>
+                <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+            </div>
+        <% }); %>
+    <% } %>
+    <form action="/register" method="post" autocomplete="on">
+        <label for="name"><b>Name</b></label>
+        <input type="text" placeholder="Enter Full Name or Pen Name" name="name" id="name" required minlength="2" maxlength="100">
+
+        <label for="username"><b>Username</b></label>
+        <input type="text" placeholder="Enter Username" name="username" id="reg-username" autocomplete="username" required minlength="3" maxlength="20">
+
+        <label for="password"><b>Password</b></label>
+        <input type="password" placeholder="Enter password" name="password" id="reg-password" autocomplete="current-password" required minlength="8">
+
+        <label for="confirm-password"><b>Confirm Password</b></label>
+        <input type="password" placeholder="Confirm password" name="confirm_password" id="reg-confirm-password" autocomplete="new-password" required minlength="8">
+        
+
+        <input type="submit" value="Register" class="btn">
+    </form>
+<% } %>
