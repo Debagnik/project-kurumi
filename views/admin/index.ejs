@@ -1,31 +1,42 @@
 <h3 class="author">Sign in</h3>
-<form action="/admin" method="post">
+<% if (errors_login && errors_login.length > 0) { %>
+    <% errors_login.forEach(function(error) { %>
+        <div class="alert">
+            <%= error.msg %>
+            <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+        </div>
+    <% }); %>
+<% } %>
+<form action="/admin" method="post" autocomplete="on">
     <label for="username"><b>Username</b></label>
-    <input type="text" placeholder="Enter Username" name="username">
+    <input type="text" placeholder="Enter Username" name="username" id="username" autocomplete="username" required minlength="3" maxlength="20">
 
     <label for="password"><b>Password</b></label>
-    <input type="password" placeholder="Enter password" name="password">
+    <input type="password" placeholder="Enter password" name="password" autocomplete="current-password" required minlength="8">
 
     <input type="submit" value="Login" class="btn">
 </form>
 
-<% if (isRegistrationEnabled === 'true') { %>
+<% if (isRegistrationEnabled==='true' ) { %>
     <h3>Register</h3>
-<form action="/register" method="post">
-    <label for="name"><b>Name</b></label>
-    <input type="text" placeholder="Enter Full Name or Pen Name" name="name">
-    
-    <label for="username"><b>Username</b></label>
-    <input type="text" placeholder="Enter Username" name="username">
+    <% if (errors && errors.length > 0) { %>
+        <% errors.forEach(function(error) { %>
+            <div class="alert">
+                <%= error.msg %>
+                <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+            </div>
+        <% }); %>
+    <% } %>
+    <form action="/register" method="post" autocomplete="on">
+        <label for="name"><b>Name</b></label>
+        <input type="text" placeholder="Enter Full Name or Pen Name" name="name" id="name" required minlength="2" maxlength="100">
 
-    <label for="password"><b>Password</b></label>
-    <input type="password" placeholder="Enter password" name="password">
+        <label for="username"><b>Username</b></label>
+        <input type="text" placeholder="Enter Username" name="username" id="username" autocomplete="username" required minlength="3" maxlength="20">
 
-    <input type="submit" value="Register" class="btn" ondblclick="myAlert()">
+        <label for="password"><b>Password</b></label>
+        <input type="password" placeholder="Enter password" name="password" id="password" autocomplete="current-password" required minlength="8">
 
-    <script>
-        function myAlert(){
-            alert('user created');
-        }
-    </script>
+        <input type="submit" value="Register" class="btn">
+    </form>
 <% } %>

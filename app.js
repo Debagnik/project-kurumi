@@ -13,20 +13,23 @@ const PORT = process.env.PORT || 5000;
 
 //connect Database
 connectDB();
-var now = new Date();
+
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
 app.use(express.static('./public'));
 app.use(cookieParser());
 app.use(session({
-    secret: 'keyboard cat',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     store: mongoStore.create({
-        mongoUrl: process.env.MONGO_DB_URI
+        mongoUrl: process.env.MONGO_DB_URI,
+        ttl: 60 * 60,
+        autoRemove: 'native',
+        touchAfter: 24 * 60 * 60
     }),
     cookie:{
-        maxAge: now.getTime() + (3600000)
+        maxAge: 3600000
     }
 }));
 
