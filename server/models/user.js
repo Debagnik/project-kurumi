@@ -21,6 +21,11 @@ const userSchema = new schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    privilage:{
+        type: Number,
+        default: 3,
+        required: true
     }
 });
 

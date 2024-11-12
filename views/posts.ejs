@@ -3,11 +3,19 @@
         <h1>
             <%= data.title %>
         </h1>
-        <p class="post-author"><em>by <%= data.author %></em></p>
+        <p class="post-author"><em><b>By</b> <%= data.author %></em></p>
+        <div class="date-section">
+            <b>Published Date: </b> 
+            <span class="article-date"><%= data.createdAt.toDateString() %></span>
+        </div>
     </header>
+    <br />
+    <img src=" <%= data.thumbnailImageURI %>" alt="<%= data.title %> thumbnail Image" class="hero-image" width="981" height="528">
     <div class="article-content">
         <%= data.body %>
     </div>
+    <br />
+    <div class="post-tags"><b>Tags:</b> <%= data.tags %></div>
     <div class="home-page">
         <a href="/" class="button-link">Home Page</a>
     </div>

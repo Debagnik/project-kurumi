@@ -190,8 +190,98 @@ router.get('/admin/registration', async (req, res) => {
   res.render('admin/registration', { locals, layout: adminLayout });
 });
 
+/**
+ * GET
+ * Admin - Dashboard
+ */
 router.get('/dashboard', authToken, async (req, res) => {
-  res.render('admin/dashboard');
+  try{
+    const locals = {
+      title: 'Admin Dashboard',
+      description: 'dashboard'
+    };
+
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+    let data;
+    switch (currentUser.privilage){
+      case 3:
+        data = await post.find({ author: currentUser.name});
+        break;
+      case 2:
+        data = await post.find();
+        break;
+      case 1:
+        data = await post.find();
+        break;
+      default:
+        data = await post.find({ author: 'anonymous'});
+    }
+    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data});
+  } catch (error){
+    console.error(error);
+  }
+});
+
+/**
+ * GET
+ * Admin - new post
+ */
+router.get('/admin/add-post', authToken, async (req, res) => {
+  try{
+    const locals = {
+      title: 'Add Post',
+      description: 'Add Post'
+    };
+
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+
+
+    res.render('admin/add-post', { locals, layout: adminLayout, currentUser });
+  } catch (error){
+    console.error(error);
+  }
+});
+
+/**
+ * POST
+ * Admin - new post
+ */
+router.post('/admin/add-post', authToken, async (req, res) => {
+  try{
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+
+    var defaulthumbnailImageURI = !req.body.thumbnailImageURI ? process.env.DEFAULT_POST_THUMBNAIL_LINK : req.body.thumbnailImageURI;
+    
+    const newPost = new post({
+      title: req.body.title,
+      body: req.body.body,
+      author: currentUser.name,
+      tags: req.body.tags,
+      desc: req.body.desc,
+      thumbnailImageURI: defaulthumbnailImageURI
+    });
+
+    await post.create(newPost);
+
+    console.log('New post added by ', currentUser.username, '\n' , newPost);
+
+    res.redirect('/dashboard');
+
+  } catch (error){
+    console.error(error);
+  }
 });
 
 module.exports = router;

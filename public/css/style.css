@@ -346,6 +346,7 @@ img {
 	font-size: 0.8rem;
 	padding: 4px, 8px;
 	line-height: 2;
+	border-radius: var(--border-radius);
 }
 
 .button-link {
