@@ -1,5 +1,4 @@
-
-<h1>G'Day, <%= currentUser.name %></h1>
+<h1>G'Day, <%= currentUser?.name || 'Administrator' %></h1>
 <div class="admin-title">
     <h2>Posts</h2>
     <% if (data.length > 0) { %>
@@ -12,7 +11,7 @@
     <ul class="admin-posts">
         <% data.forEach(post => { %>
             <li>
-                <a href="/post/<%= post._id %>" target="_blank">
+                <a href="/post/<%= encodeURIComponent(post._id) %>" target="_blank" rel="noopener noreferrer">
                     <%= post.title %>&nearr;
                 </a>
             </li>

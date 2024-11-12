@@ -6,11 +6,19 @@
         <p class="post-author"><em><b>By</b> <%= data.author %></em></p>
         <div class="date-section">
             <b>Published Date: </b> 
-            <span class="article-date"><%= data.createdAt.toDateString() %></span>
+            <span class="article-date"><%= data.createdAt.toLocaleDateString(undefined, {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }) %></span>
         </div>
     </header>
     <br />
-    <img src=" <%= data.thumbnailImageURI %>" alt="<%= data.title %> thumbnail Image" class="hero-image" width="981" height="528">
+    <img src="<%= data.thumbnailImageURI %>" alt="<%= data.title %> thumbnail Image" loading="lazy" class="post-image">
+    <br />
     <div class="article-content">
         <%= data.body %>
     </div>

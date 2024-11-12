@@ -207,9 +207,9 @@ router.get('/dashboard', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
     let data;
-    switch (currentUser.privilage){
+    switch (currentUser.privilege){
       case 3:
-        data = await post.find({ author: currentUser.name});
+        data = await post.find({ author: currentUser.name}).sort({ createdAt: -1 });
         break;
       case 2:
         data = await post.find();
@@ -223,6 +223,7 @@ router.get('/dashboard', authToken, async (req, res) => {
     res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data});
   } catch (error){
     console.error(error);
+    res.status(500).send('Internal Server Error');
   }
 });
 
@@ -247,6 +248,7 @@ router.get('/admin/add-post', authToken, async (req, res) => {
     res.render('admin/add-post', { locals, layout: adminLayout, currentUser });
   } catch (error){
     console.error(error);
+    res.status(500).send('Internal Server Error');
   }
 });
 
@@ -262,8 +264,24 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    var defaulthumbnailImageURI = !req.body.thumbnailImageURI ? process.env.DEFAULT_POST_THUMBNAIL_LINK : req.body.thumbnailImageURI;
-    
+    const isValidURI = (string) => {
+      try{
+        new URL(string);
+        return true;
+      }catch(_){
+        return false;
+      }
+    }
+
+    let defaulthumbnailImageURI;
+    if(!req.body.thumbnailImageURI || req.body.thumbnailImageURI.trim() === ''){
+      defaulthumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    } else if(isValidURI(req.body.thumbnailImageURI)){
+      defaulthumbnailImageURI = req.body.thumbnailImageURI;
+    } else {
+      defaulthumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    }
+
     const newPost = new post({
       title: req.body.title,
       body: req.body.body,
@@ -273,7 +291,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       thumbnailImageURI: defaulthumbnailImageURI
     });
 
-    await post.create(newPost);
+    await newPost.save();
 
     console.log('New post added by ', currentUser.username, '\n' , newPost);
 
@@ -281,6 +299,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
 
   } catch (error){
     console.error(error);
+    res.status(500).send('Internal Server Error');
   }
 });
 

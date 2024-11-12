@@ -8,7 +8,7 @@
     <input type="text" id="title" name="title" required placeholder="Add Title Here">
     
     <label for="thumbnailImageURI">Thumbnail Image link</label>
-    <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" placeholder="Add Thumbnail link">
+    <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" placeholder="Add Thumbnail link" onchange="previewImage(this.value)" pattern="https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)">
 
     <label for="body">Body:</label>
     <textarea id="body" name="body" cols="10" rows="10" required placeholder="Enter Body"></textarea>

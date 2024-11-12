@@ -27,7 +27,7 @@ const postSchema = new schema({
     },
     tags: {
         type: String,
-        require: true
+        required: true
     },
     thumbnailImageURI: {
         type: String,

@@ -22,7 +22,14 @@ const userSchema = new schema({
         type: Date,
         default: Date.now
     },
-    privilage:{
+    /**
+     * User privilege level
+     * 1 = Webmaster
+     * 2 = Admin
+     * 3 = Regular User (default)
+     * 4 = Unlogged User - Not required now
+     */
+    privilege:{
         type: Number,
         default: 3,
         required: true
