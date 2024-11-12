@@ -190,8 +190,123 @@ router.get('/admin/registration', async (req, res) => {
   res.render('admin/registration', { locals, layout: adminLayout });
 });
 
+/**
+ * GET
+ * Admin - Dashboard
+ */
 router.get('/dashboard', authToken, async (req, res) => {
-  res.render('admin/dashboard');
+  try{
+    const locals = {
+      title: 'Admin Dashboard',
+      description: 'dashboard'
+    };
+
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+    let data;
+    switch (currentUser.privilege){
+      case 3:
+        data = await post.find({ author: currentUser.name}).sort({ createdAt: -1 });
+        break;
+      case 2:
+        data = await post.find();
+        break;
+      case 1:
+        data = await post.find();
+        break;
+      default:
+        return res.status(403).send('Unauthorized');
+    }
+    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data});
+  } catch (error){
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+/**
+ * GET
+ * Admin - new post
+ */
+router.get('/admin/add-post', authToken, async (req, res) => {
+  try{
+    const locals = {
+      title: 'Add Post',
+      description: 'Add Post'
+    };
+
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+
+
+    res.render('admin/add-post', { locals, layout: adminLayout, currentUser });
+  } catch (error){
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+/**
+ * POST
+ * Admin - new post
+ */
+router.post('/admin/add-post', authToken, async (req, res) => {
+  try{
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+
+    const isValidURI = (string) => {
+      try{
+        new URL(string);
+        return true;
+      }catch(_){
+        return false;
+      }
+    }
+
+    //const thumbnailImageURI = req.body.thumbnailImageURI?.trim() ? (isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI.trim() : process.env.DEFAULT_POST_THUMBNAIL_LINK) : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+
+    let defaultThumbnailImageURI;
+    if(!req.body.thumbnailImageURI || req.body.thumbnailImageURI.trim() === ''){
+      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    } else if(isValidURI(req.body.thumbnailImageURI)){
+      defaultThumbnailImageURI = req.body.thumbnailImageURI;
+    } else {
+      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    }
+
+    if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
+      return res.status(400).send('Title, body, and description are required!');
+    }
+
+    const newPost = new post({
+      title: req.body.title.trim(),
+      body: req.body.body.trim(),
+      author: currentUser.name.trim(),
+      tags: req.body.tags,
+      desc: req.body.desc.trim(),
+      thumbnailImageURI: defaultThumbnailImageURI
+    });
+
+    await newPost.save();
+
+    console.log('New post added by ', currentUser.username, '\n' , newPost);
+
+    res.redirect('/dashboard');
+
+  } catch (error){
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 module.exports = router;
