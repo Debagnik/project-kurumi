@@ -290,7 +290,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       author: currentUser.name.trim(),
       tags: req.body.tags,
       desc: req.body.desc.trim(),
-      thumbnailImageURI: defaulthumbnailImageURI
+      thumbnailImageURI: defaultThumbnailImageURI
     });
 
     await newPost.save();
