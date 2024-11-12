@@ -284,6 +284,10 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
     }
 
+    if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
+      return res.status(400).send('Title, body, and description are required!');
+    }
+
     const newPost = new post({
       title: req.body.title.trim(),
       body: req.body.body.trim(),
