@@ -218,7 +218,7 @@ router.get('/dashboard', authToken, async (req, res) => {
         data = await post.find();
         break;
       default:
-        data = await post.find({ author: 'anonymous'});
+        return res.status(403).send('Unauthorized');
     }
     res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data});
   } catch (error){
@@ -273,21 +273,23 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       }
     }
 
-    let defaulthumbnailImageURI;
+    //const thumbnailImageURI = req.body.thumbnailImageURI?.trim() ? (isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI.trim() : process.env.DEFAULT_POST_THUMBNAIL_LINK) : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+
+    let defaultThumbnailImageURI;
     if(!req.body.thumbnailImageURI || req.body.thumbnailImageURI.trim() === ''){
-      defaulthumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
     } else if(isValidURI(req.body.thumbnailImageURI)){
-      defaulthumbnailImageURI = req.body.thumbnailImageURI;
+      defaultThumbnailImageURI = req.body.thumbnailImageURI;
     } else {
-      defaulthumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
     }
 
     const newPost = new post({
-      title: req.body.title,
-      body: req.body.body,
-      author: currentUser.name,
+      title: req.body.title.trim(),
+      body: req.body.body.trim(),
+      author: currentUser.name.trim(),
       tags: req.body.tags,
-      desc: req.body.desc,
+      desc: req.body.desc.trim(),
       thumbnailImageURI: defaulthumbnailImageURI
     });
 
