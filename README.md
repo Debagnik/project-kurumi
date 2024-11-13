@@ -10,10 +10,10 @@ Welcome to the **Blog Site** project. It is a simple webapp for small-startups t
 - **CRUD Operations**
   - Create, read, update, and delete blog posts.
   - proper access privilege for admin dashboard access
-  - Markdown support in editor (In-future development)
+  - Markdown support in editor (Coming soon)
 - **Comments Section**
-  - Users can comment on posts using disqus integration. (In-progress)
-  - In future development will be saved to DB with DDoS protection
+  - Users can comment on posts using disqus integration. (In progress)
+  - Comments will be saved to DB with DDoS protection (Planned)
 - **Responsive Design**
   - Accessible on both desktop and mobile devices.
   - A better UI development is in progress
@@ -86,4 +86,7 @@ This project is licensed under the MIT License.
 
 For any questions or concerns, you can reach out at [info@debagnik.in](mailto:info@debagnik.in).
 
-This project is powered by [@CoderabbitAi](coderabbit.ai) and [Tabnine AI](https://www.tabnine.com/)
+## Acknowledgments
+This project is enhanced by:
+- [CodeRabbitAI](https://coderabbit.ai) - Code review assistance
+- [Tabnine AI](https://www.tabnine.com/) - Code completion support
