@@ -49,7 +49,6 @@ const authToken = (req, res, next) => {
  * GET /
  * ADMIN - Login
  */
-
 router.get('/admin', async (req, res) => {
   try {
 
@@ -268,25 +267,19 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     }
 
     const isValidURI = (string) => {
-      if(req.body.thumbnailImageURI || !req.body.thumbnailImageURI.trim() === ''){
-        try{
-          new URL(string);
-          return true;
-        }catch(_){
-          return false;
-        }
-      } else {
+      if(!string || string.trim() === ''){
+        return false;
+      }
+      try{
+        new URL(string);
+        return true;
+      } catch(_){
+        console.error("Invalid URI, using default image");
         return false;
       }
     }
-
-    //const thumbnailImageURI = req.body.thumbnailImageURI?.trim() ? (isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI.trim() : process.env.DEFAULT_POST_THUMBNAIL_LINK) : process.env.DEFAULT_POST_THUMBNAIL_LINK;
-    let defaultThumbnailImageURI;
-    if(isValidURI(req.body.thumbnailImageURI)){
-      defaultThumbnailImageURI = req.body.thumbnailImageURI;
-    } else {
-      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
-    }
+    
+    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
