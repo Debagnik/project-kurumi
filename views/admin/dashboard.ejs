@@ -18,7 +18,6 @@
             <div class="admin-posts-controls">
                 <a href="/edit-post/<%= post._id %>" class="btn">Edit</a>
                 <form action="/delete-post/<%= post._id %>?_method=DELETE" method="POST">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="submit" value="Delete" class="btn-delete btn">
                 </form>
             </div>
