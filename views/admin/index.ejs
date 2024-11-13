@@ -8,6 +8,7 @@
     <% }); %>
 <% } %>
 <form action="/admin" method="post" autocomplete="on">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="username"><b>Username</b></label>
     <input type="text" placeholder="Enter Username" name="username" id="username" autocomplete="username" required minlength="3" maxlength="20">
 
@@ -28,6 +29,7 @@
         <% }); %>
     <% } %>
     <form action="/register" method="post" autocomplete="on">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <label for="name"><b>Name</b></label>
         <input type="text" placeholder="Enter Full Name or Pen Name" name="name" id="name" required minlength="2" maxlength="100">
 

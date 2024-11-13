@@ -2,10 +2,11 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const csrf = require('csurf');
 
 const router = express.Router();
 const post = require('../models/posts');
-const user = require('../models/user')
+const user = require('../models/user');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -17,7 +18,11 @@ if(!jwtSecretKey){
 const authLimiter  = rateLimit({
   windowMs: 15 * 60 * 1000, //15 mins
   max: 5 // limit each IP to 5 requests per windowMs
-})
+});
+
+// adding admin CSRF protection middleware
+const csrfProtection = csrf({ cookie: true });
+router.use(csrfProtection);
 
 /**
  * Checks login middleware
@@ -52,7 +57,7 @@ router.get('/admin', async (req, res) => {
       title: "Admin Panel",
       description: "Admin Panel"
     }
-    res.render('admin/index', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, errors: [], errors_login: [] });
+    res.render('admin/index', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, errors: [], errors_login: [], csrfToken: req.csrfToken() });
   } catch (error) {
     console.error("Admin Page error", error.message);
     res.status(500).send('Internal Server Error');
@@ -85,7 +90,6 @@ router.post('/register', async (req, res) => {
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION
       });
     }
-
 
     //registration logic
     if (process.env.ENABLE_REGISTRATION === 'true') {
@@ -220,7 +224,7 @@ router.get('/dashboard', authToken, async (req, res) => {
       default:
         return res.status(403).send('Unauthorized');
     }
-    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data});
+    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data, csrfToken: req.csrfToken()});
   } catch (error){
     console.error(error);
     res.status(500).send('Internal Server Error');
@@ -244,8 +248,7 @@ router.get('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-
-    res.render('admin/add-post', { locals, layout: adminLayout, currentUser });
+    res.render('admin/add-post', { locals, layout: adminLayout, currentUser, csrfToken: req.csrfToken()});
   } catch (error){
     console.error(error);
     res.status(500).send('Internal Server Error');
@@ -265,20 +268,21 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     }
 
     const isValidURI = (string) => {
-      try{
-        new URL(string);
-        return true;
-      }catch(_){
+      if(req.body.thumbnailImageURI || !req.body.thumbnailImageURI.trim() === ''){
+        try{
+          new URL(string);
+          return true;
+        }catch(_){
+          return false;
+        }
+      } else {
         return false;
       }
     }
 
     //const thumbnailImageURI = req.body.thumbnailImageURI?.trim() ? (isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI.trim() : process.env.DEFAULT_POST_THUMBNAIL_LINK) : process.env.DEFAULT_POST_THUMBNAIL_LINK;
-
     let defaultThumbnailImageURI;
-    if(!req.body.thumbnailImageURI || req.body.thumbnailImageURI.trim() === ''){
-      defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
-    } else if(isValidURI(req.body.thumbnailImageURI)){
+    if(isValidURI(req.body.thumbnailImageURI)){
       defaultThumbnailImageURI = req.body.thumbnailImageURI;
     } else {
       defaultThumbnailImageURI = process.env.DEFAULT_POST_THUMBNAIL_LINK;
