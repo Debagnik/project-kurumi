@@ -43,14 +43,14 @@ Welcome to the **Blog Site** project. It is a simple webapp for small-startups t
 4. **Configure the environment variables:**
    - Create a `.env` file and add your MongoDB URI and any other required configurations as below.
      ```text
-     MONGO_DB_URI=
-     PORT=
-     ENABLE_REGISTRATION=
-     SEARCH_PAGANATION_LIMIT=
-     JWT_SECRET=
-     SESSION_SECRET=
-     NODE_ENV=dev-local
-     DEFAULT_POST_THUMBNAIL_LINK=/img/placeholder.webp
+     MONGO_DB_URI=mongodb://username:password@host/blog #Required
+     PORT=80 #Optonal, defaults to 5000
+     ENABLE_REGISTRATION=true #defaults to false
+     SEARCH_PAGANATION_LIMIT=10 #defaults to 10
+     JWT_SECRET=your-default-jwt-secrets #Required
+     SESSION_SECRET=your-secure-session-secret #Required
+     NODE_ENV=dev-local #Defaults to dev-local use production in production scenario
+     DEFAULT_POST_THUMBNAIL_LINK=/img/placeholder.webp #Keep it as is
      ```
 5. **Start the application:**
    ```bash
@@ -70,8 +70,13 @@ Welcome to the **Blog Site** project. It is a simple webapp for small-startups t
 
 ## Contributing
 
-If you're interested in contributing, feel free to fork the repository and submit a pull request. Raising a PR against the latest release branch.
-PS: You contribution will be reviewed by codeRabbitAi and it's tone of review will be harsh
+I welcome all enhancement and bugfix and issue reports. Please feel free to contibute
+If you are interested in contributing to this project:
+1. Fork the repository
+2. Create a branch from the latest release.
+3. Submit your pull request against the release branch.
+4. Please also label your PR (enhancement for adding features, Bugfix for for bug fixing PRs)
+PS: You contribution will be reviewed by codeRabbitAi and it's tone of review will be bit harsh I made it to sound like a Tsundere, but it sometimes come of rude. 
 
 ## License
 
