@@ -6,7 +6,7 @@ Welcome to the **Blog Site** project. It is a simple webapp for small-startups t
 
 - **User Authentication**
   - Sign up and login functionality using secure authentication.
-  - Admins can disable or enable registration from evnvironment variable (Future plans has to move this feature to DB)
+  - Admins can disable or enable registration from environment variable (Future plans has to move this feature to DB)
 - **CRUD Operations**
   - Create, read, update, and delete blog posts.
   - proper access privilege for admin dashboard access
