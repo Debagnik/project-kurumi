@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const helmet = require('helmet');
 const expressLayout = require('express-ejs-layouts');
 const connectDB = require('./server/config/db');
 const cookieParser = require('cookie-parser');
@@ -9,6 +10,17 @@ const session = require('express-session');
 
 
 const app = express();
+// Add security headers.
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  }));
+
 const PORT = process.env.PORT || 5000;
 
 //connect Database
@@ -42,8 +54,25 @@ app.set('layout', './layouts/main');
 app.set('view engine', 'ejs');
 
 app.use('/', require('./server/routes/main.js'));
-
 app.use('/', require('./server/routes/admin.js'));
+
+// Middleware to protect routes, CSRF Error Handler
+app.use(function (err, req, res, next) {
+    if (err.code !== 'EBADCSRFTOKEN'){
+        return next(err);
+    }
+
+    console.error('CSRF attempt detected:', {
+        path: req.path,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+    });
+  
+    // handle CSRF token errors here
+    res.status(403).json({error: 'Invalid CSRF token', message: 'Your session has expired or the form submission was rejected for security reasons. Please refresh the page and try again. Contact webmaster if this issue persists'
+    });
+    res.send('Form tampered with');
+});
 
 app.listen(PORT , () => {
     console.log(`App is listening to PORT ${PORT}`);
