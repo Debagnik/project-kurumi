@@ -175,8 +175,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-      errors:[],
-      cs
+      errors:[]
     });
   }
 });
@@ -290,10 +289,10 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       title: req.body.title.trim(),
       body: req.body.body.trim(),
       author: currentUser.name.trim(),
-      tags: req.body.tags,
+      tags: req.body.tags.trim(),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
-      lastUpdateAuthor: currentUser.name.trim(),
+      lastUpdateAuthor: currentUser.username.trim(),
       updatedAt: Date.now()
     });
 
@@ -313,7 +312,6 @@ router.post('/admin/add-post', authToken, async (req, res) => {
  * GET
  * Admin Edit post
  */
-
 router.get('/edit-post/:id', authToken, async (req, res) => {
   try {
 
@@ -400,7 +398,14 @@ router.delete('/delete-post/:id', authToken, async (req, res) => {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
-    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', await post.findById(req.params.id));
+
+    const postToDelete = post.findById(req.params.id);
+    if(!postToDelete){
+      console.error('Post not found', req.params.id);
+      return res.status(404).send('Post not found');
+    }
+
+    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
     await post.deleteOne( { _id: req.params.id } );
     res.redirect('/dashboard');
   } catch (error) {
