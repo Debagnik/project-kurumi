@@ -3,10 +3,14 @@ exports.isValidURI = (string) => {
       return false;
     }
     try {
-      new URL(string);
+      const url = new URL(string);
+      const allowedSchemes = ['http:', 'https:'];
+      if (!allowedSchemes.includes(url.protocol)) {
+        throw new Error(`Scheme ${url.protocol} not allowed`);
+      }
       return true;
     } catch (_) {
-      console.error("Invalid URI, using default image");
+      console.error(`Invalid or unsafe URI: "${string}"`);
       return false;
     }
   };
