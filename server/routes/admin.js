@@ -75,8 +75,8 @@ router.post('/register', async (req, res) => {
     if (!name || !username || !password) {
       console.log(401, 'empty mandatory fields');
       return res.render('admin/index', {
-        errors: [{ msg: 'Name, Username or Passwords are empty' }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        errors: [{ msg: 'Name, Username or Passwords are empty' }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
 
@@ -85,8 +85,8 @@ router.post('/register', async (req, res) => {
     if (existingUser) {
       console.error(409, 'Username already exists');
       return res.render('admin/index', {
-        errors: [{ msg: 'Username already exists!' }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        errors: [{ msg: 'Username already exists!' }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
 
@@ -106,8 +106,8 @@ router.post('/register', async (req, res) => {
           return res.render('admin/index', {
             errors: [{
               msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
-            }],
-            isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+            }], errors_login: [],
+            isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
           });
         }
       }
@@ -115,8 +115,8 @@ router.post('/register', async (req, res) => {
       return res.render('admin/index', {
         errors: [{
           msg: 'Registration not enabled, Contact with Site admin or God-father'
-        }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
   } catch (error) {
@@ -139,7 +139,7 @@ router.post('/admin', authLimiter, async (req, res) => {
           msg: 'Username and Passwords are mandatory'
         }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -150,7 +150,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -161,7 +161,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -175,7 +175,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-      errors:[]
+      errors:[], csrfToken: req.csrfToken()
     });
   }
 });
@@ -293,7 +293,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
-      updatedAt: Date.now()
+      modifiedAt: Date.now()
     });
 
     await newPost.save();
@@ -371,10 +371,10 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
     await post.findByIdAndUpdate(req.params.id, {
       title: req.body.title.trim(),
       body: req.body.body.trim(),
-      updatedAt: Date.now(),
       desc: req.body.desc.trim(),
       tags: req.body.tags.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
+      modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username
     });
 
