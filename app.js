@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const expressLayout = require('express-ejs-layouts');
+const methodOverride = require('method-override');
 const connectDB = require('./server/config/db');
 const cookieParser = require('cookie-parser');
 const mongoStore = require('connect-mongo');
@@ -30,6 +31,7 @@ app.use(express.urlencoded({extended: true}));
 app.use(express.json());
 app.use(express.static('./public'));
 app.use(cookieParser());
+app.use(methodOverride('_method'));
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,

@@ -1,0 +1,27 @@
+<a href="/dashboard">&larr; Back</a>
+<div class="admin-title">
+    <h2>View / Edit Post</h2>
+    <form action="/delete-post/<%= data._id %>?_method=DELETE" method="POST">
+        <input type="submit" value="Delete" class="btn-delete btn">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    </form>
+</div>
+<form action="/edit-post/<%= data._id %>?_method=PUT" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="<%= data.title %>" required placeholder="Post Title">
+
+    <label for="thumbnailImageURI">Thumbnail Image</label>
+    <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" value="<%= data.thumbnailImageURI %>" placeholder="Post Thumbnail Image URL">
+    
+    <label for="body"><b>Content</b></label>
+    <textarea name="body" cols="50" rows="10"><%= data.body %></textarea>
+    
+    <label for="desc">Short Description:</label>
+    <textarea id="desc" name="desc" placeholder="Enter Short Description under 10-50 words"><%= data.desc %></textarea>
+
+    <label for="tags">Tags (comma-separated):</label>
+    <input type="text" id="tags" name="tags" value="<%= data.tags %>" required placeholder="Post Tags (comma-separated)">
+
+    <input type="submit" value="Update" class="btn">
+</form>

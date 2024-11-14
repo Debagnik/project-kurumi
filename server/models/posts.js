@@ -32,6 +32,10 @@ const postSchema = new schema({
     thumbnailImageURI: {
         type: String,
         required: true
+    },
+    lastUpdateAuthor: {
+        type: String,
+        required: true
     }
 });
 
