@@ -7,6 +7,7 @@ const csrf = require('csurf');
 const router = express.Router();
 const post = require('../models/posts');
 const user = require('../models/user');
+const { isValidURI } = require('../../utils/validations');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -266,19 +267,6 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const isValidURI = (string) => {
-      if(!string || string.trim() === ''){
-        return false;
-      }
-      try{
-        new URL(string);
-        return true;
-      } catch(_){
-        console.error("Invalid URI, using default image");
-        return false;
-      }
-    }
-    
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
@@ -347,19 +335,6 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
-
-    const isValidURI = (string) => {
-      if(!string || string.trim() === ''){
-        return false;
-      }
-      try{
-        new URL(string);
-        return true;
-      } catch(_){
-        console.error("Invalid URI, using default image");
-        return false;
-      }
-    }
     
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
 
@@ -399,7 +374,7 @@ router.delete('/delete-post/:id', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const postToDelete = post.findById(req.params.id);
+    const postToDelete = await post.findById(req.params.id);
     if(!postToDelete){
       console.error('Post not found', req.params.id);
       return res.status(404).send('Post not found');
