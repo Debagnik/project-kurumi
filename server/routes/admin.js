@@ -412,7 +412,7 @@ router.delete('/delete-post/:id', authToken, async (req, res) => {
  * GET /
  * Admin Logout
 */
-router.get('/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   res.clearCookie('token');
   res.redirect('/admin');
 });
