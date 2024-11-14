@@ -353,6 +353,12 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       lastUpdateAuthor: currentUser.username
     });
 
+    const updatedPost = await post.findById(req.params.id);
+    if (!updatedPost) {
+      console.error('Failed to update post', req.params.id);
+      return res.status(500).send('Failed to update post');
+    }
+
     res.redirect(`/dashboard/`);
 
   } catch (error) {
