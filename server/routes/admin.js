@@ -7,6 +7,7 @@ const csrf = require('csurf');
 const router = express.Router();
 const post = require('../models/posts');
 const user = require('../models/user');
+const { isValidURI } = require('../../utils/validations');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -75,8 +76,8 @@ router.post('/register', async (req, res) => {
     if (!name || !username || !password) {
       console.log(401, 'empty mandatory fields');
       return res.render('admin/index', {
-        errors: [{ msg: 'Name, Username or Passwords are empty' }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        errors: [{ msg: 'Name, Username or Passwords are empty' }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
 
@@ -85,8 +86,8 @@ router.post('/register', async (req, res) => {
     if (existingUser) {
       console.error(409, 'Username already exists');
       return res.render('admin/index', {
-        errors: [{ msg: 'Username already exists!' }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        errors: [{ msg: 'Username already exists!' }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
 
@@ -106,8 +107,8 @@ router.post('/register', async (req, res) => {
           return res.render('admin/index', {
             errors: [{
               msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
-            }],
-            isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+            }], errors_login: [],
+            isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
           });
         }
       }
@@ -115,8 +116,8 @@ router.post('/register', async (req, res) => {
       return res.render('admin/index', {
         errors: [{
           msg: 'Registration not enabled, Contact with Site admin or God-father'
-        }],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION
+        }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
   } catch (error) {
@@ -139,7 +140,7 @@ router.post('/admin', authLimiter, async (req, res) => {
           msg: 'Username and Passwords are mandatory'
         }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -150,7 +151,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -161,7 +162,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[]
+        errors:[], csrfToken: req.csrfToken()
       });
     }
 
@@ -175,7 +176,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-      errors:[]
+      errors:[], csrfToken: req.csrfToken()
     });
   }
 });
@@ -266,19 +267,6 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const isValidURI = (string) => {
-      if(!string || string.trim() === ''){
-        return false;
-      }
-      try{
-        new URL(string);
-        return true;
-      } catch(_){
-        console.error("Invalid URI, using default image");
-        return false;
-      }
-    }
-    
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
@@ -289,9 +277,11 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       title: req.body.title.trim(),
       body: req.body.body.trim(),
       author: currentUser.name.trim(),
-      tags: req.body.tags,
+      tags: req.body.tags.trim(),
       desc: req.body.desc.trim(),
-      thumbnailImageURI: defaultThumbnailImageURI
+      thumbnailImageURI: defaultThumbnailImageURI,
+      lastUpdateAuthor: currentUser.username.trim(),
+      modifiedAt: Date.now()
     });
 
     await newPost.save();
@@ -305,5 +295,113 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
+
+/**
+ * GET
+ * Admin Edit post
+ */
+router.get('/edit-post/:id', authToken, async (req, res) => {
+  try {
+
+    const data = await post.findOne({ _id: req.params.id });
+
+    const locals = {
+      title: "Edit Post - " + data.title,
+      description: "Post Editor",
+    };
+
+    res.render('admin/edit-post', {
+      locals,
+      data,
+      layout: adminLayout,
+      csrfToken: req.csrfToken()
+    })
+
+  } catch (error) {
+    console.log(error);
+  }
+
+});
+
+/**
+ * PUT /
+ * Admin - Edit Post
+*/
+router.put('/edit-post/:id', authToken, async (req, res) => {
+  try {
+
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+    
+    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+
+    if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
+      return res.status(400).send('Title, body, and description are required!');
+    }
+
+
+    await post.findByIdAndUpdate(req.params.id, {
+      title: req.body.title.trim(),
+      body: req.body.body.trim(),
+      desc: req.body.desc.trim(),
+      tags: req.body.tags.trim(),
+      thumbnailImageURI: defaultThumbnailImageURI,
+      modifiedAt: Date.now(),
+      lastUpdateAuthor: currentUser.username
+    });
+
+    const updatedPost = await post.findById(req.params.id);
+    if (!updatedPost) {
+      console.error('Failed to update post', req.params.id);
+      return res.status(500).send('Failed to update post');
+    }
+
+    res.redirect(`/dashboard/`);
+
+  } catch (error) {
+    console.log(error);
+  }
+
+});
+
+/**
+ * DELETE
+ * Admin - Post - Delete
+ */
+
+router.delete('/delete-post/:id', authToken, async (req, res) => {
+  try {
+    const currentUser = await user.findById(req.userId);
+    if(!currentUser){
+      console.error('User not found', req.userId);
+      return res.redirect('/admin');
+    }
+
+    const postToDelete = await post.findById(req.params.id);
+    if(!postToDelete){
+      console.error('Post not found', req.params.id);
+      return res.status(404).send('Post not found');
+    }
+
+    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
+    await post.deleteOne( { _id: req.params.id } );
+    res.redirect('/dashboard');
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+/**
+ * GET /
+ * Admin Logout
+*/
+router.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.redirect('/admin');
+});
+
 
 module.exports = router;
