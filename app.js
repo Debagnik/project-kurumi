@@ -58,6 +58,15 @@ app.set('view engine', 'ejs');
 app.use('/', require('./server/routes/main.js'));
 app.use('/', require('./server/routes/admin.js'));
 
+// 404 Not Found Middleware
+app.use((req, res, next) => {
+    const locals = {
+        title: '404 - Page Not Found',
+        description: '404 Not Found'
+    }
+    res.status(404).render('404', {locals});
+});
+
 // Middleware to protect routes, CSRF Error Handler
 app.use(function (err, req, res, next) {
     if (err.code !== 'EBADCSRFTOKEN'){
