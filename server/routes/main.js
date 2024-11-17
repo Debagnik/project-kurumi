@@ -66,6 +66,9 @@ router.get('/post/:id', async (req, res) => {
     try {
         let slug = req.params.id;
         const data = await post.findById({ _id: slug });
+        if(!data) {
+            throw new Error('404 - No such post found');
+        }
         const locals = {
             title: data.title,
             description: data.desc,
@@ -75,6 +78,12 @@ router.get('/post/:id', async (req, res) => {
         res.render('posts', { locals, data });
     } catch (error) {
         console.error('Post Fetch error', error);
+        res.status(500).render('404', {
+            locals: {
+                title: "404 - Page Not Found",
+                description: "The page you're looking for doesn't exist."
+            }
+        });
     }
 });
 
