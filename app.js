@@ -59,10 +59,10 @@ app.use('/', require('./server/routes/main.js'));
 app.use('/', require('./server/routes/admin.js'));
 
 // 404 Not Found Middleware
-app.use((eq, res, next) => {
+app.use((req, res, next) => {
     const locals = {
         title: '404 - Page Not Found',
-        descriptsion: '404 Not Found'
+        description: '404 Not Found'
     }
     res.status(404).render('404', {locals});
 });
