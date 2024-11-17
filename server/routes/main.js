@@ -78,7 +78,7 @@ router.get('/post/:id', async (req, res) => {
         res.render('posts', { locals, data });
     } catch (error) {
         console.error('Post Fetch error', error);
-        res.status(500).render('404', {
+        res.status(404).render('404', {
             locals: {
                 title: "404 - Page Not Found",
                 description: "The page you're looking for doesn't exist."
