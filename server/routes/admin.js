@@ -191,7 +191,7 @@ router.get('/admin/registration', async (req, res) => {
     title: 'Registration successful',
     description: 'Registration successful'
   };
-  res.render('admin/registration', { locals, layout: adminLayout });
+  res.render('admin/registration', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()});
 });
 
 /**
