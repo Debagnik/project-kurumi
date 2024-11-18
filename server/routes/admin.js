@@ -12,11 +12,11 @@ const { isValidURI } = require('../../utils/validations');
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
-if(!jwtSecretKey){
+if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
 }
 
-const authLimiter  = rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, //15 mins
   max: 5 // limit each IP to 5 requests per windowMs
 });
@@ -30,16 +30,16 @@ router.use(csrfProtection);
  */
 const authToken = (req, res, next) => {
   const token = req.cookies.token;
-  if(!token){
+  if (!token) {
     return res.redirect('/admin');
   }
 
-  try{
+  try {
     const decoded = jwt.verify(token, jwtSecretKey);
     req.userId = decoded.userId;
     next();
-  } catch (error){
-    console.error(401 ,error);
+  } catch (error) {
+    console.error(401, error);
     return res.redirect('/admin');
   }
 }
@@ -70,12 +70,12 @@ router.get('/admin', async (req, res) => {
  */
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, name } = req.body;
+    const { username, password, name, confirm_password } = req.body;
 
     //check for empty field
-    if (!name || !username || !password) {
-      console.log(401, 'empty mandatory fields');
-      return res.render('admin/index', {
+    if (!name || !username || !password || !confirm_password) {
+      console.error(401, 'empty mandatory fields');
+      return res.status(401).render('admin/index', {
         errors: [{ msg: 'Name, Username or Passwords are empty' }], errors_login: [],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
@@ -85,8 +85,17 @@ router.post('/register', async (req, res) => {
     const existingUser = await user.findOne({ username })
     if (existingUser) {
       console.error(409, 'Username already exists');
-      return res.render('admin/index', {
+      return res.status(409).render('admin/index', {
         errors: [{ msg: 'Username already exists!' }], errors_login: [],
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
+      });
+    }
+
+    //check password and confirm password match
+    if (!(password === confirm_password)) {
+      console.error('Password and confirm passwords do not match');
+      return res.render('admin/index', {
+        errors: [{ msg: 'Passwords and Confirm Password do not match!' }], errors_login: [],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
@@ -99,29 +108,25 @@ router.post('/register', async (req, res) => {
         console.log('User created', newUser, 201);
         res.redirect('/admin/registration');
       } catch (error) {
-        if (error.code === 11000) {
-          console.error(409, 'Username already exists 2');
-        }
-        else {
-          console.error(500, 'Internal Server Error');
-          return res.render('admin/index', {
-            errors: [{
-              msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
-            }], errors_login: [],
-            isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
-          });
-        }
+        console.error(500, 'Internal Server Error');
+        return res.render('admin/index', {
+          errors: [{
+            msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
+          }], errors_login: [],
+          isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
+        });
       }
     } else {
       return res.render('admin/index', {
         errors: [{
-          msg: 'Registration not enabled, Contact with Site admin or God-father'
+          msg: 'Registration not enabled, Contact with Site admin'
         }], errors_login: [],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()
       });
     }
   } catch (error) {
     console.error('error in post', error);
+    res.status(500).send('Internal Server Error');
   }
 });
 
@@ -140,7 +145,7 @@ router.post('/admin', authLimiter, async (req, res) => {
           msg: 'Username and Passwords are mandatory'
         }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[], csrfToken: req.csrfToken()
+        errors: [], csrfToken: req.csrfToken()
       });
     }
 
@@ -151,7 +156,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[], csrfToken: req.csrfToken()
+        errors: [], csrfToken: req.csrfToken()
       });
     }
 
@@ -162,7 +167,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors:[], csrfToken: req.csrfToken()
+        errors: [], csrfToken: req.csrfToken()
       });
     }
 
@@ -176,7 +181,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-      errors:[], csrfToken: req.csrfToken()
+      errors: [], csrfToken: req.csrfToken()
     });
   }
 });
@@ -191,7 +196,7 @@ router.get('/admin/registration', async (req, res) => {
     title: 'Registration successful',
     description: 'Registration successful'
   };
-  res.status(201).render('admin/registration', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken()});
+  res.status(201).render('admin/registration', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken() });
 });
 
 /**
@@ -199,21 +204,21 @@ router.get('/admin/registration', async (req, res) => {
  * Admin - Dashboard
  */
 router.get('/dashboard', authToken, async (req, res) => {
-  try{
+  try {
     const locals = {
       title: 'Admin Dashboard',
       description: 'dashboard'
     };
 
     const currentUser = await user.findById(req.userId);
-    if(!currentUser){
+    if (!currentUser) {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
     let data;
-    switch (currentUser.privilege){
+    switch (currentUser.privilege) {
       case 3:
-        data = await post.find({ author: currentUser.name}).sort({ createdAt: -1 });
+        data = await post.find({ author: currentUser.name }).sort({ createdAt: -1 });
         break;
       case 2:
         data = await post.find();
@@ -224,8 +229,8 @@ router.get('/dashboard', authToken, async (req, res) => {
       default:
         return res.status(403).send('Unauthorized');
     }
-    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data, csrfToken: req.csrfToken()});
-  } catch (error){
+    res.render('admin/dashboard', { locals, layout: adminLayout, currentUser, data, csrfToken: req.csrfToken() });
+  } catch (error) {
     console.error(error);
     res.status(500).send('Internal Server Error');
   }
@@ -236,20 +241,20 @@ router.get('/dashboard', authToken, async (req, res) => {
  * Admin - new post
  */
 router.get('/admin/add-post', authToken, async (req, res) => {
-  try{
+  try {
     const locals = {
       title: 'Add Post',
       description: 'Add Post'
     };
 
     const currentUser = await user.findById(req.userId);
-    if(!currentUser){
+    if (!currentUser) {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
 
-    res.render('admin/add-post', { locals, layout: adminLayout, currentUser, csrfToken: req.csrfToken()});
-  } catch (error){
+    res.render('admin/add-post', { locals, layout: adminLayout, currentUser, csrfToken: req.csrfToken() });
+  } catch (error) {
     console.error(error);
     res.status(500).send('Internal Server Error');
   }
@@ -260,9 +265,9 @@ router.get('/admin/add-post', authToken, async (req, res) => {
  * Admin - new post
  */
 router.post('/admin/add-post', authToken, async (req, res) => {
-  try{
+  try {
     const currentUser = await user.findById(req.userId);
-    if(!currentUser){
+    if (!currentUser) {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
@@ -286,11 +291,11 @@ router.post('/admin/add-post', authToken, async (req, res) => {
 
     await newPost.save();
 
-    console.log('New post added by ', currentUser.username, '\n' , newPost);
+    console.log('New post added by ', currentUser.username, '\n', newPost);
 
     res.redirect('/dashboard');
 
-  } catch (error){
+  } catch (error) {
     console.error(error);
     res.status(500).send('Internal Server Error');
   }
@@ -331,11 +336,11 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
   try {
 
     const currentUser = await user.findById(req.userId);
-    if(!currentUser){
+    if (!currentUser) {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
-    
+
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
@@ -375,19 +380,19 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 router.delete('/delete-post/:id', authToken, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
-    if(!currentUser){
+    if (!currentUser) {
       console.error('User not found', req.userId);
       return res.redirect('/admin');
     }
 
     const postToDelete = await post.findById(req.params.id);
-    if(!postToDelete){
+    if (!postToDelete) {
       console.error('Post not found', req.params.id);
       return res.status(404).send('Post not found');
     }
 
     console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
-    await post.deleteOne( { _id: req.params.id } );
+    await post.deleteOne({ _id: req.params.id });
     res.redirect('/dashboard');
   } catch (error) {
     console.log(error);
