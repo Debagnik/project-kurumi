@@ -14,3 +14,10 @@ exports.isValidURI = (string) => {
       return false;
     }
   };
+
+  exports.isWebMaster = (currentUser) => {
+    if (!currentUser) {
+      return false;
+    }
+    return currentUser.privilege === 1;
+  };
