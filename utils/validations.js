@@ -1,3 +1,10 @@
+// User privilege Enum
+const PRIVILEGE_LEVELS_ENUM = {
+  WEBMASTER : 1,
+  MODERATOR : 2,
+  WRITER: 3
+}
+
 exports.isValidURI = (string) => {
   if (!string || string.trim() === '') {
     return false;
@@ -25,5 +32,5 @@ exports.isWebMaster = (currentUser) => {
   if (!currentUser) {
     return false;
   }
-  return typeof currentUser.privilege === 'number' && currentUser.privilege === WEBMASTER_PRIVILEGE_LEVEL;
+  return typeof currentUser.privilege === 'number' && currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER;
 };
