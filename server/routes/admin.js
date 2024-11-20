@@ -517,7 +517,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         return res.status(400).send('Invalid email format');
       }
       const paginationLimit = parseInt(req.body.defaultPaginationLimit);
-      if (isNaN(paginationLimit) || paginationLimit < 1) {
+      if (Number.isNaN(paginationLimit) || paginationLimit < 1) {
         return res.status(400).send('Invalid pagination limit');
       }
 
