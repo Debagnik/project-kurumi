@@ -10,7 +10,10 @@ const configSchema = new schema({
     siteName:{
         type: String,
         required: true,
-        default: 'Project Walnut'
+        default: 'Project Walnut',
+        minlength: [3, 'Site name must be at least 3 characters!'],
+        maxlength: [10, 'Site name is too long|'],
+        trim: true
     },
     siteMetaDataKeywords:{
         type: String,
@@ -38,7 +41,9 @@ const configSchema = new schema({
     defaultPaginationLimit:{
         type: Number,
         default: 2,
-        required: true
+        required: true,
+        min: [1, 'At least show one item per page, stupid!'],
+        max: [100, 'No more than 100 items per page, silly!']
     },
     lastModifiedDate:{
         type: Date,

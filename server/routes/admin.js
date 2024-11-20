@@ -60,7 +60,7 @@ router.get('/admin', async (req, res) => {
       title: "Admin Panel",
       description: "Admin Panel"
     }
-    res.render('admin/index', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, errors: [], errors_login: [], csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser) });
+    res.render('admin/index', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, errors: [], errors_login: [], csrfToken: req.csrfToken(), isWebMaster: false });
   } catch (error) {
     console.error("Admin Page error", error.message);
     res.status(500).send('Internal Server Error');
@@ -80,7 +80,7 @@ router.post('/register', async (req, res) => {
       console.error(401, 'empty mandatory fields');
       return res.status(401).render('admin/index', {
         errors: [{ msg: 'Name, Username or Passwords are empty' }], errors_login: [],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -90,7 +90,7 @@ router.post('/register', async (req, res) => {
       console.error(409, 'Username already exists');
       return res.status(409).render('admin/index', {
         errors: [{ msg: 'Username already exists!' }], errors_login: [],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -99,7 +99,7 @@ router.post('/register', async (req, res) => {
       console.error('Password and confirm passwords do not match');
       return res.render('admin/index', {
         errors: [{ msg: 'Passwords and Confirm Password do not match!' }], errors_login: [],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -116,7 +116,7 @@ router.post('/register', async (req, res) => {
           errors: [{
             msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
           }], errors_login: [],
-          isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+          isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false
         });
       }
     } else {
@@ -124,7 +124,7 @@ router.post('/register', async (req, res) => {
         errors: [{
           msg: 'Registration not enabled, Contact with Site admin'
         }], errors_login: [],
-        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
   } catch (error) {
@@ -148,7 +148,7 @@ router.post('/admin', authLimiter, async (req, res) => {
           msg: 'Username and Passwords are mandatory'
         }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors: [], csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        errors: [], csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -159,7 +159,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors: [], csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        errors: [], csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -170,7 +170,7 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-        errors: [], csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+        errors: [], csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
@@ -184,7 +184,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       isRegistrationEnabled: process.env.ENABLE_REGISTRATION,
-      errors: [], csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser)
+      errors: [], csrfToken: req.csrfToken(), isWebMaster: false
     });
   }
 });
@@ -199,7 +199,7 @@ router.get('/admin/registration', async (req, res) => {
     title: 'Registration successful',
     description: 'Registration successful'
   };
-  res.status(201).render('admin/registration', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: isWebMaster(currentUser) });
+  res.status(201).render('admin/registration', { locals, layout: adminLayout, isRegistrationEnabled: process.env.ENABLE_REGISTRATION, csrfToken: req.csrfToken(), isWebMaster: false });
 });
 
 /**
@@ -317,6 +317,8 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       title: "Edit Post - " + data.title,
       description: "Post Editor",
     };
+
+    const currentUser = await user.findById(req.userId);
 
     res.render('admin/edit-post', {
       locals,
@@ -478,7 +480,6 @@ router.post('/edit-site-config', authToken, async (req, res) => {
 
       const validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
-      console.log(registrationEnable, '\t', req.body.isRegistrationEnabled);
 
       if(!globalSiteConfig) {
         globalSiteConfig = new siteConfig({
