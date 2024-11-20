@@ -471,7 +471,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
     if(!currentConfig){
       currentConfig = new siteConfig({
         isRegistrationEnabled: false,
-        siteName: ' ',
+        siteName: 'Blog-Site',
         siteMetaDataKeywords: ' ',
         siteMetaDataAuthor: ' ',
         siteMetaDataDescription: ' ',
