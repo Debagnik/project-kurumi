@@ -16,7 +16,7 @@ const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
 // User privilege Enum
-const PRIVILAGE_LEVELS_ENUM = {
+const PRIVILEGE_LEVELS_ENUM = {
   WEBMASTER : 1,
   MODERATOR : 2,
   WRITER: 3
@@ -227,13 +227,13 @@ router.get('/dashboard', authToken, async (req, res) => {
     }
     let data;
     switch (currentUser.privilege) {
-      case PRIVILAGE_LEVELS_ENUM.WRITER:
+      case PRIVILEGE_LEVELS_ENUM.WRITER:
         data = await post.find({ author: currentUser.name }).sort({ createdAt: -1 });
         break;
-      case PRIVILAGE_LEVELS_ENUM.MODERATOR:
+      case PRIVILEGE_LEVELS_ENUM.MODERATOR:
         data = await post.find().sort({createdAt: -1});
         break;
-      case PRIVILAGE_LEVELS_ENUM.WEBMASTER:
+      case PRIVILEGE_LEVELS_ENUM.WEBMASTER:
         data = await post.find().sort({createdAt: -1});
         break;
       default:
@@ -446,11 +446,19 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
-      return res.redirect('/admin');
+      return res.status(403).json({
+        locals: {
+          title: 'Access Denied',
+          description: 'Insufficient privileges'
+        },
+        layout: adminLayout,
+        error: 'Only webmasters can access this page',
+        isWebMaster: false
+      });
     }
 
     // Check if the user has the necessary privileges (assuming 1 is the highest privilege)
-    if (currentUser.privilege !== PRIVILAGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       return res.status(403).redirect('/404')
     }
 
@@ -499,9 +507,20 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    if(currentUser.privilege === PRIVILAGE_LEVELS_ENUM.WEBMASTER){
+    if(currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER){
       // Update site settings in the database
       let globalSiteConfig = await siteConfig.findOne();
+
+      // Validate critical fields
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (req.body.siteAdminEmail && !emailRegex.test(req.body.siteAdminEmail)) {
+        return res.status(400).send('Invalid email format');
+      }
+      const paginationLimit = parseInt(req.body.defaultPaginationLimit);
+      if (isNaN(paginationLimit) || paginationLimit < 1) {
+        return res.status(400).send('Invalid pagination limit');
+      }
+
 
       let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
       if(req.body.siteDefaultThumbnailUri){

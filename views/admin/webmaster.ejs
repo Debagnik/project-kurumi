@@ -1,47 +1,47 @@
-<h1>नमस्कार, <%= currentUser?.name || 'Webmaster' %></h1>
-<div class="admin-title">
-    <h2>Global Site Configuration</h2>
-</div>
+<h1>नमस्कार, <%= currentUser?.name || 'Webmaster' %>
+</h1>
 <div class="add-post">
+    <div class="admin-title">
+        <h2>Global Site Configuration</h2>
+    </div>
     <form action="/edit-site-config" method="POST">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <label for="siteName">Site Name</label>
         <input type="text" id="siteName" name="siteName" value="<%= currentConfig.siteName %>" required>
-        
+
         <label for="siteDefaultThumbnailUri">Default Thumbnail Image URL</label>
-        <input type="text" id="siteDefaultThumbnailUri" name="siteDefaultThumbnailUri" value="<%= currentConfig.siteDefaultThumbnailUri %>" required>
+        <input type="text" id="siteDefaultThumbnailUri" name="siteDefaultThumbnailUri"
+            value="<%= currentConfig.siteDefaultThumbnailUri %>" required>
 
         <label for="siteAdminEmail">Webmaster Email</label>
-        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= currentConfig.siteAdminEmail %>" required>
+        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= currentConfig.siteAdminEmail %>"
+            required>
 
         <label for="defaultPaginationLimit">Default Pagination Limit</label>
-        <input type="number" id="defaultPaginationLimit" name="defaultPaginationLimit" value="<%= currentConfig.defaultPaginationLimit %>" required min="1" max="10">
+        <input type="number" id="defaultPaginationLimit" name="defaultPaginationLimit"
+            value="<%= currentConfig.defaultPaginationLimit %>" required min="1" max="10">
         <br><br>
 
         <label for="isRegistrationEnabled">Registration Enabled:</label>
-        <input type="checkbox" id="isRegistrationEnabled" name="isRegistrationEnabled" <%= currentConfig.isRegistrationEnabled? 'checked' : '' %>>
-        <br><br>
-        
-        <input type="submit" value="Update" class="btn">
-    </form>
-</div>
+        <input type="checkbox" id="isRegistrationEnabled" name="isRegistrationEnabled"
+            <%=currentConfig.isRegistrationEnabled? 'checked' : '' %>>
+        <br>
 
-<div class="admin-title">
-    <h2>Site Metadata and SEO Settings</h2>
-</div>
-<div class="add-post">
-    <form action="/edit-site-config" method="POST">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
+        <div class="admin-title">
+            <h2>Site Metadata and SEO Settings</h2>
+        </div>
         <label for="siteMetaDataKeywords">Site Keywords (comma separated)</label>
-        <input type="text" id="siteMetaDataKeywords" name="siteMetaDataKeywords" value="<%= currentConfig.siteMetaDataKeywords %>" >
-        
+        <input type="text" id="siteMetaDataKeywords" name="siteMetaDataKeywords"
+            value="<%= currentConfig.siteMetaDataKeywords %>">
+
         <label for="siteMetaDataAuthor">Site Author</label>
-        <input type="text" id="siteMetaDataAuthor" name="siteMetaDataAuthor" value="<%= currentConfig.siteMetaDataAuthor %>" >
+        <input type="text" id="siteMetaDataAuthor" name="siteMetaDataAuthor"
+            value="<%= currentConfig.siteMetaDataAuthor %>">
 
         <label for="siteMetaDataDescription">Site Description</label>
-        <input type="text" id="siteMetaDataDescription" name="siteMetaDataDescription" value="<%= currentConfig.siteMetaDataDescription %>" >
+        <input type="text" id="siteMetaDataDescription" name="siteMetaDataDescription"
+            value="<%= currentConfig.siteMetaDataDescription %>">
 
         <label for="googleAnalyticsScript">Google Analytics</label>
         <textarea id="googleAnalyticsScript" name="googleAnalyticsScript" placeholder="<!-- Google tag (gtag.js) -->
