@@ -58,6 +58,11 @@ app.set('view engine', 'ejs');
 app.use('/', require('./server/routes/main.js'));
 app.use('/', require('./server/routes/admin.js'));
 
+app.use((req, res, next) => {
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://cdn.inspectlet.com");
+    next();
+  });
+
 // 404 Not Found Middleware
 app.use((req, res, next) => {
     const locals = {

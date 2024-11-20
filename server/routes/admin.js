@@ -15,6 +15,13 @@ const { isWebMaster } = require('../../utils/validations');
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
+// User privilege Enum
+const PRIVILAGE_LEVELS_ENUM = {
+  WEBMASTER : 1,
+  MODERATOR : 2,
+  WRITER: 3
+}
+
 if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
 }
@@ -220,14 +227,14 @@ router.get('/dashboard', authToken, async (req, res) => {
     }
     let data;
     switch (currentUser.privilege) {
-      case 3:
+      case PRIVILAGE_LEVELS_ENUM.WRITER:
         data = await post.find({ author: currentUser.name }).sort({ createdAt: -1 });
         break;
-      case 2:
-        data = await post.find();
+      case PRIVILAGE_LEVELS_ENUM.MODERATOR:
+        data = await post.find().sort({createdAt: -1});
         break;
-      case 1:
-        data = await post.find();
+      case PRIVILAGE_LEVELS_ENUM.WEBMASTER:
+        data = await post.find().sort({createdAt: -1});
         break;
       default:
         return res.status(403).send('Unauthorized');
@@ -275,13 +282,13 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const currentSiteConfig = await config.findOne();
+    const currentSiteConfig = await siteConfig.findOne();
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
       console.error('Site configuration not found');
       siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
     } else {
-      siteConfigDefaultThumbnail = currentSiteConfig.defaultThumbnail;
+      siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
     }
 
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
@@ -355,13 +362,13 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const currentSiteConfig = await config.findOne();
+    const currentSiteConfig = await siteConfig.findOne();
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
       console.error('Site configuration not found');
       siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
     } else {
-      siteConfigDefaultThumbnail = currentSiteConfig.defaultThumbnail;
+      siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
     }
 
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail;
@@ -443,7 +450,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
     }
 
     // Check if the user has the necessary privileges (assuming 1 is the highest privilege)
-    if (currentUser.privilege !== 1) {
+    if (currentUser.privilege !== PRIVILAGE_LEVELS_ENUM.WEBMASTER) {
       return res.status(403).redirect('/404')
     }
 
@@ -455,7 +462,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
     let currentConfig = await siteConfig.findOne();
     if(!currentConfig){
       currentConfig = new siteConfig({
-        isEnableRegistration: false,
+        isRegistrationEnabled: false,
         siteName: ' ',
         siteMetaDataKeywords: ' ',
         siteMetaDataAuthor: ' ',
@@ -492,7 +499,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    if(currentUser.privilege === 1){
+    if(currentUser.privilege === PRIVILAGE_LEVELS_ENUM.WEBMASTER){
       // Update site settings in the database
       let globalSiteConfig = await siteConfig.findOne();
 
@@ -524,7 +531,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       } else {
         await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, registrationEnable), { new: true });
       }
-      console.log('Site settings updated successfully\nUpdated Settings: ', createConfigObject(req, currentUser, validUrl, registrationEnable));
+      console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
     } else {
       res.status(403).send('Unauthorized');
