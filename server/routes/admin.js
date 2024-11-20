@@ -275,7 +275,16 @@ router.post('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    const currentSiteConfig = await config.findOne();
+    let siteConfigDefaultThumbnail;
+    if (!currentSiteConfig) {
+      console.error('Site configuration not found');
+      siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
+    } else {
+      siteConfigDefaultThumbnail = currentSiteConfig.defaultThumbnail;
+    }
+
+    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
@@ -346,7 +355,16 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+    const currentSiteConfig = await config.findOne();
+    let siteConfigDefaultThumbnail;
+    if (!currentSiteConfig) {
+      console.error('Site configuration not found');
+      siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
+    } else {
+      siteConfigDefaultThumbnail = currentSiteConfig.defaultThumbnail;
+    }
+
+    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail;
 
     if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
@@ -478,42 +496,35 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       // Update site settings in the database
       let globalSiteConfig = await siteConfig.findOne();
 
-      const validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+      let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
+      if(req.body.siteDefaultThumbnailUri){
+        validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+      }
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
 
+      // global site settings helper
+      const createConfigObject = (req, currentUser, validUrl, registrationEnable) => ({
+        isRegistrationEnabled: registrationEnable,
+        siteName: req.body.siteName,
+        siteMetaDataKeywords: req.body.siteMetaDataKeywords,
+        siteMetaDataAuthor: req.body.siteMetaDataAuthor,
+        siteMetaDataDescription: req.body.siteMetaDataDescription,
+        siteAdminEmail: req.body.siteAdminEmail,
+        siteDefaultThumbnailUri: validUrl,
+        defaultPaginationLimit: req.body.defaultPaginationLimit,
+        lastModifiedDate: Date.now(),
+        lastModifiedBy: currentUser.username,
+        googleAnalyticsScript: req.body.googleAnalyticsScript,
+        inspectletScript: req.body.inspectletScript
+      });
+
       if(!globalSiteConfig) {
-        globalSiteConfig = new siteConfig({
-          isRegistrationEnabled: registrationEnable,
-          siteName: req.body.siteName,
-          siteMetaDataKeywords: req.body.siteMetaDataKeywords,
-          siteMetaDataAuthor: req.body.siteMetaDataAuthor,
-          siteMetaDataDescription: req.body.siteMetaDataDescription,
-          siteAdminEmail: req.body.siteAdminEmail,
-          siteDefaultThumbnailUri: validUrl,
-          defaultPaginationLimit: req.body.defaultPaginationLimit,
-          lastModifiedDate: Date.now(),
-          lastModifiedBy: currentUser.username,
-          googleAnalyticsScript: req.body.googleAnalyticsScript,
-          inspectletScript: req.body.inspectletScript
-        });
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, registrationEnable));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, {
-          isRegistrationEnabled: registrationEnable,
-          siteName: req.body.siteName,
-          siteMetaDataKeywords: req.body.siteMetaDataKeywords,
-          siteMetaDataAuthor: req.body.siteMetaDataAuthor,
-          siteMetaDataDescription: req.body.siteMetaDataDescription,
-          siteAdminEmail: req.body.siteAdminEmail,
-          siteDefaultThumbnailUri: validUrl,
-          defaultPaginationLimit: req.body.defaultPaginationLimit,
-          lastModifiedDate: Date.now(),
-          lastModifiedBy: currentUser.username,
-          googleAnalyticsScript: req.body.googleAnalyticsScript,
-          inspectletScript: req.body.inspectletScript
-        }, { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, registrationEnable), { new: true });
       }
-      console.log('Site settings updated successfully\nUpdated Settings: ', req.body);
+      console.log('Site settings updated successfully\nUpdated Settings: ', createConfigObject(req, currentUser, validUrl, registrationEnable));
       res.redirect('/admin/webmaster');
     } else {
       res.status(403).send('Unauthorized');
