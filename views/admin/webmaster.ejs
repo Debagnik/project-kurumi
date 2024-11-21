@@ -85,7 +85,7 @@
         </li>
         <hr>
         <% users.forEach(user => { %>
-            <li> <%= user.username %> - <%= user.name %>
+            <li> <%= user.username %> - <%= user.name %> - Privilege: <%= user.privilege %>
                 <div class="admin-posts-controls">
                     <a href="/edit-user/<%= user._id %>" class="btn">Edit</a>
                     <form action="/delete-user/<%= user._id %>/?_method=DELETE" method="POST">

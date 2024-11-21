@@ -481,7 +481,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
       await currentConfig.save();
     }
 
-    const users = await user.find({ _id: { $ne: currentUser._id } }).sort({ createdAt: -1 });
+    const users = await user.find({ _id: { $ne: currentUser._id } }).sort({ privilege: -1 });
 
     res.render('admin/webmaster', { 
       locals, 
@@ -568,7 +568,6 @@ router.post('/edit-site-config', authToken, async (req, res) => {
  * DELETE
  * Webmaster - User - Delete
  */
-
 router.delete('/delete-user/:id', authToken, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
@@ -581,6 +580,11 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
     if (!userToDelete) {
       console.error('User not found', req.params.id);
       return res.status(404).send('user not found');
+    }
+
+    if(userToDelete.username !== currentUser.username){
+      console.error('Webmaster attempted to delete themselves', req.userId);
+      return res.status(400).send('Cannot delete yourself Idiot');
     }
 
     console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
@@ -601,6 +605,10 @@ router.get('/edit-user/:id', authToken, async (req, res) => {
   try {
 
     const selectedUser = await user.findOne({ _id: req.params.id });
+    if (!selectedUser) {
+      console.error('User not found', req.params.id);
+      return res.status(404).send('User not found');
+    }
 
     const locals = {
       title: "Webmaster - Edit User - " + selectedUser.name,
@@ -634,6 +642,14 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.error('Unauthorized user tried to delete different user', req.userId);
       return res.status(403).send('Unauthorized');
+    }
+
+    if (!req.body.name || !req.body.name.trim()) {
+      return res.status(400).send('Name is required');
+    }
+
+    if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(req.body.privilege))) {
+      return res.status(400).send('Invalid privilege level');
     }
 
     await user.findByIdAndUpdate(req.params.id, {
