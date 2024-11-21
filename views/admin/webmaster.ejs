@@ -1,3 +1,4 @@
+<a href="/dashboard">&larr; Back</a>
 <h1>नमस्कार, <%= currentUser?.name || 'Webmaster' %>
 </h1>
 <div class="add-post">
@@ -70,3 +71,29 @@
         <input type="submit" value="Update" class="btn">
     </form>
 </div>
+<div class="admin-title">
+    <h2>User Management: </h2>
+</div>
+<hr>
+<% if (users.length > 0) { %>
+    <ul class="admin-posts">
+        <li>
+            <%= currentUser.username %> - <%= currentUser.name %> (current user)
+            <div class="admin-posts-controls">
+                <a href="/edit-user/<%= currentUser._id %>" class="btn">Edit</a>
+            </div>
+        </li>
+        <hr>
+        <% users.forEach(user => { %>
+            <li> <%= user.username %> - <%= user.name %> - Privilege: <%= user.privilege %>
+                <div class="admin-posts-controls">
+                    <a href="/edit-user/<%= user._id %>" class="btn">Edit</a>
+                    <form action="/delete-user/<%= user._id %>/?_method=DELETE" method="POST">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <input type="submit" value="Delete" class="btn-delete btn">
+                    </form>
+                </div>
+            </li><hr>
+        <% }) %>
+    </ul>
+<% } %>

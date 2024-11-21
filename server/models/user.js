@@ -33,6 +33,10 @@ const userSchema = new schema({
         type: Number,
         default: 3,
         required: true
+    },
+    modifiedAt:{
+        type: Date,
+        default: Date.now
     }
 });
 
