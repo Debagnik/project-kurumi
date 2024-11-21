@@ -481,13 +481,16 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
       await currentConfig.save();
     }
 
+    const users = await user.find({ _id: { $ne: currentUser._id } }).sort({ createdAt: -1 });
+
     res.render('admin/webmaster', { 
       locals, 
       layout: adminLayout, 
       currentUser,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      currentConfig
+      currentConfig,
+      users
     });
   } catch (error) {
     console.error("Webmaster Page error", error);
@@ -560,5 +563,102 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       return res.status(500).send('Internal Server Error');
   }
 });
+
+/**
+ * DELETE
+ * Webmaster - User - Delete
+ */
+
+router.delete('/delete-user/:id', authToken, async (req, res) => {
+  try {
+    const currentUser = await user.findById(req.userId);
+    if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      console.error('Unauthorized user tried to delete different user', req.userId);
+      return res.status(403).send('Unauthorized');
+    }
+
+    const userToDelete = await user.findById(req.params.id);
+    if (!userToDelete) {
+      console.error('User not found', req.params.id);
+      return res.status(404).send('user not found');
+    }
+
+    console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
+    await user.deleteOne({ _id: req.params.id });
+    res.redirect('/admin/webmaster');
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
+/**
+ * GET
+ * Webmaster Edit user
+ */
+router.get('/edit-user/:id', authToken, async (req, res) => {
+  try {
+
+    const selectedUser = await user.findOne({ _id: req.params.id });
+
+    const locals = {
+      title: "Webmaster - Edit User - " + selectedUser.name,
+      description: "User Editor",
+    };
+
+    const currentUser = await user.findById(req.userId);
+
+    res.render('admin/edit-user', {
+      locals,
+      selectedUser,
+      layout: adminLayout,
+      csrfToken: req.csrfToken(),
+      isWebMaster: isWebMaster(currentUser),
+      showDelete: currentUser.username !== selectedUser.username
+    })
+
+  } catch (error) {
+    console.log(error);
+  }
+
+});
+
+/**
+ * PUT /
+ * Webmaster - Edit users
+*/
+router.put('/edit-user/:id', authToken, async (req, res) => {
+  try {
+    const currentUser = await user.findById(req.userId);
+    if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      console.error('Unauthorized user tried to delete different user', req.userId);
+      return res.status(403).send('Unauthorized');
+    }
+
+    await user.findByIdAndUpdate(req.params.id, {
+      name: req.body.name.trim(),
+      privilege: req.body.privilege,
+      modifiedAt: Date.now()
+    });
+
+    const updatedUser = await user.findById(req.params.id);
+    if (!updatedUser) {
+      console.error('Failed to update user', req.params.id);
+      return res.status(500).send('Failed to update user');
+    }
+
+    res.redirect(`/admin/webmaster`);
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Internal Server Error');
+  }
+
+});
+
+
+
+
 
 module.exports = router;

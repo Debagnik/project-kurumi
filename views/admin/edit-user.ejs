@@ -1,0 +1,20 @@
+<a href="/admin/webmaster">&larr; Back</a>
+<div class="admin-title">
+    <h2>Edit User:</h2>
+    <% if (showDelete) { %>
+        <form action="/delete-user/<%= selectedUser._id %>?_method=DELETE" method="POST">
+            <input type="submit" value="Delete" class="btn-delete btn">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        </form>
+    <% } %>
+</div>
+
+<form action="/edit-user/<%= selectedUser._id %>?_method=PUT" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="<%= selectedUser.name %>" required placeholder="user name">
+    <label for="privilege">Privilege (1 -&gt; webmaster, 2 -&gt; Moderator, 3 -&gt; writer/editor): </label><br>
+    <input type="number" id="privilege" name="privilege" value="<%= selectedUser.privilege %>" min="1" max="3">
+    <br><br>
+    <input type="submit" value="Save" class="btn-save btn">
+</form>
