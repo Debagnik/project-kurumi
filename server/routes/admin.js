@@ -582,11 +582,6 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
       return res.status(404).send('user not found');
     }
 
-    if(userToDelete.username !== currentUser.username){
-      console.error('Webmaster attempted to delete themselves', req.userId);
-      return res.status(400).send('Cannot delete yourself Idiot');
-    }
-
     console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
     await user.deleteOne({ _id: req.params.id });
     res.redirect('/admin/webmaster');
