@@ -39,7 +39,7 @@ router.get('', async (req, res) => {
             description: "A blogging site created with Node, express and MongoDB"
         }
 
-        let perPage = res.locals.siteConfig.defaultPaginationLimit;
+        let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
         let page = req.query.page || 1;
 
         const data = await post.aggregate([{ $sort: { createdAt: -1 } }]).skip(perPage * page - perPage)
