@@ -9,24 +9,24 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <label for="siteName">Site Name</label>
-        <input type="text" id="siteName" name="siteName" value="<%= currentConfig.siteName %>" required>
+        <input type="text" id="siteName" name="siteName" value="<%= config.siteName %>" required>
 
         <label for="siteDefaultThumbnailUri">Default Thumbnail Image URL</label>
         <input type="text" id="siteDefaultThumbnailUri" name="siteDefaultThumbnailUri"
-            value="<%= currentConfig.siteDefaultThumbnailUri %>" required>
+            value="<%= config.siteDefaultThumbnailUri %>" required>
 
         <label for="siteAdminEmail">Webmaster Email</label>
-        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= currentConfig.siteAdminEmail %>"
+        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= config.siteAdminEmail %>"
             required>
 
         <label for="defaultPaginationLimit">Default Pagination Limit</label>
         <input type="number" id="defaultPaginationLimit" name="defaultPaginationLimit"
-            value="<%= currentConfig.defaultPaginationLimit %>" required min="1" max="10">
+            value="<%= config.defaultPaginationLimit %>" required min="1" max="10">
         <br><br>
 
         <label for="isRegistrationEnabled">Registration Enabled:</label>
         <input type="checkbox" id="isRegistrationEnabled" name="isRegistrationEnabled"
-            <%=currentConfig.isRegistrationEnabled? 'checked' : '' %>>
+            <%= config.isRegistrationEnabled? 'checked' : '' %>>
         <br>
 
         <div class="admin-title">
@@ -34,15 +34,15 @@
         </div>
         <label for="siteMetaDataKeywords">Site Keywords (comma separated)</label>
         <input type="text" id="siteMetaDataKeywords" name="siteMetaDataKeywords"
-            value="<%= currentConfig.siteMetaDataKeywords %>">
+            value="<%= config.siteMetaDataKeywords %>">
 
         <label for="siteMetaDataAuthor">Site Author</label>
         <input type="text" id="siteMetaDataAuthor" name="siteMetaDataAuthor"
-            value="<%= currentConfig.siteMetaDataAuthor %>">
+            value="<%= config.siteMetaDataAuthor %>">
 
         <label for="siteMetaDataDescription">Site Description</label>
         <input type="text" id="siteMetaDataDescription" name="siteMetaDataDescription"
-            value="<%= currentConfig.siteMetaDataDescription %>">
+            value="<%= config.siteMetaDataDescription %>">
 
         <label for="googleAnalyticsScript">Google Analytics</label>
         <textarea id="googleAnalyticsScript" name="googleAnalyticsScript" placeholder="<!-- Google tag (gtag.js) -->
@@ -53,7 +53,7 @@
               gtag('js', new Date());
             
               gtag('config', '&lt;your Google Tag Code&gt;');
-              &lt;/script>" cols="50" rows="15"><%= currentConfig.googleAnalyticsScript %></textarea>
+              &lt;/script>" cols="50" rows="15"><%= config.googleAnalyticsScript %></textarea>
 
         <label for="inspectletScript">Inspectlet Analytics</label>
         <textarea id="inspectletScript" name="inspectletScript" cols="50" rows="15" placeholder="&lt;!-- Begin Inspectlet Asynchronous Code --&gt;
@@ -66,7 +66,7 @@
         setTimeout(ldinsp, 0);
         })();
         &lt;&#47;script&gt;
-        &lt;!-- End Inspectlet Asynchronous Code --&gt;"><%= currentConfig.inspectletScript %></textarea>
+        &lt;!-- End Inspectlet Asynchronous Code --&gt;"><%= config.inspectletScript %></textarea>
         <br>
         <input type="submit" value="Update" class="btn">
     </form>

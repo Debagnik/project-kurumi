@@ -1,14 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <% if (config.googleAnalyticsScript.length > 0) { %>
+            <%- config.googleAnalyticsScript.replace(/^["']|["']$/g, '') %>
+        <% } %>
+        <% if (config.inspectletScript.length > 0) { %>
+            <%- config.inspectletScript.replace(/^["']|["']$/g, '') %>         
+        <% } %>
         <meta charset="utf-8"/>
         <meta http-equiv="content-script-type" content="text/html"/>
         <meta http-equiv="content-script-type" content="text/javascript"/>
         <meta http-equiv="content-script-type" content="text/css"/>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-        <meta name="description" content="<%= locals.description %>"/>
-        <meta name="keywords" content="Debagnik Kar, Debagnik, Kar, Rak, Kingabed, Rak Kingabed, Rak_Kingabed, Software Developer, programmer, python, HRMatches, <%= locals.keywords %>, <%= locals.title %>, <%= locals.description %>"/>
-        <meta name="author" content="Debagnik Kar"/>
+        <% if (!config.siteMetaDataKeywords) { %>
+            <meta name="keywords" content="<%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
+        <% } else { %>
+            <meta name="keywords" content="<%= config.siteMetaDataKeywords %>, <%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
+        <% } %>
+        
+        <% if (!config.siteMetaDataDescription) { %>
+            <meta name="description" content="<%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
+        <% } else { %>
+            <meta name="description" content="<%= config.siteMetaDataDescription %>, <%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
+        <% } %>
+
+        <% if (!config.siteMetaDataAuthor) { %>
+            <meta name="author" content="Debagnik Kar"/>
+        <% } else { %>
+            <meta name="author" content="<%= config.siteMetaDataAuthor %>"/>
+        <% } %>
         <meta http-equiv="x-ua-compatible" content="ie=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="robots" content="index, follow">
@@ -18,17 +38,18 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <link rel="stylesheet" href="/css/style.css">
         <script type="text/javascript" defer src="/js/script.js"></script>
-        <title><%= locals.title %></title>
+        <title><%= config.siteName %></title>
     </head>
-    <body>
-        <%- include('../partials/search.ejs') %>
+<body>
+    <%- include('../partials/search.ejs') %>
         <div class="container">
             <%- include('../partials/header.ejs') %>
-            <main class="main">
-                <%- body %>
-            </main>
-            <%- include('../partials/footer.ejs') %>
+                <main class="main">
+                    <%- body %>
+                </main>
+                <%- include('../partials/footer.ejs') %>
         </div>
-        
-    </body>
+
+</body>
+
 </html>
