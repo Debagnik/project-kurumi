@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const post = require('../models/posts');
 const siteConfig = require('../models/config');
+const user = require('../models/user');
 
 /**
  * Site config Middleware
@@ -11,16 +12,20 @@ const fetchSiteConfig = async (req, res, next) => {
     try {
         const config = await siteConfig.findOne();
         if (!config) {
-            console.warn('Site config is not available');
+            console.warn('Site config is not available in database');
             res.locals.siteConfig = {};
         } else {
             res.locals.siteConfig = config;
         }
         next();
     } catch (error) {
-        console.error("Site Config Fetch error", error.message);
-        res.locals.siteConfig = {};
-        next();
+        console.error("Critical: Site Config Fetch error", error.message);
+        return res.status(500).render('error', {
+            locals: {
+                title: 'Configuration Error',
+                description: 'Unable to load site configuration'
+            }
+        });
     }
 }
 
@@ -109,7 +114,12 @@ router.get('/post/:id', async (req, res) => {
             description: data.desc,
             keywords: data.tags
         }
-
+        const postAuthor = await user.findOne({ username: data.author});
+        if (!postAuthor) {
+            data.author = 'Anonymous'
+        } else {
+            data.author = postAuthor.name;
+        }
         res.render('posts', { 
             locals,
             data,
@@ -136,6 +146,7 @@ router.post('/search', async (req, res) => {
 
         let searchLimit = 20;
         let searchTerm = req.body.searchTerm;
+        searchTerm = searchTerm.trim().replace(/[<>]/g, '');
         if (!searchTerm || typeof searchTerm !== 'string') {
             return res.status(400).json({ error: 'Invalid search term' });
         }
@@ -163,7 +174,7 @@ router.post('/search', async (req, res) => {
         res.render('search', { data, locals, searchTerm: searchTerm, config: res.locals.siteConfig });
     } catch (error) {
         console.error('Search error:', error);
-        res.status(500).render('404', {
+        res.status(500).render('error', {
             locals: {
                 title: 'Error'
             },

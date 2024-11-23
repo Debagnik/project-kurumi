@@ -1,5 +1,5 @@
 <a href="/dashboard">&larr; Back</a>
-<h1>नमस्कार, <%= currentUser?.name || 'Webmaster' %>
+<h1>नमस्कार, <h1>नमस्कार, <%= currentUser && currentUser.name ? currentUser.name : 'Webmaster' %>
 </h1>
 <div class="add-post">
     <div class="admin-title">

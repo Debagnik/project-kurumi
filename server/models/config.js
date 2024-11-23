@@ -11,8 +11,8 @@ const configSchema = new schema({
         type: String,
         required: true,
         default: 'Project Walnut',
-        minlength: [3, 'Site name must be at least 3 characters!'],
-        maxlength: [10, 'Site name is too long|'],
+        min: [3, 'Site name must be at least 3 characters!'],
+        max: [10, 'Site name is too long!'],
         trim: true
     },
     siteMetaDataKeywords:{
@@ -43,7 +43,7 @@ const configSchema = new schema({
         default: 2,
         required: true,
         min: [1, 'At least show one item per page, stupid!'],
-        max: [100, 'No more than 100 items per page, silly!']
+        max: [10, 'No more than 100 items per page, silly!']
     },
     lastModifiedDate:{
         type: Date,
@@ -62,13 +62,13 @@ const configSchema = new schema({
     },
     homeWelcomeText:{
         type: String,
-        minlength: 5,
-        maxlength: 50
+        min: 5,
+        max: 50
     },
     homeWelcomeSubText:{
         type: String,
-        minlength: 5,
-        maxlength: 20
+        min: 5,
+        max: 20
     },
     homepageWelcomeImage:{
         type: String

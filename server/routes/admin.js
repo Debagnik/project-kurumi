@@ -49,7 +49,7 @@ const authToken = (req, res, next) => {
     req.userId = decoded.userId;
     next();
   } catch (error) {
-    console.error(401, error);
+    console.error('Invalid token', error);
     return res.redirect('/admin');
   }
 }
@@ -372,7 +372,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     const newPost = new post({
       title: req.body.title.trim(),
       body: req.body.body.trim(),
-      author: currentUser.name.trim(),
+      author: currentUser.username.trim(),
       tags: req.body.tags.trim(),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
