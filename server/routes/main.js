@@ -35,8 +35,8 @@ router.get('', async (req, res) => {
 
     try {
         const locals = {
-            title: res.locals.siteName,
-            description: "A blogging site created with Node, express and MongoDB"
+            title: res.locals.siteConfig.siteName || "Project Walnut",
+            description: res.locals.siteConfig.siteMetaDataDescription || "A blogging site created with Node, express and MongoDB"
         }
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
@@ -72,7 +72,10 @@ router.get('/about', (req, res) => {
         title: "About Us Section",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('about', { locals });
+    res.render('about', { 
+        locals,
+        config: res.locals.siteConfig,
+     });
 });
 
 /**
@@ -84,7 +87,10 @@ router.get('/contact', (req, res) => {
         title: "Contacts us",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('contact', { locals });
+    res.render('contact', { 
+        locals,
+        config: res.locals.siteConfig
+     });
 });
 
 /**
@@ -104,14 +110,19 @@ router.get('/post/:id', async (req, res) => {
             keywords: data.tags
         }
 
-        res.render('posts', { locals, data });
+        res.render('posts', { 
+            locals,
+            data,
+            config: res.locals.siteConfig
+        });
     } catch (error) {
         console.error('Post Fetch error', error);
         res.status(404).render('404', {
             locals: {
                 title: "404 - Page Not Found",
                 description: "The page you're looking for doesn't exist."
-            }
+            },
+            config: res.locals.siteConfig
         });
     }
 });
@@ -146,14 +157,15 @@ router.post('/search', async (req, res) => {
             .sort({ score: { $meta: 'textScore' } })
             .limit(searchLimit);
 
-        res.render('search', { data, locals, searchTerm: searchTerm });
+        res.render('search', { data, locals, searchTerm: searchTerm, config: res.locals.siteConfig });
     } catch (error) {
         console.error('Search error:', error);
-        res.status(500).render('error', {
+        res.status(500).render('404', {
             locals: {
                 title: 'Error'
             },
-            error: 'Unable to perform search at this time'
+            error: 'Unable to perform search at this time',
+            config: res.locals.siteConfig
         });
     }
 })

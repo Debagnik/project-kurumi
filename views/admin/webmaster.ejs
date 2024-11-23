@@ -11,13 +11,25 @@
         <label for="siteName">Site Name</label>
         <input type="text" id="siteName" name="siteName" value="<%= config.siteName %>" required>
 
+        <label for="homeWelcomeText">Home Welcome Text</label>
+        <input type="text" id="homeWelcomeText" name="homeWelcomeText" value="<%= config.homeWelcomeText %>" placeholder="Greet your audience with a welcome text in your home page">
+
+        <label for="homeWelcomeSubText">Home welcome Text</label>
+        <input type="text" id="homeWelcomeSubText" name="homeWelcomeSubText" value="<%= config.homeWelcomeSubText %>" placeholder="a sub heading just below your welcome text">
+
+        <label for="homepageWelcomeImage">Homepage Welcome Image</label>
+        <input type="text" id="homepageWelcomeImage" name="homepageWelcomeImage" value="<%= config.homepageWelcomeImage %>" placeholder="Image URL for your homepage welcome section">
+
+        <label for="copyrightText">Copyright Text (Exclude Copyright year)</label>
+        <input type="text" id="copyrightText" name="copyrightText" value="<%= config.copyrightText %>" placeholder="Your copyright text">
+
+
         <label for="siteDefaultThumbnailUri">Default Thumbnail Image URL</label>
         <input type="text" id="siteDefaultThumbnailUri" name="siteDefaultThumbnailUri"
             value="<%= config.siteDefaultThumbnailUri %>" required>
 
         <label for="siteAdminEmail">Webmaster Email</label>
-        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= config.siteAdminEmail %>"
-            required>
+        <input type="email" id="siteAdminEmail" name="siteAdminEmail" value="<%= config.siteAdminEmail %>" required>
 
         <label for="defaultPaginationLimit">Default Pagination Limit</label>
         <input type="number" id="defaultPaginationLimit" name="defaultPaginationLimit"

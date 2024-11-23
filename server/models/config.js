@@ -59,6 +59,23 @@ const configSchema = new schema({
     },
     inspectletScript:{
         type: String
+    },
+    homeWelcomeText:{
+        type: String,
+        minlength: 5,
+        maxlength: 50
+    },
+    homeWelcomeSubText:{
+        type: String,
+        minlength: 5,
+        maxlength: 20
+    },
+    homepageWelcomeImage:{
+        type: String
+    },
+    copyrightText:{
+        type: String,
+        default: 'Project Walnut. All rights reserved.'
     }
 });
 

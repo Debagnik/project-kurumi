@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <% if (config.googleAnalyticsScript.length > 0) { %>
+        <% if (config.googleAnalyticsScript || config.googleAnalyticsScript.trim().length > 0) { %>
             <%- config.googleAnalyticsScript.replace(/^["']|["']$/g, '') %>
         <% } %>
-        <% if (config.inspectletScript.length > 0) { %>
+        <% if (config.inspectletScript || config.inspectletScript.trim().length > 0) { %>
             <%- config.inspectletScript.replace(/^["']|["']$/g, '') %>         
         <% } %>
         <meta charset="utf-8"/>

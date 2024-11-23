@@ -559,7 +559,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
       currentUser,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      config,
+      config: config,
       users
     });
   } catch (error) {
@@ -601,8 +601,13 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
 
+      let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
+      if(req.body.homepageWelcomeImage){
+        validHomePageImageUri = isValidURI(req.body.homepageWelcomeImage)? req.body.homepageWelcomeImage : validUrl;
+      }
+
       // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, registrationEnable) => ({
+      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable) => ({
         isRegistrationEnabled: registrationEnable,
         siteName: req.body.siteName,
         siteMetaDataKeywords: req.body.siteMetaDataKeywords,
@@ -614,14 +619,19 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         lastModifiedDate: Date.now(),
         lastModifiedBy: currentUser.username,
         googleAnalyticsScript: req.body.googleAnalyticsScript,
-        inspectletScript: req.body.inspectletScript
+        inspectletScript: req.body.inspectletScript,
+        homeWelcomeText: req.body.homeWelcomeText,
+        homeWelcomeSubText: req.body.homeWelcomeSubText,
+        homepageWelcomeImage: validHomePageImageUri,
+        copyrightText: req.body.copyrightText,
+
       });
 
       if(!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, registrationEnable));
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, registrationEnable), { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
