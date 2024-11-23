@@ -142,6 +142,9 @@ router.post('/search', async (req, res) => {
         if (searchTerm.trim().length == 0) {
             return res.status(400).json({ error: 'Search term cannot be empty' });
         }
+        if (searchTerm.trim().length > 100) { 
+            return res.status(400).json({ error: 'Search term is too long' });
+        }
         const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
         console.log(new Date(), " - Simple Search - ", searchTerm, " - regex search: ", searchNoSpecialChar);
 
