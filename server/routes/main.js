@@ -1,7 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const post = require('../models/posts');
+const siteConfig = require('../models/config');
 
+/**
+ * Site config Middleware
+ */
+
+const fetchSiteConfig = async (req, res, next) => {
+    try {
+        const config = await siteConfig.findOne();
+        if (!config) {
+            console.warn('Site config is not available');
+            res.locals.siteConfig = {};
+        } else {
+            res.locals.siteConfig = config;
+        }
+        next();
+    } catch (error) {
+        console.error("Site Config Fetch error", error.message);
+        res.locals.siteConfig = {};
+        next();
+    }
+}
+
+router.use(fetchSiteConfig);
 
 //Routes
 /**
@@ -12,11 +35,11 @@ router.get('', async (req, res) => {
 
     try {
         const locals = {
-            title: "Blogging site",
-            description: "A blogging site created with Node, express and MongoDB"
+            title: res.locals.siteConfig.siteName || "Project Walnut",
+            description: res.locals.siteConfig.siteMetaDataDescription || "A blogging site created with Node, express and MongoDB"
         }
 
-        let perPage = 2;
+        let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
         let page = req.query.page || 1;
 
         const data = await post.aggregate([{ $sort: { createdAt: -1 } }]).skip(perPage * page - perPage)
@@ -27,7 +50,13 @@ router.get('', async (req, res) => {
         const hasNextPage = nextPage <= Math.ceil(count / perPage);
 
 
-        res.render('index', { locals, data, current: page, nextPage: hasNextPage ? nextPage : null });
+        res.render('index', { 
+            locals,
+            config: res.locals.siteConfig,
+            data,
+            current: page,
+            nextPage: hasNextPage ? nextPage : null 
+        });
         console.log(`DB Posts Data fetched`);
     } catch (error) {
         console.log(error);
@@ -43,7 +72,10 @@ router.get('/about', (req, res) => {
         title: "About Us Section",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('about', { locals });
+    res.render('about', { 
+        locals,
+        config: res.locals.siteConfig,
+     });
 });
 
 /**
@@ -55,7 +87,10 @@ router.get('/contact', (req, res) => {
         title: "Contacts us",
         description: "A blogging site created with Node, express and MongoDB"
     }
-    res.render('contact', { locals });
+    res.render('contact', { 
+        locals,
+        config: res.locals.siteConfig
+     });
 });
 
 /**
@@ -66,7 +101,7 @@ router.get('/post/:id', async (req, res) => {
     try {
         let slug = req.params.id;
         const data = await post.findById({ _id: slug });
-        if(!data) {
+        if (!data) {
             throw new Error('404 - No such post found');
         }
         const locals = {
@@ -75,14 +110,19 @@ router.get('/post/:id', async (req, res) => {
             keywords: data.tags
         }
 
-        res.render('posts', { locals, data });
+        res.render('posts', { 
+            locals,
+            data,
+            config: res.locals.siteConfig
+        });
     } catch (error) {
         console.error('Post Fetch error', error);
         res.status(404).render('404', {
             locals: {
                 title: "404 - Page Not Found",
                 description: "The page you're looking for doesn't exist."
-            }
+            },
+            config: res.locals.siteConfig
         });
     }
 });
@@ -96,11 +136,14 @@ router.post('/search', async (req, res) => {
 
         let searchLimit = 20;
         let searchTerm = req.body.searchTerm;
-        if(!searchTerm || typeof searchTerm !== 'string'){
+        if (!searchTerm || typeof searchTerm !== 'string') {
             return res.status(400).json({ error: 'Invalid search term' });
         }
-        if(searchTerm.trim().length == 0){
+        if (searchTerm.trim().length == 0) {
             return res.status(400).json({ error: 'Search term cannot be empty' });
+        }
+        if (searchTerm.trim().length > 100) { 
+            return res.status(400).json({ error: 'Search term is too long' });
         }
         const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
         console.log(new Date(), " - Simple Search - ", searchTerm, " - regex search: ", searchNoSpecialChar);
@@ -114,17 +157,18 @@ router.post('/search', async (req, res) => {
             { $text: { $search: searchNoSpecialChar } },
             { score: { $meta: 'textScore' } }
         )
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(searchLimit);
+            .sort({ score: { $meta: 'textScore' } })
+            .limit(searchLimit);
 
-        res.render('search', {data, locals, searchTerm: searchTerm});
-    } catch (error) { 
-        console.error('Search error:', error );
-        res.status(500).render('error', {
+        res.render('search', { data, locals, searchTerm: searchTerm, config: res.locals.siteConfig });
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).render('404', {
             locals: {
                 title: 'Error'
             },
-            error: 'Unable to perform search at this time'
+            error: 'Unable to perform search at this time',
+            config: res.locals.siteConfig
         });
     }
 })

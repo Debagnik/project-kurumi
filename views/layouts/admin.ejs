@@ -3,9 +3,9 @@
     <head>
         <meta charset="utf-8"/>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-        <meta name="description" content="<%= [locals.description].filter(Boolean).join(', ') || 'Admin Login to dashboard' %>"/>
-        <meta name="keywords" content=" <%= [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'admin' %>"/>
-        <meta name="author" content="Debagnik Kar"/>
+        <meta name="keywords" content="<%= (config.siteMetaDataKeywords ? `${config.siteMetaDataKeywords}, ${[locals.keywords, locals.title].filter(Boolean).join(', ')}` : [locals.keywords, locals.title, locals.description].filter(Boolean).join(', ') || 'Project Walnut') %>"/>
+        <meta name="description" content="<%= (config.siteMetaDataDescription ? `${config.siteMetaDataDescription}, ${[locals.description].filter(Boolean).join(', ')}` : [locals.description].filter(Boolean).join(', ') || 'A random description as a placeholder') %>"/>
+        <meta name="author" content="<%= (config.siteMetaDataAuthor ? `${config.siteMetaDataAuthor}` : 'Debagnik Kar' )%>"/>
         <meta http-equiv="x-ua-compatible" content="ie=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="robots" content="index, follow">
@@ -15,11 +15,11 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <link rel="stylesheet" href="/css/style.css">
         <script type="text/javascript" defer src="/js/script.js"></script>
-        <title><%= locals.title %></title>
+        <title><%= locals.title %><%= config.siteName ? ` - ${config.siteName}` : '' %></title>
     </head>
     <body>
         <div class="container">
-            <%- include('../partials/header_admin.ejs') %>
+            <%- include('../partials/header_admin.ejs', {config: config}) %>
             <main class="main">
                 <%- body %>
             </main>

@@ -1,3 +1,8 @@
 <footer class="footer">
-    &copy; <%= new Date().getFullYear(); %> • Debagnik
+    <% if (!config.copyrightText) { %>
+    &copy; <%= new Date().getFullYear().toString() %> Project Walnut, all rights reserved
+    <% } else { %>
+    &copy; <%= new Date().getFullYear().toString() %> <%= config.copyrightText %>
+    <% } %> <br>
+    Webmaster email: <a href="mailto:<%= config.siteAdminEmail %>" target="_blank"><%= config.siteAdminEmail %></a>
 </footer>
