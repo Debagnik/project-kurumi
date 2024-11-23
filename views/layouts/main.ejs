@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <%= config.googleAnalyticsScript ? config.googleAnalyticsScript.replace(/^["']|["']$/g, '') : '' %>
-        <%= config.inspectletScript ? config.inspectletScript.replace(/^["']|["']$/g, '') : '' %>         
+        <%- config.googleAnalyticsScript ? config.googleAnalyticsScript.replace(/^["']|["']$/g, '') : '' %>
+        <%- config.inspectletScript ? config.inspectletScript.replace(/^["']|["']$/g, '') : '' %>         
         <meta charset="utf-8"/>
         <meta http-equiv="content-script-type" content="text/html"/>
         <meta http-equiv="content-script-type" content="text/javascript"/>
@@ -31,7 +31,6 @@
                 </main>
                 <%- include('../partials/footer.ejs') %>
         </div>
-
 </body>
 
 </html>

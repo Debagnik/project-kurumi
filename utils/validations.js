@@ -22,7 +22,7 @@ exports.isValidURI = (string) => {
   }
 };
 
-const WEBMASTER_PRIVILEGE_LEVEL = 1;
+
 /**
  * Checks if the user has webmaster privileges
  * @param {Object} currentUser The user object to check
