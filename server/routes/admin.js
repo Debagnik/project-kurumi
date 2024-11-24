@@ -682,7 +682,10 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
 
     //prevent self deletion
     if (currentUser._id.toString() === userToDelete._id.toString()) {
-      return res.sendStatus(405).json({ status: 405, error: 'Invalid Operation', message: 'self deletion not allowed' });
+      return res.status(405).json({ 
+        error: 'Invalid Operation', 
+        message: 'Self-deletion is not allowed for security reasons' 
+      });
     }
 
     console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
