@@ -1,9 +1,9 @@
 <div class="author">
-    <h1 class="author__heading"><%= config.homeWelcomeText ? config.homeWelcomeText : 'Welcome, This is Project Walnut' %></h1>
-    <p class="author__body"><%= config.homeWelcomeSubText ? config.homeWelcomeSubText : 'An Open-source Blogging site made with Node, Express, Mongo and EJS' %></p>
+    <h1 class="author__heading"><%= locals.config.homeWelcomeText ? locals.config.homeWelcomeText : 'Welcome, This is Project Walnut' %></h1>
+    <p class="author__body"><%= locals.config.homeWelcomeSubText ? locals.config.homeWelcomeSubText : 'An Open-source Blogging site made with Node, Express, Mongo and EJS' %></p>
 </div>
-<% if (config.homepageWelcomeImage && config.homepageWelcomeImage.trim().length > 0) { %>
-    <img src="<%= config.homepageWelcomeImage %>" alt="placeholder image" class="hero-image" width="981" height="528">
+<% if (locals.config.homepageWelcomeImage && locals.config.homepageWelcomeImage.trim().length > 0) { %>
+    <img src="<%= locals.config.homepageWelcomeImage %>" alt="placeholder image" class="hero-image" width="981" height="528">
 <% } else { %>
     <img src="/img/placeholder.webp" alt="placeholder image" class="hero-image" width="981" height="528">
 <% } %>

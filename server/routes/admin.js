@@ -82,12 +82,12 @@ router.get('/admin', async (req, res) => {
 
     const locals = {
       title: "Admin Panel",
-      description: "Admin Panel"
+      description: "Admin Panel",
+      config: res.locals.siteConfig
     }
     res.render('admin/index', {
       locals,
       layout: adminLayout,
-      config: res.locals.siteConfig,
       errors: [],
       errors_login: [],
       csrfToken: req.csrfToken(),
@@ -269,12 +269,12 @@ router.post('/admin', authLimiter, async (req, res) => {
 router.get('/admin/registration', async (req, res) => {
   const locals = {
     title: 'Registration successful',
-    description: 'Registration successful'
+    description: 'Registration successful',
+    config: res.locals.siteConfig
   };
   res.status(201).render('admin/registration', {
     locals,
     layout: adminLayout,
-    config: res.locals.siteConfig,
     csrfToken: req.csrfToken(),
     isWebMaster: false
   });
@@ -288,7 +288,8 @@ router.get('/dashboard', authToken, async (req, res) => {
   try {
     const locals = {
       title: 'Admin Dashboard',
-      description: 'dashboard'
+      description: 'Dashboard Panel',
+      config: res.locals.siteConfig
     };
 
     const currentUser = await user.findById(req.userId);
@@ -320,8 +321,7 @@ router.get('/dashboard', authToken, async (req, res) => {
       currentUser,
       data,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser),
-      config: res.locals.siteConfig
+      isWebMaster: isWebMaster(currentUser)
     });
   } catch (error) {
     console.error(error);
@@ -337,7 +337,8 @@ router.get('/admin/add-post', authToken, async (req, res) => {
   try {
     const locals = {
       title: 'Add Post',
-      description: 'Add Post'
+      description: 'Add Post',
+      config: res.locals.siteConfig
     };
 
     const currentUser = await user.findById(req.userId);
@@ -351,8 +352,7 @@ router.get('/admin/add-post', authToken, async (req, res) => {
       layout: adminLayout,
       currentUser,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser),
-      config: res.locals.siteConfig
+      isWebMaster: isWebMaster(currentUser)
     });
   } catch (error) {
     console.error(error);
@@ -422,6 +422,7 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
     const locals = {
       title: "Edit Post - " + data.title,
       description: "Post Editor",
+      config: res.locals.siteConfig
     };
 
     const currentUser = await user.findById(req.userId);
@@ -431,8 +432,7 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       data,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser),
-      config: res.locals.siteConfig
+      isWebMaster: isWebMaster(currentUser)
     })
 
   } catch (error) {
@@ -540,23 +540,24 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
       return res.status(403).json({
         locals: {
           title: 'Access Denied',
-          description: 'Insufficient privileges'
+          description: 'Insufficient privileges',
+          config: res.locals.siteConfig
         },
         layout: adminLayout,
         error: 'Only webmasters can access this page',
-        isWebMaster: false,
-        config: res.locals.siteConfig
+        isWebMaster: false
       });
     }
 
     // Check if the user has the necessary privileges (assuming 1 is the highest privilege)
     if (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      return res.status(403).redirect('/404')
+      return res.status(403).redirect('/error')
     }
 
     const locals = {
       title: "Webmaster Panel",
-      description: "Webmaster Administration Panel"
+      description: "Webmaster Administration Panel",
+      config: res.locals.siteConfig
     }
 
     let config = await siteConfig.findOne();
@@ -714,6 +715,7 @@ router.get('/edit-user/:id', authToken, async (req, res) => {
     const locals = {
       title: "Webmaster - Edit User - " + selectedUser.name,
       description: "User Editor",
+      config: res.locals.siteConfig
     };
 
     const currentUser = await user.findById(req.userId);

@@ -63,7 +63,8 @@ app.use('/', require('./server/routes/admin.js'));
 app.use((req, res, next) => {
     const locals = {
         title: '404 - Page Not Found',
-        description: '404 Not Found'
+        description: '404 Not Found',
+        config: res.locals.siteConfig
     }
     res.status(404).render('404', {locals});
 });

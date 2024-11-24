@@ -41,7 +41,8 @@ router.get('', async (req, res) => {
     try {
         const locals = {
             title: res.locals.siteConfig.siteName || "Project Walnut",
-            description: res.locals.siteConfig.siteMetaDataDescription || "A blogging site created with Node, express and MongoDB"
+            description: res.locals.siteConfig.siteMetaDataDescription || "A blogging site created with Node, express and MongoDB",
+            config: res.locals.siteConfig,
         }
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
@@ -57,7 +58,6 @@ router.get('', async (req, res) => {
 
         res.render('index', { 
             locals,
-            config: res.locals.siteConfig,
             data,
             current: page,
             nextPage: hasNextPage ? nextPage : null 
@@ -75,11 +75,11 @@ router.get('', async (req, res) => {
 router.get('/about', (req, res) => {
     const locals = {
         title: "About Us Section",
-        description: "A blogging site created with Node, express and MongoDB"
+        description: "A blogging site created with Node, express and MongoDB",
+        config: res.locals.siteConfig
     }
     res.render('about', { 
-        locals,
-        config: res.locals.siteConfig,
+        locals
      });
 });
 
@@ -90,11 +90,11 @@ router.get('/about', (req, res) => {
 router.get('/contact', (req, res) => {
     const locals = {
         title: "Contacts us",
-        description: "A blogging site created with Node, express and MongoDB"
+        description: "A blogging site created with Node, express and MongoDB",
+        config: res.locals.siteConfig
     }
     res.render('contact', { 
-        locals,
-        config: res.locals.siteConfig
+        locals
      });
 });
 
@@ -112,7 +112,8 @@ router.get('/post/:id', async (req, res) => {
         const locals = {
             title: data.title,
             description: data.desc,
-            keywords: data.tags
+            keywords: data.tags,
+            config: res.locals.siteConfig
         }
         const postAuthor = await user.findOne({ username: data.author});
         if (!postAuthor) {
@@ -122,8 +123,7 @@ router.get('/post/:id', async (req, res) => {
         }
         res.render('posts', { 
             locals,
-            data,
-            config: res.locals.siteConfig
+            data
         });
     } catch (error) {
         console.error('Post Fetch error', error);
@@ -161,7 +161,8 @@ router.post('/search', async (req, res) => {
 
         const locals = {
             title: "Search - " + searchTerm,
-            description: "Simple Search Page"
+            description: "Simple Search Page",
+            config: res.locals.siteConfig
         }
 
         const data = await post.find(
@@ -171,7 +172,7 @@ router.post('/search', async (req, res) => {
             .sort({ score: { $meta: 'textScore' } })
             .limit(searchLimit);
 
-        res.render('search', { data, locals, searchTerm: searchTerm, config: res.locals.siteConfig });
+        res.render('search', { data, locals, searchTerm: searchTerm });
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).render('error', {
