@@ -1,8 +1,13 @@
 <div class="author">
-    <h1 class="author__heading">Kon'nichiwa, I am Rak!</h1>
-    <p class="author__body">I am a software developer, currenty employed at IBM</p>
+    <h1 class="author__heading"><%= config.homeWelcomeText ? config.homeWelcomeText : 'Welcome, This is Project Walnut' %></h1>
+    <p class="author__body"><%= config.homeWelcomeSubText ? config.homeWelcomeSubText : 'An Open-source Blogging site made with Node, Express, Mongo and EJS' %></p>
 </div>
-<img src="/img/placeholder.webp" alt="placeholder image" class="hero-image" width="981" height="528"> 
+<% if (config.homepageWelcomeImage && config.homepageWelcomeImage.trim().length > 0) { %>
+    <img src="<%= config.homepageWelcomeImage %>" alt="placeholder image" class="hero-image" width="981" height="528">
+<% } else { %>
+    <img src="/img/placeholder.webp" alt="placeholder image" class="hero-image" width="981" height="528">
+<% } %>
+ 
 
 <section class="articles">
     <h2 class="articles__heading">

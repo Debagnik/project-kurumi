@@ -18,7 +18,7 @@
     <input type="submit" value="Login" class="btn">
 </form>
 
-<% if (isRegistrationEnabled==='true' ) { %>
+<% if (config.isRegistrationEnabled) { %>
     <h3>Register</h3>
     <% if (errors && errors.length > 0) { %>
         <% errors.forEach(function(error) { %>

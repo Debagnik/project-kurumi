@@ -33,12 +33,22 @@ const userSchema = new schema({
         type: Number,
         default: 3,
         required: true
+    },
+    modifiedAt:{
+        type: Date,
+        default: Date.now
     }
 });
 
 userSchema.index({
     username: 'text',
     name: 'text'
-  });
+});
+userSchema.pre('save', function(next) {
+    if (this.isModified() && !this.isNew) {
+        this.modifiedAt = Date.now();
+    }
+    next();
+});
 
 module.exports = mongoose.model('user', userSchema);
