@@ -1,5 +1,5 @@
 <a href="/dashboard">&larr; Back</a>
-<h1>नमस्कार, <h1>नमस्कार, <%= currentUser && currentUser.name ? currentUser.name : 'Webmaster' %>
+<h1>नमस्कार, <%= currentUser && currentUser.name ? currentUser.name : 'Webmaster' %>
 </h1>
 <div class="add-post">
     <div class="admin-title">
@@ -14,7 +14,7 @@
         <label for="homeWelcomeText">Home Welcome Text</label>
         <input type="text" id="homeWelcomeText" name="homeWelcomeText" value="<%= config.homeWelcomeText %>" placeholder="Greet your audience with a welcome text in your home page">
 
-        <label for="homeWelcomeSubText">Home welcome Text</label>
+        <label for="homeWelcomeSubText">Home Welcome Sub-Text</label>
         <input type="text" id="homeWelcomeSubText" name="homeWelcomeSubText" value="<%= config.homeWelcomeSubText %>" placeholder="a sub heading just below your welcome text">
 
         <label for="homepageWelcomeImage">Homepage Welcome Image</label>

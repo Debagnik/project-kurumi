@@ -9,18 +9,11 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { isValidURI } = require('../../utils/validations');
-const { isWebMaster } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI } = require('../../utils/validations');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
-// User privilege Enum
-const PRIVILEGE_LEVELS_ENUM = {
-  WEBMASTER : 1,
-  MODERATOR : 2,
-  WRITER: 3
-}
 
 if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
@@ -294,8 +287,12 @@ router.get('/dashboard', authToken, async (req, res) => {
         data = await post.find().sort({createdAt: -1});
         break;
       default:
-        return res.status(403).send('Unauthorized');
+        return res.status(403).json({
+          error: 'Invalid privilege level',
+          message: 'You do not have the required permissions'
+        });
     }
+
     res.render('admin/dashboard', { 
       locals, 
       layout: adminLayout, 
@@ -585,12 +582,12 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       let globalSiteConfig = await siteConfig.findOne();
 
       // Validate critical fields
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (req.body.siteAdminEmail && !emailRegex.test(req.body.siteAdminEmail)) {
         return res.status(400).send('Invalid email format');
       }
       const paginationLimit = parseInt(req.body.defaultPaginationLimit);
-      if (Number.isNaN(paginationLimit) || paginationLimit < 1) {
+      if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
         return res.status(400).send('Invalid pagination limit');
       }
 
@@ -660,6 +657,11 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
     if (!userToDelete) {
       console.error('User not found', req.params.id);
       return res.status(404).send('user not found');
+    }
+
+    //prevent self deletion
+    if(currentUser._id.toString() === userToDelete._id.toString()) {
+      return res.sendStatus(405).json({status:405, error: 'Invalid Operation', message: 'self deletion not allowed'});
     }
 
     console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
