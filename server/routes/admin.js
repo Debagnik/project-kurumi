@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
+const sanitizeHtml = require('sanitize-html');
 
 const router = express.Router();
 const post = require('../models/posts');
@@ -52,9 +53,9 @@ const authToken = (req, res, next) => {
  */
 
 const fetchSiteConfig = async (req, res, next) => {
-  try{
+  try {
     const config = await siteConfig.findOne();
-    if(!config){
+    if (!config) {
       console.warn('Site config is not available');
       res.locals.siteConfig = {};
     } else {
@@ -83,14 +84,14 @@ router.get('/admin', async (req, res) => {
       title: "Admin Panel",
       description: "Admin Panel"
     }
-    res.render('admin/index', { 
-      locals, 
-      layout: adminLayout, 
-      config: res.locals.siteConfig, 
-      errors: [], 
-      errors_login: [], 
-      csrfToken: req.csrfToken(), 
-      isWebMaster: false 
+    res.render('admin/index', {
+      locals,
+      layout: adminLayout,
+      config: res.locals.siteConfig,
+      errors: [],
+      errors_login: [],
+      csrfToken: req.csrfToken(),
+      isWebMaster: false
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
@@ -112,8 +113,8 @@ router.post('/register', async (req, res) => {
       return res.status(401).render('admin/index', {
         errors: [{ msg: 'Name, Username or Passwords are empty' }],
         errors_login: [],
-        config: res.locals.siteConfig, 
-        csrfToken: req.csrfToken(), 
+        config: res.locals.siteConfig,
+        csrfToken: req.csrfToken(),
         isWebMaster: false
       });
     }
@@ -123,18 +124,38 @@ router.post('/register', async (req, res) => {
     if (existingUser) {
       console.error(409, 'Username already exists');
       return res.status(409).render('admin/index', {
-        errors: [{ msg: 'Username already exists!' }], 
+        errors: [{ msg: 'Username already exists!' }],
         errors_login: [],
         config: res.locals.siteConfig,
         csrfToken: req.csrfToken(), isWebMaster: false
       });
     }
 
+    //Define strong passwords
+    const isStrongPassword = (password) => {
+      const minLength = 8;
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*()]/.test(password);
+      return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+    }
+
     //check password and confirm password match
     if (!(password === confirm_password)) {
       console.error('Password and confirm passwords do not match');
       return res.render('admin/index', {
-        errors: [{ msg: 'Passwords and Confirm Password do not match!' }], 
+        errors: [{ msg: 'Passwords and Confirm Password do not match!' }],
+        errors_login: [],
+        config: res.locals.siteConfig,
+        csrfToken: req.csrfToken(),
+        isWebMaster: false
+      });
+    }
+
+    if(!isStrongPassword(password)) {
+      return res.render('admin/index', {
+        errors: [{ msg: 'Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.' }],
         errors_login: [],
         config: res.locals.siteConfig,
         csrfToken: req.csrfToken(),
@@ -154,9 +175,9 @@ router.post('/register', async (req, res) => {
         return res.render('admin/index', {
           errors: [{
             msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
-          }], 
+          }],
           errors_login: [],
-          csrfToken: req.csrfToken(), 
+          csrfToken: req.csrfToken(),
           isWebMaster: false,
           config: res.locals.siteConfig
         });
@@ -165,7 +186,7 @@ router.post('/register', async (req, res) => {
       return res.render('admin/index', {
         errors: [{
           msg: 'Registration not enabled, Contact with Site admin'
-        }], 
+        }],
         errors_login: [],
         config: res.locals.siteConfig,
         csrfToken: req.csrfToken(),
@@ -193,8 +214,8 @@ router.post('/admin', authLimiter, async (req, res) => {
           msg: 'Username and Passwords are mandatory'
         }],
         config: res.locals.siteConfig,
-        errors: [], 
-        csrfToken: req.csrfToken(), 
+        errors: [],
+        csrfToken: req.csrfToken(),
         isWebMaster: false
       });
     }
@@ -206,8 +227,8 @@ router.post('/admin', authLimiter, async (req, res) => {
       return res.render('admin/index', {
         errors_login: [{ msg: 'Invalid login credentials!' }],
         config: res.locals.siteConfig,
-        errors: [], 
-        csrfToken: req.csrfToken(), 
+        errors: [],
+        csrfToken: req.csrfToken(),
         isWebMaster: false
       });
     }
@@ -233,8 +254,8 @@ router.post('/admin', authLimiter, async (req, res) => {
     return res.render('admin/index', {
       errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
       config: res.locals.siteConfig,
-      errors: [], 
-      csrfToken: req.csrfToken(), 
+      errors: [],
+      csrfToken: req.csrfToken(),
       isWebMaster: false
     });
   }
@@ -250,12 +271,12 @@ router.get('/admin/registration', async (req, res) => {
     title: 'Registration successful',
     description: 'Registration successful'
   };
-  res.status(201).render('admin/registration', { 
-    locals, 
-    layout: adminLayout, 
-    config: res.locals.siteConfig, 
-    csrfToken: req.csrfToken(), 
-    isWebMaster: false 
+  res.status(201).render('admin/registration', {
+    locals,
+    layout: adminLayout,
+    config: res.locals.siteConfig,
+    csrfToken: req.csrfToken(),
+    isWebMaster: false
   });
 });
 
@@ -281,10 +302,10 @@ router.get('/dashboard', authToken, async (req, res) => {
         data = await post.find({ author: currentUser.name }).sort({ createdAt: -1 });
         break;
       case PRIVILEGE_LEVELS_ENUM.MODERATOR:
-        data = await post.find().sort({createdAt: -1});
+        data = await post.find().sort({ createdAt: -1 });
         break;
       case PRIVILEGE_LEVELS_ENUM.WEBMASTER:
-        data = await post.find().sort({createdAt: -1});
+        data = await post.find().sort({ createdAt: -1 });
         break;
       default:
         return res.status(403).json({
@@ -293,12 +314,12 @@ router.get('/dashboard', authToken, async (req, res) => {
         });
     }
 
-    res.render('admin/dashboard', { 
-      locals, 
-      layout: adminLayout, 
-      currentUser, 
-      data, 
-      csrfToken: req.csrfToken(), 
+    res.render('admin/dashboard', {
+      locals,
+      layout: adminLayout,
+      currentUser,
+      data,
+      csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
       config: res.locals.siteConfig
     });
@@ -325,11 +346,11 @@ router.get('/admin/add-post', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    res.render('admin/add-post', { 
-      locals, 
-      layout: adminLayout, 
-      currentUser, 
-      csrfToken: req.csrfToken(), 
+    res.render('admin/add-post', {
+      locals,
+      layout: adminLayout,
+      currentUser,
+      csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
       config: res.locals.siteConfig
     });
@@ -539,7 +560,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
     }
 
     let config = await siteConfig.findOne();
-    if(!config){
+    if (!config) {
       config = new siteConfig({
         isRegistrationEnabled: false,
         siteName: 'Blog-Site',
@@ -550,9 +571,9 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
 
     const users = await user.find({ _id: { $ne: currentUser._id } }).sort({ privilege: -1 });
 
-    res.render('admin/webmaster', { 
-      locals, 
-      layout: adminLayout, 
+    res.render('admin/webmaster', {
+      locals,
+      layout: adminLayout,
       currentUser,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
@@ -577,7 +598,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       return res.redirect('/admin');
     }
 
-    if(currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER){
+    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       // Update site settings in the database
       let globalSiteConfig = await siteConfig.findOne();
 
@@ -593,14 +614,14 @@ router.post('/edit-site-config', authToken, async (req, res) => {
 
 
       let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
-      if(req.body.siteDefaultThumbnailUri){
+      if (req.body.siteDefaultThumbnailUri) {
         validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
       }
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
-      if(req.body.homepageWelcomeImage){
-        validHomePageImageUri = isValidURI(req.body.homepageWelcomeImage)? req.body.homepageWelcomeImage : validUrl;
+      if (req.body.homepageWelcomeImage) {
+        validHomePageImageUri = isValidURI(req.body.homepageWelcomeImage) ? req.body.homepageWelcomeImage : validUrl;
       }
 
       // global site settings helper
@@ -624,7 +645,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
 
       });
 
-      if(!globalSiteConfig) {
+      if (!globalSiteConfig) {
         globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable));
         await globalSiteConfig.save();
       } else {
@@ -636,8 +657,8 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       res.status(403).send('Unauthorized');
     }
   } catch (error) {
-      console.error(error);
-      return res.status(500).send('Internal Server Error');
+    console.error(error);
+    return res.status(500).send('Internal Server Error');
   }
 });
 
@@ -660,8 +681,8 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
     }
 
     //prevent self deletion
-    if(currentUser._id.toString() === userToDelete._id.toString()) {
-      return res.sendStatus(405).json({status:405, error: 'Invalid Operation', message: 'self deletion not allowed'});
+    if (currentUser._id.toString() === userToDelete._id.toString()) {
+      return res.sendStatus(405).json({ status: 405, error: 'Invalid Operation', message: 'self deletion not allowed' });
     }
 
     console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
@@ -725,6 +746,18 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 
     if (!req.body.name || !req.body.name.trim()) {
       return res.status(400).send('Name is required');
+    }
+
+    const sanitizedName = sanitizeHtml(req.body.name.trim(), {
+      allowedTags: [],
+      allowedAttributes: {}
+    });
+
+    if (sanitizedName !== req.body.name.trim()) {
+      return res.status(400).json({
+        error: 'validation error',
+        message: 'Invalid characters in name. Only alphabets and spaces are allowed.'
+      });
     }
 
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(req.body.privilege))) {
