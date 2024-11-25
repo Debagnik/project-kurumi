@@ -164,7 +164,7 @@ router.post('/register', async (req, res) => {
     }
 
     //registration logic
-    if (process.env.ENABLE_REGISTRATION === 'true') {
+    if (res.locals.siteConfig.isRegistrationEnabled) {
       const hashedPassword = await bcrypt.hash(password, 10);
       try {
         const newUser = await user.create({ username, password: hashedPassword, name });
