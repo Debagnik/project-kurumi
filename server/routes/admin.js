@@ -300,7 +300,7 @@ router.get('/dashboard', authToken, async (req, res) => {
     let data;
     switch (currentUser.privilege) {
       case PRIVILEGE_LEVELS_ENUM.WRITER:
-        data = await post.find({ author: currentUser.name }).sort({ createdAt: -1 });
+        data = await post.find({ author: currentUser.username }).sort({ createdAt: -1 });
         break;
       case PRIVILEGE_LEVELS_ENUM.MODERATOR:
         data = await post.find().sort({ createdAt: -1 });
