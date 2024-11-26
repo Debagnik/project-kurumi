@@ -76,21 +76,25 @@ router.use(fetchSiteConfig);
  * Post add/edit markdown function
  */
 function markdownToHtml(markdownString) {
-  // convert markdown string to HTML string
-  let htmlString = marked.parse(markdownString);
+  try {
+    // convert markdown string to HTML string
+    let htmlString = marked.parse(markdownString);
 
-  // sanitize HTML string to prevent XSS attacks
-  htmlString = sanitizeHtml(htmlString, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
-    allowedAttributes: {
-      ...sanitizeHtml.defaults.allowedAttributes,
-      img: ['src', 'alt', 'title']
-    }
-  });
-  return htmlString.replace(/<(\/?)h([1-3])>/g, (match, p1, p2) => {
-    const newLevel = parseInt(p2) + 1;
-    return `<${p1}h${newLevel}>`;
-  });
+    // sanitize HTML string to prevent XSS attacks
+    htmlString = sanitizeHtml(htmlString, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt', 'title']
+      }
+    });
+    return htmlString.replace(/<(\/?)h([1-3])>/g, (match, p1, p2) => {
+      const newLevel = parseInt(p2) + 1;
+      return `<${p1}h${newLevel}>`;
+    });
+  } catch (error) {
+    console.error("Markdown to HTML conversion error", error.message);
+  }
 }
 
 
@@ -175,7 +179,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    if(!isStrongPassword(password)) {
+    if (!isStrongPassword(password)) {
       return res.render('admin/index', {
         errors: [{ msg: 'Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.' }],
         errors_login: [],
@@ -710,9 +714,9 @@ router.delete('/delete-user/:id', authToken, async (req, res) => {
 
     //prevent self deletion
     if (currentUser._id.toString() === userToDelete._id.toString()) {
-      return res.status(405).json({ 
-        error: 'Invalid Operation', 
-        message: 'Self-deletion is not allowed for security reasons' 
+      return res.status(405).json({
+        error: 'Invalid Operation',
+        message: 'Self-deletion is not allowed for security reasons'
       });
     }
 
