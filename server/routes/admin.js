@@ -94,6 +94,7 @@ function markdownToHtml(markdownString) {
     });
   } catch (error) {
     console.error("Markdown to HTML conversion error", error.message);
+    throw new Error('Failed to process markdown content');
   }
 }
 
@@ -412,6 +413,13 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
     }
+    const MAX_TITLE_LENGTH = 50;
+    const MAX_DESCRIPTION_LENGTH = 500;
+    const MAX_BODY_LENGTH = 50000;
+
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+      return res.status(400).send('Title, body, and description must not exceed their respective limits!');
+    }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
@@ -495,6 +503,14 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
+    }
+
+    const MAX_TITLE_LENGTH = 50;
+    const MAX_DESCRIPTION_LENGTH = 500;
+    const MAX_BODY_LENGTH = 50000;
+
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+      return res.status(400).send('Title, body, and description must not exceed their respective limits!');
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
