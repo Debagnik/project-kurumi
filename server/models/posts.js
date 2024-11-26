@@ -8,7 +8,7 @@ const postSchema = new schema({
     },
     markdownbody: {
         type: String,
-        require: true
+        required: true
     },
     createdAt: {
         type: Date,

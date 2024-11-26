@@ -497,7 +497,7 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     await post.findByIdAndUpdate(req.params.id, {
       title: req.body.title.trim(),
-      body: htmlBody.trim(),
+      body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
       tags: req.body.tags.trim(),
