@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
 const sanitizeHtml = require('sanitize-html');
+const marked = require('marked');
 
 const router = express.Router();
 const post = require('../models/posts');
@@ -70,6 +71,27 @@ const fetchSiteConfig = async (req, res, next) => {
 }
 
 router.use(fetchSiteConfig);
+
+/**
+ * Post add/edit markdown function
+ */
+function markdownToHtml(markdownString) {
+  // convert markdown string to HTML string
+  let htmlString = marked.parse(markdownString);
+
+  // sanitize HTML string to prevent XSS attacks
+  htmlString = sanitizeHtml(htmlString, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      img: ['src', 'alt', 'title']
+    }
+  });
+  return htmlString.replace(/<(\/?)h([1-3])>/g, (match, p1, p2) => {
+    const newLevel = parseInt(p2) + 1;
+    return `<${p1}h${newLevel}>`;
+  });
+}
 
 
 //Routes
@@ -383,13 +405,16 @@ router.post('/admin/add-post', authToken, async (req, res) => {
 
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
 
-    if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
+    if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
     }
 
+    const htmlBody = markdownToHtml(req.body.markdownbody.trim());
+
     const newPost = new post({
       title: req.body.title.trim(),
-      body: req.body.body.trim(),
+      markdownbody: req.body.markdownbody.trim(),
+      body: htmlBody,
       author: currentUser.username.trim(),
       tags: req.body.tags.trim(),
       desc: req.body.desc.trim(),
@@ -464,14 +489,16 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail;
 
-    if (!req.body.title?.trim() || !req.body.body?.trim() || !req.body.desc?.trim()) {
+    if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       return res.status(400).send('Title, body, and description are required!');
     }
 
+    const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
     await post.findByIdAndUpdate(req.params.id, {
       title: req.body.title.trim(),
-      body: req.body.body.trim(),
+      body: htmlBody.trim(),
+      markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
       tags: req.body.tags.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
