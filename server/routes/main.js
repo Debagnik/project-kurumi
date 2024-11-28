@@ -74,7 +74,7 @@ router.get('', async (req, res) => {
  */
 router.get('/about', (req, res) => {
     const locals = {
-        title: "About Us Section",
+        title: 'About Us Section' + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
         description: "A blogging site created with Node, express and MongoDB",
         config: res.locals.siteConfig
     }
@@ -89,7 +89,7 @@ router.get('/about', (req, res) => {
  */
 router.get('/contact', (req, res) => {
     const locals = {
-        title: "Contacts us",
+        title: "Contacts us" + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
         description: "A blogging site created with Node, express and MongoDB",
         config: res.locals.siteConfig
     }
