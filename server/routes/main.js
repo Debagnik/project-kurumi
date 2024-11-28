@@ -130,9 +130,9 @@ router.get('/post/:id', async (req, res) => {
         res.status(404).render('404', {
             locals: {
                 title: "404 - Page Not Found",
-                description: "The page you're looking for doesn't exist."
-            },
-            config: res.locals.siteConfig
+                description: "The page you're looking for doesn't exist.",
+                config: res.locals.siteConfig
+            }
         });
     }
 });
