@@ -20,7 +20,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
   - Comments will be saved to DB with DDoS protection (In progress)
 - **Responsive Design**
   - Accessible on both desktop and mobile devices.
-  - Accessable Dark/light UI for better reading experince
+  - Accessible Dark/light UI for better reading experience
 
 ## Technologies Used
 
