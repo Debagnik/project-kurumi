@@ -690,7 +690,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         homeWelcomeSubText: req.body.homeWelcomeSubText,
         homepageWelcomeImage: validHomePageImageUri,
         copyrightText: req.body.copyrightText,
-
+        searchLimit: req.body.searchLimit
       });
 
       if (!globalSiteConfig) {

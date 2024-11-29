@@ -144,7 +144,7 @@ router.get('/post/:id', async (req, res) => {
 router.post('/search', async (req, res) => {
     try {
 
-        let searchLimit = 20;
+        let searchLimit = res.locals.siteConfig.searchLimit;
         let searchTerm = req.body.searchTerm;
         searchTerm = searchTerm.trim().replace(/[<>]/g, '');
         if (!searchTerm || typeof searchTerm !== 'string') {
