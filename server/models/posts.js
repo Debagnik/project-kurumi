@@ -40,6 +40,11 @@ const postSchema = new schema({
     body: {
         type: String,
         required: true
+    },
+    isApproved:{
+        type: Boolean,
+        default: false,
+        required: true
     }
 
 });
