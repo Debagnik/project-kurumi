@@ -36,7 +36,8 @@ router.use(fetchSiteConfig);
 
 if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
-    throw new Error('JWT_SECRET is not set in Environment variable')
+    // You might want to exit the process gracefully
+    process.exit(1);
 }
 
 //Routes
