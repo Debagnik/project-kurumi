@@ -470,7 +470,7 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      currentUser
+      currentUser: {privilege: currentUser.privilege}
     })
 
   } catch (error) {
@@ -676,6 +676,11 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         return res.status(400).send('Invalid pagination limit');
       }
 
+      const searchLimit = parseInt(req.body.searchLimit);
+      if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
+        return res.status(400).send('Invalid pagination limit');
+      }
+
 
       let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
       if (req.body.siteDefaultThumbnailUri) {
@@ -706,7 +711,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         homeWelcomeSubText: req.body.homeWelcomeSubText,
         homepageWelcomeImage: validHomePageImageUri,
         copyrightText: req.body.copyrightText,
-        searchLimit: req.body.searchLimit
+        searchLimit: searchLimit
       });
 
       if (!globalSiteConfig) {
