@@ -470,7 +470,7 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      currentUser: {privilege: currentUser.privilege}
+      currentUser: { privilege: currentUser.privilege }
     })
 
   } catch (error) {
@@ -516,31 +516,22 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      const isApproved = req.body.isApproved === 'on'
-      await post.findByIdAndUpdate(req.params.id, {
-        title: req.body.title.trim(),
-        body: htmlBody,
-        markdownbody: req.body.markdownbody.trim(),
-        desc: req.body.desc.trim(),
-        tags: req.body.tags.trim(),
-        thumbnailImageURI: defaultThumbnailImageURI,
-        modifiedAt: Date.now(),
-        lastUpdateAuthor: currentUser.username,
-        isApproved: isApproved
-      });
-    } else {
-      await post.findByIdAndUpdate(req.params.id, {
-        title: req.body.title.trim(),
-        body: htmlBody,
-        markdownbody: req.body.markdownbody.trim(),
-        desc: req.body.desc.trim(),
-        tags: req.body.tags.trim(),
-        thumbnailImageURI: defaultThumbnailImageURI,
-        modifiedAt: Date.now(),
-        lastUpdateAuthor: currentUser.username
-      });
+    const updatePostData = {
+      title: req.body.title.trim(),
+      body: htmlBody,
+      markdownbody: req.body.markdownbody.trim(),
+      desc: req.body.desc.trim(),
+      tags: req.body.tags.trim(),
+      thumbnailImageURI: defaultThumbnailImageURI,
+      modifiedAt: Date.now(),
+      lastUpdateAuthor: currentUser.username
     }
+
+    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      updatePostData.isApproved = req.body.isApproved === 'on'
+    } 
+
+    await post.findByIdAndUpdate(req.params.id, updatePostData);
 
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
@@ -678,7 +669,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
 
       const searchLimit = parseInt(req.body.searchLimit);
       if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
-        return res.status(400).send('Invalid pagination limit');
+        return res.status(400).send('Invalid search limit');
       }
 
 

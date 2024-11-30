@@ -53,7 +53,9 @@ postSchema.index({
     title: 'text',
     body: 'text',
     tags: 'text',
-    author: 'text'
+    author: 'text',
+    isApproved: 1,
+    createdAt: -1
   });
 
 module.exports = mongoose.model('Posts', postSchema);

@@ -119,19 +119,16 @@ router.get('/post/:id', async (req, res) => {
         const token = req.cookies.token;
         let userId = null;
         if (token) {
-            if (token) {
-                try {
-                    const decoded = jwt.verify(token, jwtSecretKey);
-                    userId = decoded.userId;
-                } catch (err) {
-                    console.error('Invalid token:', err.message);
-                    // Optionally, clear the invalid token cookie
-                    res.clearCookie('token');
-                }
+            try {
+                const decoded = jwt.verify(token, jwtSecretKey);
+                userId = decoded.userId;
+            } catch (err) {
+                console.error('Invalid token:', err.message);
             }
-            if (userId) {
-                currentUser = await user.findById(userId);
-            }
+        }
+        if (userId) {
+            currentUser = await user.findById(userId);
+        }
 
         let slug = req.params.id;
         const data = await post.findById({ _id: slug });
@@ -150,25 +147,16 @@ router.get('/post/:id', async (req, res) => {
         } else {
             data.author = postAuthor.name;
         }
-
-        if (!currentUser) {
-            if (data.isApproved) {
-                res.render('posts', {
-                    locals,
-                    data
-                });
-            } else {
-                res.redirect('/404');
-            }
-        } else {
-            if (currentUser) {
-                res.render('posts', {
-                    locals,
-                    data
-                });
-            }
-        }
         
+        if(currentUser || data.isApproved) {
+            res.render('posts', {
+                locals,
+                data
+            });
+        } else {
+            res.redirect('/404');
+        }
+
     } catch (error) {
         console.error('Post Fetch error', error);
         res.status(404).render('404', {
