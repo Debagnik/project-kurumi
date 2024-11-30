@@ -23,5 +23,12 @@
     <label for="tags">Tags (comma-separated):</label>
     <input type="text" id="tags" name="tags" value="<%= data.tags %>" required placeholder="Post Tags (comma-separated)">
 
+    <% if (currentUser.privilege !== 3) { %>
+        <label for="isApproved">Approval Status:</label>
+        <input type="checkbox" id="isApproved" name="isApproved"
+            <%= data.isApproved ? 'checked' : '' %>>
+        <br>
+    <% } %>
+
     <input type="submit" value="Update" class="btn">
 </form>

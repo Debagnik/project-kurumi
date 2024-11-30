@@ -415,9 +415,9 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     }
     const MAX_TITLE_LENGTH = 50;
     const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 50000;
+    const MAX_BODY_LENGTH = 100000;
 
-    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
     }
 
@@ -469,7 +469,8 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       data,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      currentUser: { privilege: currentUser.privilege }
     })
 
   } catch (error) {
@@ -507,15 +508,15 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     const MAX_TITLE_LENGTH = 50;
     const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 50000;
+    const MAX_BODY_LENGTH = 100000;
 
-    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-    await post.findByIdAndUpdate(req.params.id, {
+    const updatePostData = {
       title: req.body.title.trim(),
       body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
@@ -524,7 +525,13 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       thumbnailImageURI: defaultThumbnailImageURI,
       modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username
-    });
+    }
+
+    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      updatePostData.isApproved = req.body.isApproved === 'on'
+    } 
+
+    await post.findByIdAndUpdate(req.params.id, updatePostData);
 
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
@@ -660,6 +667,11 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         return res.status(400).send('Invalid pagination limit');
       }
 
+      const searchLimit = parseInt(req.body.searchLimit);
+      if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
+        return res.status(400).send('Invalid search limit');
+      }
+
 
       let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
       if (req.body.siteDefaultThumbnailUri) {
@@ -690,7 +702,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         homeWelcomeSubText: req.body.homeWelcomeSubText,
         homepageWelcomeImage: validHomePageImageUri,
         copyrightText: req.body.copyrightText,
-
+        searchLimit: searchLimit
       });
 
       if (!globalSiteConfig) {
