@@ -36,7 +36,8 @@ router.use(fetchSiteConfig);
 
 if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
-    throw new Error('JWT_SECRET is not set in Environment variable')
+    // You might want to exit the process gracefully
+    process.exit(1);
 }
 
 //Routes
@@ -118,12 +119,19 @@ router.get('/post/:id', async (req, res) => {
         const token = req.cookies.token;
         let userId = null;
         if (token) {
-            const decoded = jwt.verify(token, jwtSecretKey);
-            userId = decoded.userId;
-        }
-        if (userId) {
-            currentUser = await user.findById(userId);
-        }
+            if (token) {
+                try {
+                    const decoded = jwt.verify(token, jwtSecretKey);
+                    userId = decoded.userId;
+                } catch (err) {
+                    console.error('Invalid token:', err.message);
+                    // Optionally, clear the invalid token cookie
+                    res.clearCookie('token');
+                }
+            }
+            if (userId) {
+                currentUser = await user.findById(userId);
+            }
 
         let slug = req.params.id;
         const data = await post.findById({ _id: slug });
