@@ -417,7 +417,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     const MAX_DESCRIPTION_LENGTH = 500;
     const MAX_BODY_LENGTH = 50000;
 
-    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
     }
 
@@ -469,7 +469,8 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
       data,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      currentUser
     })
 
   } catch (error) {
@@ -507,24 +508,39 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     const MAX_TITLE_LENGTH = 50;
     const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 50000;
+    const MAX_BODY_LENGTH = 100000;
 
-    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH){
+    if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-    await post.findByIdAndUpdate(req.params.id, {
-      title: req.body.title.trim(),
-      body: htmlBody,
-      markdownbody: req.body.markdownbody.trim(),
-      desc: req.body.desc.trim(),
-      tags: req.body.tags.trim(),
-      thumbnailImageURI: defaultThumbnailImageURI,
-      modifiedAt: Date.now(),
-      lastUpdateAuthor: currentUser.username
-    });
+    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      const isApproved = req.body.isApproved === 'on'
+      await post.findByIdAndUpdate(req.params.id, {
+        title: req.body.title.trim(),
+        body: htmlBody,
+        markdownbody: req.body.markdownbody.trim(),
+        desc: req.body.desc.trim(),
+        tags: req.body.tags.trim(),
+        thumbnailImageURI: defaultThumbnailImageURI,
+        modifiedAt: Date.now(),
+        lastUpdateAuthor: currentUser.username,
+        isApproved: isApproved
+      });
+    } else {
+      await post.findByIdAndUpdate(req.params.id, {
+        title: req.body.title.trim(),
+        body: htmlBody,
+        markdownbody: req.body.markdownbody.trim(),
+        desc: req.body.desc.trim(),
+        tags: req.body.tags.trim(),
+        thumbnailImageURI: defaultThumbnailImageURI,
+        modifiedAt: Date.now(),
+        lastUpdateAuthor: currentUser.username
+      });
+    }
 
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
