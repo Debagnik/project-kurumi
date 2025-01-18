@@ -27,7 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "marked": "^15.0.2",
     "method-override": "^3.0.0",
-    "mongoose": "^8.8.3",
+    "mongoose": "^8.9.5",
     "sanitize-html": "^2.13.1"
   },
   "devDependencies": {
