@@ -146,6 +146,25 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // check is username is of proper format defined in regex pattern
+    const usernameRegex = /^[a-zA-Z0-9\-\_\.\+\@]+$/;
+    const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
+    if (!usernameRegex.test(username)) {
+      const env = process.env.NODE_ENV;
+      if(env && env.toLowerCase() === "production"){
+        console.error(400, 'Invalid username format');
+      } else {
+        console.error(400, 'Invalid username format', username);
+      }
+      return res.status(400).render('admin/index', {
+        errors: [{ msg: usernameErrorMessage}],
+        errors_login: [],
+        config: res.locals.siteConfig,
+        csrfToken: req.csrfToken(),
+        isWebMaster: false
+      });
+    }
+
     // checking for existing user
     const existingUser = await user.findOne({ username })
     if (existingUser) {
