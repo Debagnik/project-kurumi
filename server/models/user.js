@@ -7,7 +7,7 @@ const userSchema = new schema({
         required: true,
         unique: true,
         minlength: [3, 'Username must be at least 3 characters!'],
-        match: [/^[a-zA-Z0-9]+$/, 'Username can only contain letters and numbers!']
+        match: [/^[a-zA-Z0-9\-\_\.\+\@]+$/, 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!']
     },
     password: {
         type: String,
