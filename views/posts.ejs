@@ -24,6 +24,29 @@
     </div>
     <br />
     <div class="post-tags"><b>Tags:</b> <%= data.tags %></div>
+    <br />
+    <% if (locals.config.isCommentsEnabled) { %>
+        <div>
+            <h3>Comments:</h3>
+            <form action="post-comments" method="POST">
+                <!--<input type="hidden" name="_csrf" value="</%= csrfToken %>">-->
+                <input type="hidden" name="postId" value="<%= data._id %>">
+                 
+                <label for="commenterName">Name:</label>
+                <input type="text" id="commenterName" name="commenterName" placeholder="Your name" required>
+                  
+                <label for="commentBody">Comment:</label>
+                <textarea id="commentBody" name="commentBody" rows="4" maxlength="500" placeholder="Your comment (max 500 characters)" required></textarea>
+                   
+                <!--<div class="char-count">
+                    <span id="charCount">0</span>500 characters
+                </div>-->
+                   
+                <input type="submit" value="Post Comment" class="btn">
+            </form>
+        </div>
+    <% } %>
+    
     <div class="home-page">
         <a href="/" class="button-link">Home Page</a>
     </div>
