@@ -99,4 +99,4 @@ const configSchema = new schema({
     }
 });
 
-module.exports = mongoose.model('configSchema', configSchema);
+module.exports = mongoose.model('config', configSchema);

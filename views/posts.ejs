@@ -25,9 +25,8 @@
     <br />
     <div class="post-tags"><b>Tags:</b> <%= data.tags %></div>
     <br />
-    <% if (locals.config.isCommentsEnabled) { %>
+    <% if (isCommentsEnabled) { %>
         <div>
-            <%= csrfToken %>
             <h3>Comments:</h3>
             <form action="post-comments" method="POST">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -38,7 +37,7 @@
                   
                 <label for="commentBody">Comment:</label>
                 <textarea id="commentBody" name="commentBody" rows="4" maxlength="500" placeholder="Your comment (max 500 characters)" required></textarea>
-                   
+                <!--TODO create word counter, @CoderabbitAI help me with this please-->   
                 <!--<div class="char-count">
                     <span id="charCount">0</span>500 characters
                 </div>-->

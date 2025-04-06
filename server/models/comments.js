@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const schema = mongoose.Schema;
-schema = new mongoose.Schema({
+const CommentSchema = new schema({
     commentersName: {
         type: String,
         required: true,
@@ -12,7 +12,7 @@ schema = new mongoose.Schema({
     commentBody: {
         type: String,
         required: true,
-        minlength: [1, 'Comment must be at least 1 characters!'],
+        minlength: [1, 'Comment must be at least 1 character!'],
         maxlength: [500, 'Comment is too long!'],
         trim: true
     },
@@ -27,3 +27,5 @@ schema = new mongoose.Schema({
         required: true
     }
 });
+
+module.exports = mongoose.model('comments', CommentSchema);

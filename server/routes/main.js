@@ -152,12 +152,15 @@ router.get('/post/:id', async (req, res) => {
         } else {
             data.author = postAuthor.name;
         }
+
+        const isCommentsEnabled = res.locals.siteConfig.isCommentsEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         
         if(currentUser || data.isApproved) {
             res.render('posts', {
                 locals,
                 data,
-                csrfToken: req.csrfToken()
+                csrfToken: req.csrfToken(),
+                isCommentsEnabled
             });
         } else {
             res.redirect('/404');
@@ -227,5 +230,7 @@ router.post('/search', async (req, res) => {
         });
     }
 });
+
+
 
 module.exports = router;
