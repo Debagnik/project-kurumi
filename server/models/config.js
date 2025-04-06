@@ -83,6 +83,19 @@ const configSchema = new schema({
         required: true,
         min: [1, 'At least show one item per page, stupid!'],
         max: [50, 'No more than 50 items per page, silly!']
+    },
+    isCommentsEnabled:{
+        type: Boolean,
+        default: false,
+        required: true
+    },
+    cloudflareSiteKey:{
+        type: String,
+        default: "1x00000000000000000000AA"
+    },
+    cloudflareServerKey:{
+        type: String,
+        default: "1x0000000000000000000000000000000AA"
     }
 });
 
