@@ -27,9 +27,10 @@
     <br />
     <% if (locals.config.isCommentsEnabled) { %>
         <div>
+            <%= csrfToken %>
             <h3>Comments:</h3>
             <form action="post-comments" method="POST">
-                <!--<input type="hidden" name="_csrf" value="</%= csrfToken %>">-->
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="postId" value="<%= data._id %>">
                  
                 <label for="commenterName">Name:</label>

@@ -4,6 +4,7 @@ const router = express.Router();
 const post = require('../models/posts');
 const siteConfig = require('../models/config');
 const user = require('../models/user');
+const csrf = require('csurf');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
@@ -34,11 +35,15 @@ const fetchSiteConfig = async (req, res, next) => {
 
 router.use(fetchSiteConfig);
 
-/*if (!jwtSecretKey) {
+if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
     // You might want to exit the process gracefully
     process.exit(1);
-}*/
+}
+
+// adding admin CSRF protection middleware
+const csrfProtection = csrf({ cookie: true });
+router.use(csrfProtection);
 
 //Routes
 /**
@@ -152,7 +157,7 @@ router.get('/post/:id', async (req, res) => {
             res.render('posts', {
                 locals,
                 data,
-                //csrfToken: req.csrfToken TODO: to be implimented in near future
+                csrfToken: req.csrfToken()
             });
         } else {
             res.redirect('/404');
@@ -221,33 +226,6 @@ router.post('/search', async (req, res) => {
             config: res.locals.siteConfig
         });
     }
-});
-
-/**
- * POST
- * /posts/post-comments
- * Add comments to a post
- */
-router.post('/post/:id/post-comments', async (req, res) => {
-    const { postId, commenterName, commentBody} = req.body;
-    
-    if(!siteConfig.isCommentsEnabled || !siteConfig.cloudflareSiteKey || !cloudflareServerKey){
-        console.error(403, 'Comments are disabled or Cloudflare keys are not set');
-        return res.status(401).error('Comments are disabled or Cloudflare keys are not set');
-    }
-    
-    if(!commenterName ||!commentBody) {
-        console.error(401, 'Invalid comment data');
-        return res.status(401).render('post/:id', {
-            errors: [{ msg: 'Name or commentBody are empty' }],
-            data: { _id: postId },
-        });
-    }
-    if(commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
-        console.error(401, 'Invalid comment data', 'Size mismatch');
-        return res.status(401).error('Comment length exceeds the limit');
-    }
-
 });
 
 module.exports = router;
