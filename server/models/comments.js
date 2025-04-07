@@ -29,7 +29,7 @@ const CommentSchema = new schema({
     }
 });
 CommentSchema.index({
-    commentersName: 'text',
+    commenterName: 'text',
     commentBody: 'text',
     commentTimestamp: -1
 });

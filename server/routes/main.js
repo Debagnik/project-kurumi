@@ -247,14 +247,17 @@ router.post('/post/:id/post-comments', async (req, res) => {
 
     if(!commenterName ||!commentBody) {
         console.error(401, 'Invalid comment data');
-        return res.status(401).render('post/:id', {
-            errors: [{ msg: 'Name or commentBody are empty' }],
-            data: { _id: postId },
-        });
+        return res.redirect(`/post/${postId}`);
     }
     if(commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
         console.error(401, 'Invalid comment data', 'Size mismatch');
         return res.status(401).json({"status": "401", "message": "Invalid comment data" });
+    }
+
+    const post = await post.findById(postId);
+    if(!post) {
+        console.error(404, 'No post found');
+        return res.status(404).json({"status": "404", "message": "No post found with Id: " postId});
     }
 
     try{
