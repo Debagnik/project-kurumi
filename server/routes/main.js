@@ -257,7 +257,7 @@ router.post('/post/:id/post-comments', async (req, res) => {
     const post = await post.findById(postId);
     if(!post) {
         console.error(404, 'No post found');
-        return res.status(404).json({"status": "404", "message": "No post found with Id: ", postId});
+        return res.status(404).json({"status": "404", "message": "No post found", "postID": postId});
     }
 
     try{
