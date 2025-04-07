@@ -241,12 +241,12 @@ router.post('/post/:id/post-comments', async (req, res) => {
     const { postId, commenterName, commentBody} = req.body;
     const siteConfig = res.locals.siteConfig;
     if(!siteConfig.isCommentsEnabled || !siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey){
-        console.error(403, 'Comments are disabled or Cloudflare keys are not set', siteConfig);
-        return res.status(405).json({'Status:': 405,'message':'Comments are disabled or Cloudflare keys are not set'});
-    }
+        console.error(403, 'Comments are disabled or Cloudflare keys are not set');
+        return res.status(403).json({"status": "403", "message": "Comments are disabled or Cloudflare keys are not set"});
+        }
 
     if(!commenterName ||!commentBody) {
-        console.error(401, 'Invalid comment data');
+        console.error(400, 'Invalid comment data');
         return res.redirect(`/post/${postId}`);
     }
     if(commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
@@ -254,10 +254,11 @@ router.post('/post/:id/post-comments', async (req, res) => {
         return res.status(401).json({"status": "401", "message": "Invalid comment data" });
     }
 
-    const post = await post.findById(postId);
-    if(!post) {
+    //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
+    const checkIfPostAvailable = await post.findById(postId);
+    if(!checkIfPostAvailable) {
         console.error(404, 'No post found');
-        return res.status(404).json({"status": "404", "message": "No post found", "postID": postId});
+        return res.status(404).json({"status": "404", "message": "No post found", "post": checkIfPostAvailable});
     }
 
     try{
