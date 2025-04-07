@@ -28,7 +28,7 @@
     <% if (isCommentsEnabled) { %>
         <div>
             <h3>Comments:</h3>
-            <form action="post-comments" method="POST">
+            <form action="<%= data._id %>/post-comments" method="POST">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="postId" value="<%= data._id %>">
                  

@@ -4,6 +4,7 @@ const router = express.Router();
 const post = require('../models/posts');
 const siteConfig = require('../models/config');
 const user = require('../models/user');
+const comment = require('../models/comments');
 const csrf = require('csurf');
 
 const jwtSecretKey = process.env.JWT_SECRET;
@@ -231,6 +232,55 @@ router.post('/search', async (req, res) => {
     }
 });
 
+/**
+ * POST
+ * /posts/post-comments
+ * Add comments to a post
+ */
+router.post('/post/:id/post-comments', async (req, res) => {
+    const { postId, commenterName, commentBody} = req.body;
+    const siteConfig = res.locals.siteConfig;
+    if(!siteConfig.isCommentsEnabled || !siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey){
+        console.error(403, 'Comments are disabled or Cloudflare keys are not set', siteConfig);
+        return res.status(405).json({'Status:': 405,'message':'Comments are disabled or Cloudflare keys are not set'});
+    }
+
+    if(!commenterName ||!commentBody) {
+        console.error(401, 'Invalid comment data');
+        return res.status(401).render('post/:id', {
+            errors: [{ msg: 'Name or commentBody are empty' }],
+            data: { _id: postId },
+        });
+    }
+    if(commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
+        console.error(401, 'Invalid comment data', 'Size mismatch');
+        return res.status(401).json({"status": "401", "message": "Invalid comment data" });
+    }
+
+    try{
+        const newComment = new comment({
+            postId: postId,
+            commenterName: commenterName,
+            commentBody: commentBody,
+            commentTimestamp: Date.now()
+    });
+        await newComment.save();
+        if(process.env.NODE_ENV === 'production'){
+            console.log({"status": "200", "message": "Comment added successfully" });
+        } else {
+            console.log({"status": "200", "message": "Comment added successfully", "comment": newComment });
+        }
+        res.redirect(`/post/${postId}`);
+    } catch(error){
+        console.error('Error adding comment:', error);
+        if(process.env.NODE_ENV === 'production'){
+            res.status(500).json({"status": "500", "message": "Unable to add comment at this time" });
+        } else {
+            res.status(500).json({"status": "500", "message": "Error adding comment at this time", "error": error.message });
+        }
+    }
+
+});
 
 
 module.exports = router;

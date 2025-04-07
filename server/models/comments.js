@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const schema = mongoose.Schema;
 const CommentSchema = new schema({
-    commentersName: {
+    commenterName: {
         type: String,
         required: true,
         minlength: [3, 'Commenter name must be at least 3 characters!'],
@@ -24,8 +24,14 @@ const CommentSchema = new schema({
     postId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post',
-        required: true
+        required: true,
+        index: true
     }
 });
+CommentSchema.index({
+    commentersName: 'text',
+    commentBody: 'text',
+    commentTimestamp: -1
+});
 
-module.exports = mongoose.model('comments', CommentSchema);
+module.exports = mongoose.model('comment', CommentSchema);
