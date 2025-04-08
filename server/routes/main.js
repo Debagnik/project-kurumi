@@ -174,13 +174,13 @@ const getUserFromCookieToken = async (req) => {
         let userId = null;
         if (token) {
             try {
+                const decoded = jwt.verify(token, jwtSecretKey);
+                userId = decoded.userId;
                 // Check if token is expired
                 if (decoded.exp && Date.now() >= decoded.exp * 1000) {
                     console.error('Token expired');
                     return null;
                 }
-                const decoded = jwt.verify(token, jwtSecretKey);
-                userId = decoded.userId;
             } catch (err) {
                 console.error('Invalid token:', err.message);
             }
