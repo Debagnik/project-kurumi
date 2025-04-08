@@ -175,12 +175,12 @@ const getUserFromCookieToken = async (req) => {
         if (token) {
             try {
                 const decoded = jwt.verify(token, jwtSecretKey);
-                userId = decoded.userId;
                 // Check if token is expired
                 if (decoded.exp && Date.now() >= decoded.exp * 1000) {
                     console.error('Token expired');
                     return null;
                 }
+                userId = decoded.userId;
             } catch (err) {
                 console.error('Invalid token:', err.message);
             }
@@ -272,8 +272,8 @@ router.post('/post/:id/post-comments', async (req, res) => {
         return res.redirect(`/post/${postId}`);
     }
     if(commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
-        console.error(401, 'Invalid comment data', 'Size mismatch');
-        return res.status(401).json({"status": "401", "message": "Invalid comment data" });
+        console.error(400, 'Invalid comment data', 'Size mismatch');
+        return res.redirect(`/post/${postId}`);
     }
 
     //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
@@ -320,7 +320,7 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
         const thisComment = await comment.findById(commentId);
         if(!thisComment) {
             console.error(404, 'No comment found');
-            return res.status(404).json({"status": "404", "message": "No comment found", "comment": comment});
+            return res.status(404).json({"status": "404", "message": "No comment found", "commentid": commentId});
         }
         // check if user is authorized to delete the comment
         const currentUser = await getUserFromCookieToken(req);
