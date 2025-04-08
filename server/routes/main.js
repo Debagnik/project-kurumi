@@ -174,6 +174,11 @@ const getUserFromCookieToken = async (req) => {
         let userId = null;
         if (token) {
             try {
+                // Check if token is expired
+                if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+                    console.error('Token expired');
+                    return null;
+                }
                 const decoded = jwt.verify(token, jwtSecretKey);
                 userId = decoded.userId;
             } catch (err) {
@@ -272,10 +277,10 @@ router.post('/post/:id/post-comments', async (req, res) => {
     }
 
     //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
-    const checkIfPostAvailable = await post.findById(postId);
-    if(!checkIfPostAvailable) {
+    const existingPost  = await post.findById(postId);
+    if(!existingPost) {
         console.error(404, 'No post found');
-        return res.status(404).json({"status": "404", "message": "No post found", "post": checkIfPostAvailable});
+        return res.status(404).json({"status": "404", "message": "No post found", "postId": postId});
     }
 
     try{
@@ -319,7 +324,8 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
         }
         // check if user is authorized to delete the comment
         const currentUser = await getUserFromCookieToken(req);
-        if(!currentUser && (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.MODERATOR)){
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        if(!isCurrentUserAModOrAdmin){
             console.error(403, 'Unauthorized to delete comment');
             return res.status(403).json({"status": "403", "message": "Unauthorized to delete comment" });
         }
@@ -328,7 +334,8 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
             console.log({"status": "200", "message": "Comment deleted successfully", user: currentUser.username });
             res.redirect(`/post/${thisComment.postId}`);
     }catch(err){
-        console.error('Error deleting comment:', err);
+        console.error(500, 'Error deleting comment:', err);
+        return res.status(500).json({"status": "500", "message": "Error deleting comment" });
     }
     
 })
