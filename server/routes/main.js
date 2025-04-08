@@ -121,20 +121,7 @@ router.get('/contact', (req, res) => {
  */
 router.get('/post/:id', async (req, res) => {
     try {
-        let currentUser = null;
-        const token = req.cookies.token;
-        let userId = null;
-        if (token) {
-            try {
-                const decoded = jwt.verify(token, jwtSecretKey);
-                userId = decoded.userId;
-            } catch (err) {
-                console.error('Invalid token:', err.message);
-            }
-        }
-        if (userId) {
-            currentUser = await user.findById(userId);
-        }
+        const currentUser = await getUserFromCookieToken(req);
 
         let slug = req.params.id;
         const data = await post.findById({ _id: slug });
@@ -155,13 +142,15 @@ router.get('/post/:id', async (req, res) => {
         }
 
         const isCommentsEnabled = res.locals.siteConfig.isCommentsEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
-        
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if(currentUser || data.isApproved) {
             res.render('posts', {
                 locals,
                 data,
                 csrfToken: req.csrfToken(),
-                isCommentsEnabled
+                isCommentsEnabled,
+                commentsData : await getCommentsFromPostId(data._id),
+                currentUser: isCurrentUserAModOrAdmin
             });
         } else {
             res.redirect('/404');
@@ -178,6 +167,34 @@ router.get('/post/:id', async (req, res) => {
         });
     }
 });
+
+const getUserFromCookieToken = async (req) => {
+    let currentUser = null;
+        const token = req.cookies.token;
+        let userId = null;
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, jwtSecretKey);
+                userId = decoded.userId;
+            } catch (err) {
+                console.error('Invalid token:', err.message);
+            }
+        }
+        if (userId) {
+            currentUser = await user.findById(userId);
+        }
+        return currentUser;
+}
+
+const getCommentsFromPostId = async (postId) => {
+    try{
+        const comments = await comment.find({ postId }).sort({ createdAt: 1 });
+        return comments;
+    } catch(error){
+        console.error('Comment Fetch error', postId, error.message);
+        return [];
+    }
+}
 
 /**
  * POST /
@@ -285,6 +302,36 @@ router.post('/post/:id/post-comments', async (req, res) => {
     }
 
 });
+
+/**
+ * DELETE
+ * /posts/post-comments/:commentId
+ * Delete a comment from a post if the User is Authorized (Only Admin or Moderator)
+ */
+router.post('/post/delete-comment/:commentId', async (req, res) => {
+    const { commentId } = req.params;
+    try{
+        // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
+        const thisComment = await comment.findById(commentId);
+        if(!thisComment) {
+            console.error(404, 'No comment found');
+            return res.status(404).json({"status": "404", "message": "No comment found", "comment": comment});
+        }
+        // check if user is authorized to delete the comment
+        const currentUser = await getUserFromCookieToken(req);
+        if(!currentUser && (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.MODERATOR)){
+            console.error(403, 'Unauthorized to delete comment');
+            return res.status(403).json({"status": "403", "message": "Unauthorized to delete comment" });
+        }
+
+            await thisComment.deleteOne()
+            console.log({"status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+            res.redirect(`/post/${thisComment.postId}`);
+    }catch(err){
+        console.error('Error deleting comment:', err);
+    }
+    
+})
 
 
 module.exports = router;

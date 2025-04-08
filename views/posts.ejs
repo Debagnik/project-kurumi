@@ -27,23 +27,59 @@
     <br />
     <% if (isCommentsEnabled) { %>
         <div>
-            <h3>Comments:</h3>
-            <form action="<%= data._id %>/post-comments" method="POST">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <input type="hidden" name="postId" value="<%= data._id %>">
-                 
-                <label for="commenterName">Name:</label>
-                <input type="text" id="commenterName" name="commenterName" placeholder="Your name" required>
-                  
-                <label for="commentBody">Comment:</label>
-                <textarea id="commentBody" name="commentBody" rows="4" maxlength="500" placeholder="Your comment (max 500 characters)" required></textarea>
-                <!--TODO create word counter, @CoderabbitAI help me with this please-->   
-                <!--<div class="char-count">
-                    <span id="charCount">0</span>500 characters
-                </div>-->
-                   
-                <input type="submit" value="Post Comment" class="btn">
-            </form>
+            <div>
+                <h3>Write a Comment:</h3>
+                <form action="<%= data._id %>/post-comments" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="postId" value="<%= data._id %>">
+
+                    <label for="commenterName">Your Name:</label>
+                    <input type="text" id="commenterName" name="commenterName" placeholder="Your name" required>
+
+                    <label for="commentBody">Your Comment:</label>
+                    <textarea id="commentBody" name="commentBody" rows="4" maxlength="500" placeholder="Your comment (max 500 characters), Mods reserve rights to delete any unsavoury comments" required></textarea>
+                    <!--TODO create word counter, @CoderabbitAI help me with this please-->   
+                    <!--<div class="char-count">
+                        <span id="charCount">0</span>500 characters
+                    </div>-->
+                    <input type="submit" value="Post Comment" class="btn">
+                </form>
+            </div>
+            <div>
+                <hr>
+                <h3><u>Comments:</u></h3>
+                <% if (commentsData.length == 0) { %>
+                    <p>Be the first to write a comment (=ʘᆽʘ=)</p>
+                    <hr/>
+                <% } else { %>
+                    <ul class="comments-ul">
+                        <% commentsData.forEach(commentData => { %>
+                            <li>
+                                <span><%= commentData.commenterName %> on <%= commentData.commentTimestamp.toLocaleDateString(undefined, {
+                                    weekday: 'short',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                }) %> says</span>
+                                <p><span class="comments"><%= commentData.commentBody %></span></p>
+                                <% if (currentUser) { %>
+                                 <div>
+                                    <form action="delete-comment/<%= commentData._id %>" method="POST">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                        <input type="hidden" name="commentId" value="<%= commentData._id %>">
+                                        <input type="hidden" name="postId" value="<%= data._id %>">
+                                        <input type="submit" value="Delete" class="btn-delete btn">
+                                    </form>
+                                 </div>
+                                <% } %>
+                                <hr/>
+                            </li>
+                        <% }) %>
+                    </ul>
+                <% } %>
+            </div>
         </div>
     <% } %>
     

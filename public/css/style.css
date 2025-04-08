@@ -414,3 +414,30 @@ img {
 .closebtn:hover {
     color: var(--black);
 }
+
+/** Comments Section **/
+
+.comments-ul {
+    list-style-type: none;
+	padding: 0;
+	margin: 0;
+	font-size: clamp(1.13rem, calc(1.08rem + 0.22vw), 1.25rem);
+	display: flex;
+	flex-direction: column;
+}
+
+.comments-ul li {
+	font-size: 17px;
+	cursor: pointer;
+	transition: filter 0.1s;
+}
+
+.comments {
+	white-space: pre-wrap;
+	font-size: 15px;
+}
+
+.comment-date {
+	white-space: pre-wrap;
+	font-size: 15px;
+}
