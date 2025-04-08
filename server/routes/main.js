@@ -193,7 +193,7 @@ const getUserFromCookieToken = async (req) => {
 
 const getCommentsFromPostId = async (postId) => {
     try{
-        const comments = await comment.find({ postId }).sort({ createdAt: 1 });
+        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 });
         return comments;
     } catch(error){
         console.error('Comment Fetch error', postId, error.message);
@@ -276,14 +276,15 @@ router.post('/post/:id/post-comments', async (req, res) => {
         return res.redirect(`/post/${postId}`);
     }
 
-    //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
-    const existingPost  = await post.findById(postId);
-    if(!existingPost) {
-        console.error(404, 'No post found');
-        return res.status(404).json({"status": "404", "message": "No post found", "postId": postId});
-    }
-
     try{
+
+        //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
+        const existingPost  = await post.findById(postId);
+        if(!existingPost) {
+            console.error(404, 'No post found');
+            return res.status(404).json({"status": "404", "message": "No post found", "postId": postId});
+        }
+        
         const newComment = new comment({
             postId: postId,
             commenterName: commenterName,
@@ -330,9 +331,10 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
             return res.status(403).json({"status": "403", "message": "Unauthorized to delete comment" });
         }
 
-            await thisComment.deleteOne()
-            console.log({"status": "200", "message": "Comment deleted successfully", user: currentUser.username });
-            res.redirect(`/post/${thisComment.postId}`);
+        await thisComment.deleteOne()
+        console.log({"status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+        res.redirect(`/post/${thisComment.postId}`);
+        
     }catch(err){
         console.error(500, 'Error deleting comment:', err);
         return res.status(500).json({"status": "500", "message": "Error deleting comment" });
