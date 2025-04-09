@@ -29,7 +29,7 @@
         <div>
             <div>
                 <h3>Write a Comment:</h3>
-                <form action="<%= data._id %>/post-comments" method="POST">
+                <form action="<%= data._id %>/post-comments" method="POST" id="commentForm">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="hidden" name="postId" value="<%= data._id %>">
 
@@ -42,6 +42,13 @@
                     <!--<div class="char-count">
                         <span id="charCount">0</span>500 characters
                     </div>-->
+                    <!-- Cloudflare Turnstile CAPTCHA widget -->
+                    <div class="cf-turnstile" data-sitekey="<%= locals.config.cloudflareSiteKey %>"></div>
+                    <% if (captchaError) { %>
+                        <div id="captchaError" class="error-message" style="color: red; margin-top: 4px;">
+                            <%= captchaError %>
+                        </div>
+                    <% } %>
                     <input type="submit" value="Post Comment" class="btn">
                 </form>
             </div>

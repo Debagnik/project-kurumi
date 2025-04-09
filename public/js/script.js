@@ -32,4 +32,3 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
-

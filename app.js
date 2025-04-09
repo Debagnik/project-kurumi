@@ -16,10 +16,21 @@ app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com", "https://cdn.inspectlet.com"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://www.googletagmanager.com",
+        "https://cdn.inspectlet.com",
+        "https://challenges.cloudflare.com",
+        "https://www.clarity.ms",
+        "https://fonts.googleapis.com"
+      ],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
+      frameSrc: [
+        "'self'",
+        "https://challenges.cloudflare.com"
+      ]
     },
   }));
 

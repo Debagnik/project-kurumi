@@ -6,6 +6,7 @@ const siteConfig = require('../models/config');
 const user = require('../models/user');
 const comment = require('../models/comments');
 const csrf = require('csurf');
+const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js')
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
@@ -140,6 +141,10 @@ router.get('/post/:id', async (req, res) => {
         } else {
             data.author = postAuthor.name;
         }
+        let captchaError = "";
+        if (req.query.captchaFailed){
+            captchaError = 'H-Hey! What do you think you’re doing?! Just barging in without passing the CAPTCHA… Typical bot behavior! I-I’m not saying I care or anything, but real users should know better!<br>If by some *miracle* you’re actually a human and not some sneaky little script, then... ugh, fine. Contact the webmaster or whatever. But don’t expect me to go easy on you next time! Baka!';
+        }
 
         const isCommentsEnabled = res.locals.siteConfig.isCommentsEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
@@ -150,7 +155,8 @@ router.get('/post/:id', async (req, res) => {
                 csrfToken: req.csrfToken(),
                 isCommentsEnabled,
                 commentsData: await getCommentsFromPostId(data._id),
-                currentUser: isCurrentUserAModOrAdmin
+                currentUser: isCurrentUserAModOrAdmin,
+                captchaError
             });
         } else {
             res.redirect('/404');
@@ -260,6 +266,16 @@ router.post('/post/:id/post-comments', async (req, res) => {
     if (!siteConfig.isCommentsEnabled || !siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey) {
         console.error(403, 'Comments are disabled or Cloudflare keys are not set');
         return res.status(403).json({ "status": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
+    }
+
+    const captchaToken  = req.body['cf-turnstile-response'];
+    const remoteIp = req.ip;
+    const secretKey = siteConfig.cloudflareServerKey;
+    const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
+    if (!isUserHuman) {
+        console.warn({'status':403, 'message':'CAPTCHA verification failed', 'originIP':remoteIp} );
+        return res.status(403).redirect(`/post/${postId}?captchaFailed=true`);
+
     }
 
     if (!commenterName || !commentBody) {
