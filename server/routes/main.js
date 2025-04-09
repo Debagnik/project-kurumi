@@ -191,7 +191,7 @@ const getCommentsFromPostId = async (postId) => {
         const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 });
         return comments;
     } catch (error) {
-        console.error('Comment Fetcherror', postId, error.message);
+        console.error('Comment Fetch error', postId, error.message);
         return [];
     }
 }
