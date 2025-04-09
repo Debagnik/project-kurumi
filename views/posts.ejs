@@ -46,7 +46,7 @@
                     <div class="cf-turnstile" data-sitekey="<%= locals.config.cloudflareSiteKey %>"></div>
                     <% if (captchaError) { %>
                         <div id="captchaError" class="error-message" style="color: red; margin-top: 4px;">
-                            <%= captchaError %>
+                            <%- captchaError %>
                         </div>
                     <% } %>
                     <input type="submit" value="Post Comment" class="btn">
