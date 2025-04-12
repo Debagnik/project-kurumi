@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.setAttribute('aria-expanded', 'false');
     });
 
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && searchBar.classList.contains('open')) {
             searchClose.click();
         }
@@ -40,5 +40,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 msg.style.display = 'none';
             }, 500); // Match with the CSS transition
         }, 5000); // Auto-hide after 5 seconds
+    });
+
+    const closeButtons = document.querySelectorAll('.flash-message .close-btn');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const flashMessage = button.closest('.flash-message');
+            flashMessage.classList.add('hide');
+            setTimeout(() => {
+                flashMessage.style.display = 'none';
+            }, 500); // Match transition time in CSS
+        });
     });
 });
