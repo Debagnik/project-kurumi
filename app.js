@@ -8,7 +8,7 @@ const connectDB = require('./server/config/db');
 const cookieParser = require('cookie-parser');
 const mongoStore = require('connect-mongo');
 const session = require('express-session');
-
+const flash = require('connect-flash');
 
 const app = express();
 // Add security headers.
@@ -62,6 +62,9 @@ app.use(session({
     }
 }));
 
+// Connect flash for flash messages
+app.use(flash());
+
 //templating Engine
 app.use(expressLayout);
 app.set('layout', './layouts/main');
@@ -98,6 +101,7 @@ app.use(function (err, req, res, next) {
     res.send('Form tampered with');
 });
 
+// Start the server
 app.listen(PORT , () => {
     console.log(`App is listening to PORT ${PORT}`);
 });

@@ -31,4 +31,14 @@ document.addEventListener('DOMContentLoaded', function () {
             searchClose.click();
         }
     });
+
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(msg => {
+        setTimeout(() => {
+            msg.classList.add('hide');
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 500); // Match with the CSS transition
+        }, 5000); // Auto-hide after 5 seconds
+    });
 });

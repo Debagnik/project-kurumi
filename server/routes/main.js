@@ -156,7 +156,9 @@ router.get('/post/:id', async (req, res) => {
                 isCommentsEnabled,
                 commentsData: await getCommentsFromPostId(data._id),
                 currentUser: isCurrentUserAModOrAdmin,
-                captchaError
+                success_msg: req.flash('success_msg'),
+                info: req.flash('info'),
+                error: req.flash('error')
             });
         } else {
             res.redirect('/404');
@@ -274,8 +276,8 @@ router.post('/post/:id/post-comments', async (req, res) => {
     const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
     if (!isUserHuman) {
         console.warn({'status':403, 'message':'CAPTCHA verification failed', 'originIP':remoteIp} );
-        return res.status(403).redirect(`/post/${postId}?captchaFailed=true`);
-
+        req.flash('error', 'CAPTCHA verification failed, please try again.');
+        return res.status(403).redirect(`/post/${postId}`);
     }
 
     if (!commenterName || !commentBody) {
@@ -304,10 +306,11 @@ router.post('/post/:id/post-comments', async (req, res) => {
         });
         await newComment.save();
         if (process.env.NODE_ENV === 'production') {
-            console.log({ "status": "200", "message": "Comment added successfully" });
+            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName } );
         } else {
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
+        req.flash('success_msg', 'Comment submitted successfully');
         res.redirect(`/post/${postId}`);
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -321,7 +324,7 @@ router.post('/post/:id/post-comments', async (req, res) => {
 });
 
 /**
- * DELETE
+ * POST
  * /posts/post-comments/:commentId
  * Delete a comment from a post if the User is Authorized (Only Admin or Moderator)
  */
@@ -344,6 +347,7 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
 
         await thisComment.deleteOne()
         console.log({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+        req.flash('info', `Comment deleted successfully by ${currentUser.username}`);
         res.redirect(`/post/${thisComment.postId}`);
 
     } catch (err) {

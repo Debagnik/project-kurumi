@@ -1,4 +1,10 @@
 <article>
+    <% if (info && Array.isArray(info) && info.length > 0) { %>
+        <div class="flash-message flash-info">
+            <span><%= info[0] %></span>
+            <!--<button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button> TODO fix close button-->
+        </div>
+    <% } %>
     <header>
         <h1>
             <%= data.title %>
@@ -42,19 +48,28 @@
                     <!--<div class="char-count">
                         <span id="charCount">0</span>500 characters
                     </div>-->
-                    <!-- Cloudflare Turnstile CAPTCHA widget -->
-                    <div class="cf-turnstile" data-sitekey="<%= locals.config.cloudflareSiteKey %>"></div>
-                    <% if (captchaError) { %>
-                        <div id="captchaError" class="error-message" style="color: red; margin-top: 4px;">
-                            <%- captchaError %>
+
+                    <% if (error && Array.isArray(error) && error.length > 0) { %>
+                        <div class="flash-message flash-error">
+                            <span><%= error[0] %></span>
+                            <!--<button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button> TODO fix close button-->
                         </div>
                     <% } %>
+                    
+                    <!-- Cloudflare Turnstile CAPTCHA widget -->  
+                    <div class="cf-turnstile" data-sitekey="<%= locals.config.cloudflareSiteKey %>"></div>
                     <input type="submit" value="Post Comment" class="btn">
                 </form>
             </div>
             <div>
                 <hr>
                 <h3><u>Comments:</u></h3>
+                <% if (success_msg && Array.isArray(success_msg) && success_msg.length > 0) { %>
+                    <div class="flash-message flash-success">
+                        <span><%= success_msg[0] %></span>
+                        <!--<button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button> TODO fix close button--> 
+                    </div>
+                <% } %>
                 <% if (commentsData.length == 0) { %>
                     <p>Be the first to write a comment (=ʘᆽʘ=)</p>
                     <hr/>
