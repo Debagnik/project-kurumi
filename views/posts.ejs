@@ -57,7 +57,7 @@
                     <% } %>
                     
                     <!-- Cloudflare Turnstile CAPTCHA widget -->  
-                    <div class="cf-turnstile" data-sitekey="<%= locals.config.cloudflareSiteKey %>"></div>
+                    <div id="cf-turnstile-container"></div>
                     <input type="submit" value="Post Comment" class="btn">
                 </form>
             </div>
@@ -109,3 +109,29 @@
         <a href="/" class="button-link">Home Page</a>
     </div>
 </article>
+
+<!-- Turnstile fallback script DO NOT Touch Please-->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad" async defer></script>
+<script>
+    function onTurnstileLoad() {
+      try {
+        turnstile.render('#cf-turnstile-container', {
+          sitekey: '<%= locals.config.cloudflareSiteKey %>',
+          callback: function(token) {
+            console.log('CAPTCHA token:', token); // optional
+          },
+          errorCallback: function(err) {
+            console.error('Turnstile failed to load!', err);
+  
+            // Show a user-friendly message
+            alert("Captcha failed to load. Please refresh the page or try again later.");
+  
+            // Optional retry
+            // turnstile.reset(); // you can uncomment if you want auto retry
+          }
+        });
+      } catch (e) {
+        console.error("Turnstile initialization failed completely.", e);
+      }
+    }
+  </script>
