@@ -52,4 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 500); // Match transition time in CSS
         });
     });
+
+    document.getElementById('commentBody').addEventListener('input', function() {
+        document.getElementById('charCount').textContent = this.value.length;
+    });
 });
