@@ -55,6 +55,11 @@
             <%= config.isCommentsEnabled? 'checked' : '' %>>
         <br>
 
+        <label for="isCaptchaEnabled">Cloudflare Turnstile Enabled (Captcha Service):</label>
+        <input type="checkbox" id="isCaptchaEnabled" name="isCaptchaEnabled"
+            <%= config.isCaptchaEnabled? 'checked' : '' %>>
+        <br>
+
         <div class="admin-title">
             <h2>Site Metadata and SEO Settings</h2>
         </div>

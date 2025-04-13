@@ -89,13 +89,18 @@ const configSchema = new schema({
         default: false,
         required: true
     },
+    isCaptchaEnabled:{
+        type: Boolean,
+        default: false,
+        required: true
+    },
     cloudflareSiteKey:{
         type: String,
-        default: "1x00000000000000000000AA"
+        default: "1x00000000000000000000AA"  //Cloudflare Site verify Test Key used as placeholder  --- use actual keys on higher environments
     },
     cloudflareServerKey:{
         type: String,
-        default: "1x0000000000000000000000000000000AA"
+        default: "1x0000000000000000000000000000000AA"  //Cloudflare Server verify Test Key used as placeholder  --- use actual keys on higher environments
     }
 });
 
