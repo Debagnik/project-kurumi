@@ -265,7 +265,7 @@ router.post('/search', async (req, res) => {
 router.post('/post/:id/post-comments', async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     const siteConfig = res.locals.siteConfig;
-    if (!siteConfig.isCommentsEnabled || !siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey) {
+    if (!siteConfig.isCommentsEnabled) {
         console.error(403, 'Comments are disabled or Cloudflare keys are not set');
         return res.status(403).json({ "status": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
     }
