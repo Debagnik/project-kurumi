@@ -142,7 +142,7 @@ router.get('/post/:id', async (req, res) => {
             data.author = postAuthor.name;
         }
         let captchaError = "";
-        if (req.query.captchaFailed){
+        if (req.query.captchaFailed) {
             captchaError = 'H-Hey! What do you think you’re doing?! Just barging in without passing the CAPTCHA… Typical bot behavior! I-I’m not saying I care or anything, but real users should know better!<br/>If by some *miracle* you’re actually a human and not some sneaky little script, then... ugh, fine. Contact the webmaster or whatever. But don’t expect me to go easy on you next time! Baka!';
         }
 
@@ -270,14 +270,22 @@ router.post('/post/:id/post-comments', async (req, res) => {
         return res.status(403).json({ "status": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
     }
 
-    const captchaToken  = req.body['cf-turnstile-response'];
+    if (siteConfig.isCaptchaEnabled && (!siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey)) {
+        console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
+        req.flash('error', 'CAPTCHA config error, contact the webmaster.' );
+        return res.redirect(`/post/${postId}`);
+    }
+
+    const captchaToken = req.body['cf-turnstile-response'];
     const remoteIp = req.ip;
     const secretKey = siteConfig.cloudflareServerKey;
-    const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
-    if (!isUserHuman) {
-        console.warn({'status':403, 'message':'CAPTCHA verification failed', 'originIP':remoteIp} );
-        req.flash('error', 'CAPTCHA verification failed, please try again.');
-        return res.status(403).redirect(`/post/${postId}`);
+    if (siteConfig.isCaptchaEnabled) {
+        const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
+        if (!isUserHuman) {
+            console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': remoteIp });
+            req.flash('error', 'CAPTCHA verification failed, please try again.');
+            return res.status(403).redirect(`/post/${postId}`);
+        }
     }
 
     if (!commenterName || !commentBody) {
@@ -306,7 +314,7 @@ router.post('/post/:id/post-comments', async (req, res) => {
         });
         await newComment.save();
         if (process.env.NODE_ENV === 'production') {
-            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName } );
+            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
         } else {
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
