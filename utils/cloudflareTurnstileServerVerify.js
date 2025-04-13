@@ -12,6 +12,11 @@ async function verifyCloudflareTurnstileToken(token, remoteIp, secretKey) {
             }),
             { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
+        if(!(process.env.NODE_ENV === 'production') && response.data.success === false) {
+            console.log('Turnstile verification response:', response.data);
+        } else {
+            console.log('Turnstile verification response:', response.data.success);
+        }
 
         return response.data.success;
     } catch (error) {

@@ -698,6 +698,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
       const commentsEnabled = req.body.isCommentsEnabled === 'on';
+      const captchaEnabled = req.body.isCaptchaEnabled === 'on';
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
       if (req.body.homepageWelcomeImage) {
@@ -705,9 +706,10 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
 
       // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled) => ({
+      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled) => ({
         isRegistrationEnabled: registrationEnable,
         isCommentsEnabled: commentsEnabled,
+        isCaptchaEnabled: captchaEnabled,
         siteName: req.body.siteName,
         siteMetaDataKeywords: req.body.siteMetaDataKeywords,
         siteMetaDataAuthor: req.body.siteMetaDataAuthor,
@@ -729,10 +731,10 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       });
 
       if (!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled));
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled), { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
