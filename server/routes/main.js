@@ -398,7 +398,11 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
 
     } catch (err) {
         console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
-        return res.status(500).json({ "status": "500", "message": "Error deleting comment" });
+        req.flash('error', 'Error deleting comment, contact the webmaster. Internal Server Error');
+        if(process.env.NODE_ENV!== 'production') {
+            console.log('Session after flash 9:', req.session);
+        }
+        return res.status(500).redirect(`/post/${thisComment.postId}`);
     }
 
 })
