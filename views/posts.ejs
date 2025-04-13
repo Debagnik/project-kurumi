@@ -1,21 +1,29 @@
 <article>
     <% if (info && Array.isArray(info) && info.length > 0) { %>
-        <div class="flash-message flash-info">
-            <span><%= info[0] %></span>
-            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
-        </div>
+        <% info.forEach(msg => { %>
+            <div class="flash-message flash-info">
+                <span><%= msg %></span>
+                <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+            </div>
+        <% }); %>
     <% } %>
+
     <% if (error && Array.isArray(error) && error.length > 0) { %>
-        <div class="flash-message flash-error">
-            <span><%= error[0] %></span>
-            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
-        </div>
+        <% error.forEach(msg => { %>
+            <div class="flash-message flash-error">
+                <span><%= msg %></span>
+                <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+            </div>
+        <% }); %>
     <% } %>
+
     <% if (success_msg && Array.isArray(success_msg) && success_msg.length > 0) { %>
-        <div class="flash-message flash-success">
-            <span><%= success_msg[0] %></span>
-            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
-        </div>
+        <% success_msg.forEach(msg => { %>
+            <div class="flash-message flash-success">
+                <span><%= msg %></span>
+                <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+            </div>
+        <% }); %>
     <% } %>
     <header>
         <h1>
@@ -110,6 +118,12 @@
     <div class="home-page">
         <a href="/" class="button-link">Home Page</a>
     </div>
+
+    <!--TODO: Remove the following code piece, used for debugging in prod-->
+    <%= JSON.stringify(error) %> <br/>
+    <%= JSON.stringify(success_msg) %> <br/>
+    <%= JSON.stringify(info) %> <br/>
+    <!--Debugging code ends-->
 </article>
 
 <!-- Turnstile fallback script DO NOT Touch Please-->
