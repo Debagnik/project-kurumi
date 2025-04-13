@@ -12,8 +12,10 @@
   "author": "@Debagnik",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "blog-site": "file:",
+    "connect-flash": "^0.1.1",
     "connect-mongo": "^5.1.0",
     "cookie-parser": "^1.4.7",
     "csurf": "1.10.0",

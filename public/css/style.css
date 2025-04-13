@@ -414,3 +414,75 @@ img {
 .closebtn:hover {
     color: var(--black);
 }
+
+/** Comments Section **/
+
+.comments-ul {
+    list-style-type: none;
+	padding: 0;
+	margin: 0;
+	font-size: clamp(1.13rem, calc(1.08rem + 0.22vw), 1.25rem);
+	display: flex;
+	flex-direction: column;
+}
+
+.comments-ul li {
+	font-size: 17px;
+	cursor: pointer;
+	transition: filter 0.1s;
+}
+
+.comments {
+	white-space: pre-wrap;
+	font-size: 15px;
+}
+
+.comment-date {
+	font-size: 15px;
+}
+
+/** Flash Messaging Styles **/
+.flash-message {
+    position: relative;
+    padding: 1em;
+    margin-bottom: 1em;
+    border-radius: 10px;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}
+
+.flash-error {
+    background-color: #ffe6e6;
+    border: 2px solid #ff4d4d;
+    color: #990000;
+}
+
+.flash-success {
+    background-color: #e6ffe6;
+    border: 2px solid #33cc33;
+    color: #006600;
+}
+
+.flash-info {
+    background-color: #cce7ff;
+    border: 2px solid #a1c6ea;
+    color: #0056b3;
+}
+
+.flash-message .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: inherit;
+}
+
+.flash-message.hide {
+    opacity: 0;
+}
+
+

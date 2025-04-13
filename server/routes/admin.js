@@ -697,6 +697,8 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
       }
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
+      const commentsEnabled = req.body.isCommentsEnabled === 'on';
+      const captchaEnabled = req.body.isCaptchaEnabled === 'on';
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
       if (req.body.homepageWelcomeImage) {
@@ -704,8 +706,10 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
 
       // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable) => ({
+      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled) => ({
         isRegistrationEnabled: registrationEnable,
+        isCommentsEnabled: commentsEnabled,
+        isCaptchaEnabled: captchaEnabled,
         siteName: req.body.siteName,
         siteMetaDataKeywords: req.body.siteMetaDataKeywords,
         siteMetaDataAuthor: req.body.siteMetaDataAuthor,
@@ -721,14 +725,16 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         homeWelcomeSubText: req.body.homeWelcomeSubText,
         homepageWelcomeImage: validHomePageImageUri,
         copyrightText: req.body.copyrightText,
-        searchLimit: searchLimit
+        searchLimit: searchLimit,
+        cloudflareSiteKey: req.body.cloudflareSiteKey,
+        cloudflareServerKey: req.body.cloudflareServerKey
       });
 
       if (!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable));
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable), { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
