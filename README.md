@@ -1,4 +1,4 @@
-# Project Walnut
+# Project Walnut (クルミ)
 
 ![Walnut_Lycoris-Recoil](https://github.com/user-attachments/assets/e387eeb7-0bff-48b1-a277-264d28ccf0a9)   
 [Walnut the mascot](https://lycoris-recoil.fandom.com/wiki/Kurumi)
@@ -16,18 +16,22 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
   - Webmaster portal for maintaining site settings and global site config
   - Markdown support in editors
 - **Comments Section**
-  - Users can comment on posts using disqus integration. (In progress)
-  - Comments will be saved to DB with DDoS protection (In progress)
+  - Comments section
+  - Comments posting
+  - Comments to be turned off sitewide from global config
+  - Cloudflare Turnstile intregation for Bot attacks.
 - **Responsive Design**
   - Accessible on both desktop and mobile devices.
-  - Accessible Dark/light UI for better reading experience
+  - Accessible Dark/light UI for better reading experience (planned future scope)
 
 ## Technologies Used
 
 - **Frontend**
-  - HTML5, CSS3, JavaScript, EJS
-- **Backend**
+  - CSS3, JavaScript, EJS
+- **Services**
   - Node.js, Express.js
+  - Database: MongoDB with Mongoose ODM
+- **Backend**
   - Database: MongoDB with Mongoose ODM
 
 ## Installation
