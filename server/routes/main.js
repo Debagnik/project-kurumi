@@ -390,7 +390,7 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
         if(process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 8:', req.session);
         }
-        res.redirect(`/post/${thisComment.postId}`);
+        return res.status(200).redirect(`/post/${thisComment.postId}`);
 
     } catch (err) {
         console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
@@ -398,7 +398,11 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
         if(process.env.NODE_ENV!== 'production') {
             console.log('Session after flash 9:', req.session);
         }
-        return res.status(500).redirect(`/post/${thisComment.postId}`);
+        if(thisComment.postId) {
+            return res.status(500).redirect(`/post/${thisComment.postId}`);
+        } else { 
+            return res.status(404).redirect('/404');
+        }
     }
 
 })
