@@ -440,3 +440,49 @@ img {
 .comment-date {
 	font-size: 15px;
 }
+
+/** Flash Messaging Styles **/
+.flash-message {
+    position: relative;
+    padding: 1em;
+    margin-bottom: 1em;
+    border-radius: 10px;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}
+
+.flash-error {
+    background-color: #ffe6e6;
+    border: 2px solid #ff4d4d;
+    color: #990000;
+}
+
+.flash-success {
+    background-color: #e6ffe6;
+    border: 2px solid #33cc33;
+    color: #006600;
+}
+
+.flash-info {
+    background-color: #cce7ff;
+    border: 2px solid #a1c6ea;
+    color: #0056b3;
+}
+
+.flash-message .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: inherit;
+}
+
+.flash-message.hide {
+    opacity: 0;
+}
+
+

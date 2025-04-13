@@ -8,7 +8,7 @@ const connectDB = require('./server/config/db');
 const cookieParser = require('cookie-parser');
 const mongoStore = require('connect-mongo');
 const session = require('express-session');
-
+const flash = require('connect-flash');
 
 const app = express();
 // Add security headers.
@@ -16,10 +16,21 @@ app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com", "https://cdn.inspectlet.com"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://www.googletagmanager.com",
+        "https://cdn.inspectlet.com",
+        "https://challenges.cloudflare.com",
+        "https://www.clarity.ms",
+        "https://fonts.googleapis.com"
+      ],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
+      frameSrc: [
+        "'self'",
+        "https://challenges.cloudflare.com"
+      ]
     },
   }));
 
@@ -50,6 +61,9 @@ app.use(session({
         sameSite: 'strict'
     }
 }));
+
+// Connect flash for flash messages
+app.use(flash());
 
 //templating Engine
 app.use(expressLayout);
@@ -87,6 +101,7 @@ app.use(function (err, req, res, next) {
     res.send('Form tampered with');
 });
 
+// Start the server
 app.listen(PORT , () => {
     console.log(`App is listening to PORT ${PORT}`);
 });

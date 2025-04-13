@@ -6,6 +6,7 @@ const siteConfig = require('../models/config');
 const user = require('../models/user');
 const comment = require('../models/comments');
 const csrf = require('csurf');
+const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js')
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
@@ -140,6 +141,10 @@ router.get('/post/:id', async (req, res) => {
         } else {
             data.author = postAuthor.name;
         }
+        let captchaError = "";
+        if (req.query.captchaFailed){
+            captchaError = 'H-Hey! What do you think you’re doing?! Just barging in without passing the CAPTCHA… Typical bot behavior! I-I’m not saying I care or anything, but real users should know better!<br/>If by some *miracle* you’re actually a human and not some sneaky little script, then... ugh, fine. Contact the webmaster or whatever. But don’t expect me to go easy on you next time! Baka!';
+        }
 
         const isCommentsEnabled = res.locals.siteConfig.isCommentsEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
@@ -150,7 +155,10 @@ router.get('/post/:id', async (req, res) => {
                 csrfToken: req.csrfToken(),
                 isCommentsEnabled,
                 commentsData: await getCommentsFromPostId(data._id),
-                currentUser: isCurrentUserAModOrAdmin
+                currentUser: isCurrentUserAModOrAdmin,
+                success_msg: req.flash('success_msg'),
+                info: req.flash('info'),
+                error: req.flash('error')
             });
         } else {
             res.redirect('/404');
@@ -262,6 +270,16 @@ router.post('/post/:id/post-comments', async (req, res) => {
         return res.status(403).json({ "status": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
     }
 
+    const captchaToken  = req.body['cf-turnstile-response'];
+    const remoteIp = req.ip;
+    const secretKey = siteConfig.cloudflareServerKey;
+    const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
+    if (!isUserHuman) {
+        console.warn({'status':403, 'message':'CAPTCHA verification failed', 'originIP':remoteIp} );
+        req.flash('error', 'CAPTCHA verification failed, please try again.');
+        return res.status(403).redirect(`/post/${postId}`);
+    }
+
     if (!commenterName || !commentBody) {
         console.error(400, 'Invalid comment data');
         return res.redirect(`/post/${postId}`);
@@ -288,10 +306,11 @@ router.post('/post/:id/post-comments', async (req, res) => {
         });
         await newComment.save();
         if (process.env.NODE_ENV === 'production') {
-            console.log({ "status": "200", "message": "Comment added successfully" });
+            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName } );
         } else {
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
+        req.flash('success_msg', 'Comment submitted successfully');
         res.redirect(`/post/${postId}`);
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -305,7 +324,7 @@ router.post('/post/:id/post-comments', async (req, res) => {
 });
 
 /**
- * DELETE
+ * POST
  * /posts/post-comments/:commentId
  * Delete a comment from a post if the User is Authorized (Only Admin or Moderator)
  */
@@ -328,6 +347,7 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
 
         await thisComment.deleteOne()
         console.log({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+        req.flash('info', `Comment deleted successfully by ${currentUser.username}`);
         res.redirect(`/post/${thisComment.postId}`);
 
     } catch (err) {
