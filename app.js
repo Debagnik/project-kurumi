@@ -44,10 +44,11 @@ app.use(express.json());
 app.use(express.static('./public'));
 app.use(cookieParser());
 app.use(methodOverride('_method'));
+app.set('trust proxy', 1);
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: process.env.NODE_ENV !== 'production',
     store: mongoStore.create({
         mongoUrl: process.env.MONGO_DB_URI,
         ttl: 60 * 60,
