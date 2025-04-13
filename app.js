@@ -19,11 +19,11 @@ app.use(helmet.contentSecurityPolicy({
       scriptSrc: [
         "'self'",
         "'unsafe-inline'",
-        "https://www.googletagmanager.com",
-        "https://cdn.inspectlet.com",
-        "https://challenges.cloudflare.com",
-        "https://www.clarity.ms",
-        "https://fonts.googleapis.com"
+        "https://www.googletagmanager.com", // Google Tag Manager
+        "https://cdn.inspectlet.com",  // User Behaivior Tracking
+        "https://challenges.cloudflare.com", // Cloudflare Turnstile
+        "https://www.clarity.ms",  // Clarity Session Tracking
+        "https://fonts.googleapis.com" // Google Fonts
       ],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],

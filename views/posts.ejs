@@ -128,7 +128,7 @@
         turnstile.render('#cf-turnstile-container', {
           sitekey: '<%= locals.config.cloudflareSiteKey %>',
           callback: function(token) {
-            console.log('CAPTCHA token:', token); // optional
+            //console.log('CAPTCHA token recieved:', !!token); // optional
           },
           errorCallback: function(err) {
             console.error('Turnstile failed to load!', err);
