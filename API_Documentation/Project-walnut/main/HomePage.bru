@@ -1,0 +1,69 @@
+meta {
+  name: HomePage
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{url}}?page=2
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 2
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Connection: keep-alive
+  DNT: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: none
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+docs {
+  GET /
+  
+  * Description:
+    * Displays the homepage of the blog with a list of approved blog posts.
+    * Fetches posts from the database, applies pagination based on site configuration, and renders them using the index.ejs view.
+  
+  * Middleware Used:
+    1. fetchSiteConfig – Loads site-wide configuration from MongoDB and attaches it to res.locals.
+    2. csrfProtection – Adds CSRF protection to the request and provides a CSRF token to the template.
+  
+  * Query Parameters:
+    * page (optional) – Page number for pagination. Defaults to 1 if not specified.
+  
+  * Template Rendered:
+    * views/index.ejs
+  
+  * Template Locals Passed:
+    * locals:
+      * title – The site's name from config or "Project Walnut" by default.
+      * description – SEO meta description from config.
+      * config – Full site configuration.
+      * data – Array of blog posts (Mongo documents), sorted by creation date descending.
+      * current – Current page number.
+      * nextPage – Number of the next page if available, otherwise null.
+      * csrfToken – Token for CSRF protection.
+  
+  * Success Response:
+    1. HTTP Status: 200 OK
+    2. Content-Type: text/html
+    3. Renders the index.ejs page with the fetched posts.
+  
+  * Failure Response:
+    * On internal error (e.g., DB connection issues), logs the error to the console and may:
+      1. Fall back to default values
+      2. Halt rendering depending on the error's location (e.g., inside fetchSiteConfig middleware)
+}

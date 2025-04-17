@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Project-walnut",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
