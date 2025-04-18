@@ -60,9 +60,6 @@ router.get('/api/test/getCsrfToken', csrfProtection, (req, res) => {
     }
   });
 
-
-
-
 /**
  * GET /
  * HOME
@@ -180,13 +177,7 @@ router.get('/post/:id', async (req, res) => {
 
     } catch (error) {
         console.error('Post Fetch error', error);
-        res.status(404).render('404', {
-            locals: {
-                title: "404 - Page Not Found",
-                description: "The page you're looking for doesn't exist.",
-                config: res.locals.siteConfig
-            }
-        });
+        res.status(404).redirect('/404');
     }
 });
 
