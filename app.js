@@ -74,16 +74,6 @@ app.set('view engine', 'ejs');
 app.use('/', require('./server/routes/main.js'));
 app.use('/', require('./server/routes/admin.js'));
 
-// 404 Not Found Middleware
-app.use((req, res, next) => {
-    const locals = {
-        title: '404 - Page Not Found',
-        description: '404 Not Found',
-        config: res.locals.siteConfig
-    }
-    res.status(404).render('404', {locals, csrfToken: req.csrfToken()});
-});
-
 // Middleware to protect routes, CSRF Error Handler
 app.use(function (err, req, res, next) {
     if (err.code !== 'EBADCSRFTOKEN'){
@@ -101,6 +91,17 @@ app.use(function (err, req, res, next) {
     });
     res.send('Form tampered with');
 });
+
+// 404 Not Found Middleware
+app.use((req, res, next) => {
+    const locals = {
+        title: '404 - Page Not Found',
+        description: '404 Not Found',
+        config: res.locals.siteConfig
+    }
+    res.status(404).render('404', {locals, csrfToken: req.csrfToken()});
+});
+
 
 // Start the server
 app.listen(PORT , () => {
