@@ -1,0 +1,79 @@
+meta {
+  name: adminLogin
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{url}}/admin
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  username: kingabed
+  password: $r#6mufs#l6G@*OKVu*NAbvf
+}
+
+docs {
+  POST /admin
+  
+  * Description:
+    Handles login requests for administrators. Authenticates the user, checks credentials, and sets a session token if valid.
+  
+  * Middleware Used:
+    * fetchSiteConfig: Loads the site's configuration into res.locals.
+    * csrfProtection: Adds CSRF protection and provides a token.
+    * authLimiter: Rate-limits login attempts to prevent brute-force attacks (5 requests per 15 minutes).
+  
+  * Access:
+    * Public route, but only valid credentials can proceed.
+  
+  * Request Body:
+    * username (required): The admin's username.
+    * password (required): The admin's password.
+  
+  * Logic Flow:
+    * Validates the presence of username and password.
+    * Checks if the user exists in the database.
+    * Verifies the password using bcrypt.
+    * If credentials are valid, generates a JWT and stores it in a secure HTTP-only cookie.
+    * Redirects to /dashboard on success.
+  
+  * Template Rendered (on failure):
+    * views/admin/index.ejs
+  
+  * Template Locals Passed (on failure):
+    * errors_login: Array containing relevant login error messages.
+    * errors: []
+    * csrfToken: Token for CSRF protection.
+    * config: Site-wide configuration.
+    * isWebMaster: false
+  
+  * Success Response:
+    * Status 302: Redirects to /dashboard if login succeeds.
+  
+  * Failure Responses:
+    * Missing credentials: Renders login with error.
+    * Invalid username or password: Renders login with error.
+    * Internal errors (e.g., DB failure): Logs error and renders a fallback message.
+}

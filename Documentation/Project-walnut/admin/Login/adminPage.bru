@@ -1,0 +1,61 @@
+meta {
+  name: adminPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/admin
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: none
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+docs {
+  GET /admin
+  
+  * Description:
+    Renders the admin login page. This is the main entry point for site administrators to log in to the backend panel.
+  
+  * Middleware Used:
+    * fetchSiteConfig: Attaches the site's configuration object to res.locals.siteConfig.
+    * csrfProtection: Adds a CSRF token to the request and makes it available to the rendered view.
+  
+  * Access:
+    * Public route (unauthenticated).
+    * Meant to be accessed by admins to initiate a login session.
+  
+  * Template Rendered:
+    * views/admin/index.ejs
+  
+  * Template Locals Passed:
+    * locals:
+      * title: "Admin Panel"
+      * description: "Admin Panel"
+      * config: Site-wide configuration from MongoDB
+    * errors: []
+    * errors_login: []
+    * csrfToken: Token for CSRF protection
+    * isWebMaster: false
+  
+  * Success Response:
+    * Status 200: Renders the admin login page.
+  
+  * Failure Response:
+    * Status 500: If an error occurs (e.g., during site config fetch), logs the error and returns a plain 500 Internal Server Error response.
+}

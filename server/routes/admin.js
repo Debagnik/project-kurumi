@@ -311,7 +311,6 @@ router.post('/admin', authLimiter, async (req, res) => {
  * GET
  * Admin - Registration success
  */
-
 router.get('/admin/registration', async (req, res) => {
   const locals = {
     title: 'Registration successful',
@@ -570,7 +569,6 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
  * DELETE
  * Admin - Post - Delete
  */
-
 router.delete('/delete-post/:id', authToken, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
@@ -622,7 +620,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
       });
     }
 
-    // Check if the user has the necessary privileges (assuming 1 is the highest privilege)
+    // Check if the user has the necessary privileges
     if (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       return res.status(403).redirect('/error')
     }

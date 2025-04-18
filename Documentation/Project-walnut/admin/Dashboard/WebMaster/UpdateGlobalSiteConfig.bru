@@ -1,0 +1,171 @@
+meta {
+  name: UpdateGlobalSiteConfig
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{url}}/edit-site-config
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Cookie: _csrf=gR0NkpgZXZuGKRnmIsxIgQz-; connect.sid=s%3AoESvGYykY_SJ1fuBUiS2A9sNRbUc5EOo.p48N6Cjjj%2BnbT2yF1iOpFQQqLJPzfwTTuU6wLqPz5JU; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2Q1ZGZmNjZiNmExNTg2YTYzNDdiZDgiLCJpYXQiOjE3NDQ5NjY4Mzd9.we33Cz3YXbXtYNhH1Q525jW05FCgXrc1Sxr28SbLa_s
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  siteName: Blog Site
+  homeWelcomeText: Welcome to my site
+  homeWelcomeSubText: Data Test DB 2
+  homepageWelcomeImage: https://animetv-jp.net/wp-content/uploads/2024/10/GavBFBuaAAEFAOM-scaled-e1730154786467-1068x601.jpeg
+  copyrightText: Hanako Kun
+  siteDefaultThumbnailUri: https://animetv-jp.net/wp-content/uploads/2024/10/GavBFBuaAAEFAOM-scaled-e1730154786467-1068x601.jpeg
+  siteAdminEmail: info@debagnik.in
+  cloudflareSiteKey: 1x00000000000000000000AA
+  cloudflareServerKey: 1x0000000000000000000000000000000AA
+  defaultPaginationLimit: 3
+  searchLimit: 2
+  isRegistrationEnabled: on
+  isCommentsEnabled: on
+  isCaptchaEnabled: on
+  siteMetaDataKeywords: Project Walnut, Blog, Node.js, Express.js, MongoDB
+  siteMetaDataAuthor: Debagnik Kar
+  siteMetaDataDescription: A site dedicated to TBHK
+  googleAnalyticsScript: '''
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=SECRETKEY"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'SecretKey');
+    </script>
+    <!--END GOOGLE Analytics-->
+  '''
+  inspectletScript: '''
+    <!-- CLARITY-->
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "SecretKey");
+    </script>
+  '''
+}
+
+docs {
+  POST /edit-site-config
+  
+  Description:
+    This route is used to update the global site configurations. It allows Webmasters to modify settings like site name, registration options, meta tags, analytics scripts, and more. Only Webmasters have the privilege to access and update the site configuration.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: Only users with the `WEBMASTER` Access Level of 1 privilege can access and update the site configuration.
+  
+  Request Parameters (Form Data):
+    - `siteName`: (String) The name of the site (e.g., "My Blog").
+    - `siteMetaDataKeywords`: (String) Meta keywords for SEO optimization.
+    - `siteMetaDataAuthor`: (String) Author name for meta tag.
+    - `siteMetaDataDescription`: (String) Meta description for the site.
+    - `siteAdminEmail`: (String) The email address for the site admin (must be a valid email format).
+    - `siteDefaultThumbnailUri`: (String) URI for the default post thumbnail image.
+    - `defaultPaginationLimit`: (Number) The default number of items per page for pagination (must be between 1 and 100).
+    - `googleAnalyticsScript`: (String) Google Analytics tracking script.
+    - `inspectletScript`: (String) Inspectlet tracking script.
+    - `homeWelcomeText`: (String) Welcome text for the homepage.
+    - `homeWelcomeSubText`: (String) Subtext for the homepage welcome message.
+    - `homepageWelcomeImage`: (String) URI for the homepage welcome image.
+    - `copyrightText`: (String) The copyright text to be displayed on the site.
+    - `searchLimit`: (Number) The maximum number of search results per query (must be between 1 and 50).
+    - `cloudflareSiteKey`: (String) Cloudflare site key for CAPTCHA integration.
+    - `cloudflareServerKey`: (String) Cloudflare server key for CAPTCHA validation.
+    - `isRegistrationEnabled`: (Boolean) Whether registration is enabled on the site.
+    - `isCommentsEnabled`: (Boolean) Whether comments are enabled on the site.
+    - `isCaptchaEnabled`: (Boolean) Whether CAPTCHA protection is enabled for form submissions.
+  
+  Response:
+    * Status 200: Successfully updated the site configuration.
+    * Status 400: Validation error, invalid input data (e.g., invalid email format, pagination limit out of range).
+    * Status 500: Internal server error, if any issues occur during the update process.
+  
+  Response Content:
+    - On success: Redirects to `/admin/webmaster` with an updated site configuration.
+    - On error: Returns an error message with a relevant HTTP status code.
+  
+  Example Request:
+    POST /edit-site-config
+    {
+      "siteName": "My New Blog",
+      "siteMetaDataKeywords": "blog, tech, coding",
+      "siteMetaDataAuthor": "John Doe",
+      "siteMetaDataDescription": "A tech blog about coding",
+      "siteAdminEmail": "admin@myblog.com",
+      "siteDefaultThumbnailUri": "http://example.com/default-thumbnail.jpg",
+      "defaultPaginationLimit": 10,
+      "googleAnalyticsScript": "UA-12345678-1",
+      "inspectletScript": "INS-1234567890",
+      "homeWelcomeText": "Welcome to My Blog!",
+      "homeWelcomeSubText": "Sharing knowledge and insights on tech and coding.",
+      "homepageWelcomeImage": "http://example.com/welcome.jpg",
+      "copyrightText": "© 2025 My Blog",
+      "searchLimit": 20,
+      "cloudflareSiteKey": "example-site-key",
+      "cloudflareServerKey": "example-server-key",
+      "isRegistrationEnabled": true,
+      "isCommentsEnabled": true,
+      "isCaptchaEnabled": true
+    }
+  
+  Example Success Response:
+    - Status 200, Site configuration updated successfully:
+      {
+        "status": "200",
+        "message": "Site configuration updated successfully"
+      }
+  
+  Example Error Response (Invalid Email Format):
+    {
+      "status": "400",
+      "error": "Invalid email format"
+    }
+  
+  Example Error Response (Invalid Pagination Limit):
+    {
+      "status": "400",
+      "error": "Invalid pagination limit"
+    }
+  
+  Example Error Response (Internal Server Error):
+    {
+      "status": "500",
+      "error": "Internal Server Error"
+    }
+  
+  Notes:
+    * The route allows Webmasters to update critical settings related to the site's functionality, such as registration, comment system, pagination, and more.
+    * All fields are validated for correctness, including email format, pagination limits, and URL validity.
+    * If the site configuration does not already exist, it will be created with the provided data.
+}
