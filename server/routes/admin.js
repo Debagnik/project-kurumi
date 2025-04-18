@@ -293,6 +293,7 @@ router.post('/admin', authLimiter, async (req, res) => {
     //adds session
     const token = jwt.sign({ userId: currentUser._id }, jwtSecretKey);
     res.cookie('token', token, { httpOnly: true });
+    console.log("Successful Log In", (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() !== "production") ? username : '');
     res.redirect('/dashboard');
   } catch (error) {
     //for any other errors

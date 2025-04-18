@@ -81,7 +81,7 @@ app.use((req, res, next) => {
         description: '404 Not Found',
         config: res.locals.siteConfig
     }
-    res.status(404).render('404', {locals});
+    res.status(404).render('404', {locals, csrfToken: req.csrfToken()});
 });
 
 // Middleware to protect routes, CSRF Error Handler
