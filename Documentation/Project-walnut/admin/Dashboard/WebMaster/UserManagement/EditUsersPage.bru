@@ -1,0 +1,68 @@
+meta {
+  name: EditUsersPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/edit-user/:userId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  userId: 67d5dff66b6a1586a6347bd8
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+docs {
+  GET /edit-user/:userId
+  
+  Description:
+    This route renders the user editing page in the admin panel for the specified user, identified by :userId. It allows the Webmaster to edit a user's information, such as their name and privilege level. The userId is provided as a URL parameter.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: Only users with the `WEBMASTER` privilege can access this route and edit other users' details.
+    * User: The user accessing the route must have the necessary privilege level to edit another user's information (WEBMASTER).
+  
+  Request Parameters:
+    - userId: The ID of the user to be edited (URL parameter, required).
+  
+  Request Body:
+    - None. This is a GET request, so it does not require any body content.
+  
+  Response:
+    * Status 200: The page for editing the specified user is rendered successfully.
+    * Status 403: If the current user does not have the necessary privileges (WEBMASTER).
+    * Status 404: If the user with the specified :userId does not exist.
+    * Status 500: Internal server error if an error occurs during the fetching process.
+  
+  Response Content:
+    - Renders the user edit page (admin/edit-user.ejs) with the details of the user to be edited, such as their name and privilege level.
+    - Includes CSRF protection token for form submissions.
+    - The page allows the Webmaster to update the name and privilege of the selected user.
+  
+  Example Request:
+    GET /edit-user/60c72b2f9f1b2c001d8f3b52
+  
+}

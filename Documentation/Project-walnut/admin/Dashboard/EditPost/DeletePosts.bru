@@ -1,0 +1,103 @@
+meta {
+  name: DeletePosts
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{url}}/delete-post/:postId?_method=DELETE
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:query {
+  _method: DELETE
+}
+
+params:path {
+  postId: 680148bc20abde10df2bb054
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+}
+
+docs {
+  POST /delete-post/:postId
+  
+  Description:
+    This route handles the deletion of a specific post, identified by :postId, from the admin panel. It allows an administrator to remove a post from the database permanently. The postId is provided in the URL as a route parameter.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: The user must have the appropriate privileges (Moderator or Webmaster) to delete a post.
+  
+  Request Parameters:
+    - postId: The ID of the post to be deleted (URL parameter, required).
+    - _method: the DELETE Method (Query parameter, required)
+  
+  Request Body:
+    - _csrf: the session CSRF Token
+  
+  Response:
+    * Status 200: The post is successfully deleted, and the user is redirected to the `/dashboard` page with a success message.
+    * Status 400: If the postId is invalid or the request body contains unexpected data.
+    * Status 404: If the post with the specified :postId does not exist in the database.
+    * Status 500: Internal server error if an error occurs during the deletion process.
+  
+  Notes:
+    * The deletion of the post is permanent and cannot be undone. It will be removed from the database entirely.
+    * If the post is successfully deleted, the system will redirect the user to the dashboard page with a success message.
+    * The post is deleted from the database using `findByIdAndDelete` and any associated comments or data are also removed (if necessary).
+    * The action of deleting a post is logged with the current user's username, and the timestamp of the deletion is recorded.
+  
+  Example Request:
+    POST /delete-post/60c72b2f9f1b2c001d8f3b52
+  
+  Example Success Response:
+    - Status 200, Redirect to `/dashboard` with success message:
+      ```
+      {
+        "status": "success",
+        "message": "Post successfully deleted"
+      }
+      ```
+  
+  Example Error Response (Post Not Found):
+    ```
+    {
+      "status": "404",
+      "message": "Post not found"
+    }
+    ```
+  
+  Example Error Response (Server Error):
+    ```
+    {
+      "status": "500",
+      "message": "Internal Server Error"
+    }
+    ```
+}

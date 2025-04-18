@@ -1,0 +1,84 @@
+meta {
+  name: DeleteComment
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{url}}/post/delete-comment/:commentId
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:path {
+  commentId: 6801532a20abde10df2bb13a
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Cache-Control: max-age=0
+  Connection: keep-alive
+  Content-Type: application/x-www-form-urlencoded
+  DNT: 1
+  Origin: null
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  ~commentId: 6801532a20abde10df2bb13a
+  ~postId: 680148ee20abde10df2bb07e
+}
+
+docs {
+  POST /post/delete-comment/:commentId
+  
+  Description:
+  * Deletes a comment with the given comment ID.
+  * Typically used from the admin/moderation interface.
+  
+  Middleware Used:
+  * csrfProtection – Validates CSRF token to prevent CSRF attacks.
+  * isAuthenticated – Ensures the user is logged in and has admin or mod privilages.
+  
+  Route Params:
+  * commentId (string, required): The MongoDB ID of the comment to delete.
+  
+  Request Body Parameters:
+  * _csrf (string, required): CSRF token for request validation.
+  
+  Flow:
+  1. Checks authentication using `isAuthenticated`.
+  2. Validates CSRF token.
+  3. Attempts to find and delete the comment by its `_id`.
+  4. If successful:
+     * Sets a flash success message.
+     * Redirects back to the referring page (typically a post or admin panel).
+  5. If not found or deletion fails:
+     * Sets a flash error message.
+     * Redirects back.
+  
+  Success Response:
+  * HTTP Status: 302 (Redirect)
+  * Flash message: Comment deleted successfully.
+  * Redirects to: Referrer (`req.get('Referrer')`)
+  
+  Failure Responses:
+  * HTTP 302 (Redirect with Flash message)
+    * If comment not found.
+    * If deletion fails.
+    * If not authenticated.
+    * If CSRF fails.
+  
+  View Rendered:
+  * N/A (redirects back)
+}

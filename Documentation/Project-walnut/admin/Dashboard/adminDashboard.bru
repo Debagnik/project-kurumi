@@ -1,0 +1,65 @@
+meta {
+  name: adminDashboard
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/dashboard
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: none
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+docs {
+  GET /dashboard
+  
+  * Description:
+    Displays the admin dashboard with a list of blog posts, filtered based on the logged-in user's privilege level. Requires valid authentication.
+  
+  * Middleware Used:
+    * authToken: Verifies JWT from the user's cookie. Redirects to /admin if the token is missing or invalid.
+    * fetchSiteConfig: Loads site-wide configuration and attaches it to res.locals.
+    * csrfProtection: Provides a CSRF token for secured form operations.
+  
+  * Access:
+    * Private — only accessible to authenticated users with a valid JWT.
+  
+  * Privilege-based Behavior:
+    * WRITER: Sees only their own posts.
+    * MODERATOR & WEBMASTER: See all posts.
+    * Any unknown privilege: Results in 403 error.
+  
+  * Response:
+    * Status 200: Renders the 'admin/dashboard' template with:
+      - Current user's details
+      - Filtered post list based on privilege
+      - CSRF token
+      - Admin layout
+      - Dynamic page title and description
+    * Status 403: Returns JSON with error message if user has invalid privilege.
+    * Status 500: On internal server error.
+  
+  * View Rendered:
+    * Template: `admin/dashboard.ejs`
+    * Layout: `adminLayout`
+  
+  * Notes:
+    * Includes logic to determine if the current user is a webmaster for additional UI controls.
+    * Posts are sorted by creation date in descending order.
+}

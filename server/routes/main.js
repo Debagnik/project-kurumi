@@ -14,7 +14,6 @@ const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations'
 /**
  * Site config Middleware
  */
-
 const fetchSiteConfig = async (req, res, next) => {
     try {
         const config = await siteConfig.findOne();
@@ -50,6 +49,21 @@ router.use(csrfProtection);
 
 //Routes
 /**
+ * GET /api/test/getCsrfToken
+ */
+router.get('/api/test/getCsrfToken', csrfProtection, (req, res) => {
+    if(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local'){
+        return res.status(200).json({ csrfToken: req.csrfToken() });
+    }
+    else{
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+  });
+
+
+
+
+/**
  * GET /
  * HOME
  */
@@ -79,7 +93,8 @@ router.get('', async (req, res) => {
             locals,
             data,
             current: page,
-            nextPage: hasNextPage ? nextPage : null
+            nextPage: hasNextPage ? nextPage : null,
+            csrfToken: req.csrfToken()
         });
         console.log(`DB Posts Data fetched`);
     } catch (error) {
@@ -98,7 +113,8 @@ router.get('/about', (req, res) => {
         config: res.locals.siteConfig
     }
     res.render('about', {
-        locals
+        locals,
+        csrfToken: req.csrfToken()
     });
 });
 
@@ -113,7 +129,8 @@ router.get('/contact', (req, res) => {
         config: res.locals.siteConfig
     }
     res.render('contact', {
-        locals
+        locals,
+        csrfToken: req.csrfToken()
     });
 });
 
@@ -241,7 +258,7 @@ router.post('/search', async (req, res) => {
             .sort({ score: { $meta: 'textScore' } })
             .limit(searchLimit);
 
-        res.render('search', { data, locals, searchTerm: searchTerm });
+        res.render('search', { data, locals, searchTerm: searchTerm, csrfToken: req.csrfToken() });
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).render('error', {
@@ -405,7 +422,6 @@ router.post('/post/delete-comment/:commentId', async (req, res) => {
         }
     }
 
-})
-
+});
 
 module.exports = router;

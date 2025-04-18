@@ -1,0 +1,147 @@
+meta {
+  name: EditPostById
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{url}}/edit-post/:postId?_method=PUT
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:query {
+  _method: PUT
+}
+
+params:path {
+  postId: 68020f705c40195dc94d3ed7
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  title: Test
+  thumbnailImageURI: Test
+  markdownbody: ## Test
+  desc: A Description
+  tags: Test
+  isApproved: on
+}
+
+docs {
+  PUT /edit-post/:id
+  
+  Description:
+    This route handles the update of a specific post (identified by :id) in the admin panel. It allows an administrator to edit the details of an existing post, including its title, body, description, tags, and thumbnail image URI. The request must be authenticated and must include valid data in the form.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: The user must have the appropriate privileges to edit a post. Users with the role of `Moderator` or `Webmaster` can update the approval status (`isApproved`) of a post.
+  
+  Request Parameters:
+    - id: The ID of the post to be updated (URL parameter, required).
+  
+  Request Body:
+    - title: The new title for the post (required, string).
+    - markdownbody: The new content in Markdown format for the body (required, string).
+    - desc: A new description of the post (required, string).
+    - tags: The tags for the post (optional, string).
+    - thumbnailImageURI: The URI of the thumbnail image for the post (optional, string).
+    - isApproved: Boolean value to indicate if the post should be approved (optional, used by Moderators or Webmasters).
+  
+  Response:
+    * Status 200: The post is successfully updated, and the user is redirected to the `/dashboard` page.
+    * Status 400: The request body contains missing or invalid fields. Specific error messages will indicate which fields are invalid.
+    * Status 404: If the post with the specified :id does not exist in the database.
+    * Status 500: Internal server error if an error occurs during the update process.
+  
+  Notes:
+    * The update process checks for a valid title, body, and description. These fields must not be empty or exceed their respective character limits.
+    * The `markdownbody` field is converted to HTML before saving in the `body` field of the post.
+    * If the `thumbnailImageURI` is not valid, a default thumbnail URI is used from the site configuration or the environment variable.
+    * If the user has `Moderator` or `Webmaster` privileges, they can change the `isApproved` field.
+    * The update process uses the `currentUser.username` to record who made the changes and updates the `modifiedAt` timestamp.
+    * The post is updated in the database using `findByIdAndUpdate`, and the user is redirected to the dashboard page.
+  
+  Example Request:
+    PUT /edit-post/60c72b2f9f1b2c001d8f3b52
+    Request Body:
+    
+    ```
+      {
+        "title": "Updated Post Title",
+        "markdownbody": "# Updated content of the post",
+        "desc": "An updated description of the post.",
+        "tags": "Tech, Updates",
+        "thumbnailImageURI": "example.com",
+        "isApproved": "on"
+      }
+    ```
+  
+  Example Success Response:
+    - Status 200, Redirect to `/dashboard`
+    - Post Updated:
+    
+    ```
+      {
+        "title": "Updated Post Title",
+        "body": "Updated content of the post",
+        "markdownbody": "Updated content of the post",
+        "desc": "An updated description of the post.",
+        "tags": "Tech, Updates",
+        "thumbnailImageURI": "https://example.com/new-thumbnail.jpg",
+        "isApproved": true,
+        "lastUpdateAuthor": "currentUserUsername",
+        "modifiedAt": "2025-04-18T12:00:00Z"
+      }
+    ```
+  
+  Example Error Response (Post Not Found):
+    
+    ```
+    {
+      "status": "404",
+      "message": "Post not found"
+    }
+    ```
+  
+  Example Error Response (Invalid Request):
+    
+    ```
+    {
+      "status": "400",
+      "message": "Title, body, and description are required!"
+    }
+    ```
+  
+  Example Error Response (Server Error):
+    
+    ```
+    {
+      "status": "500",
+      "message": "Internal Server Error"
+    }
+    ```
+}

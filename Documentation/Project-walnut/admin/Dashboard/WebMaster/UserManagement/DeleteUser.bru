@@ -1,0 +1,115 @@
+meta {
+  name: DeleteUser
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{url}}/delete-user/:userId?_method=DELETE
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:query {
+  _method: DELETE
+}
+
+params:path {
+  userId: 680209ee5c40195dc94d3e41
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Cookie: _csrf=gR0NkpgZXZuGKRnmIsxIgQz-; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2Q1ZGZmNjZiNmExNTg2YTYzNDdiZDgiLCJpYXQiOjE3NDQ5NjY4Mzd9.we33Cz3YXbXtYNhH1Q525jW05FCgXrc1Sxr28SbLa_s; connect.sid=s%3Al4q2BCviHoCxPgBsDWkaYyqSokYNN6mJ.eGpUBU%2FVLUX7ztOMuamA6NC%2BvfVMwqJMKvgjmQWdsts
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+}
+
+docs {
+  DELETE /delete-user/:userId
+  
+  Description:
+    This route is used to delete a user from the system based on the provided `userId`. The method is specified as a `DELETE` HTTP method using a query parameter (`_method=DELETE`) due to limitations in some client frameworks that do not support HTTP DELETE requests directly. This route will remove the user and all associated data, such as posts and comments, if applicable.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request to ensure the user is authenticated. If the token is invalid or missing, the request is rejected.
+    * CSRF Protection: Ensures the request comes from a trusted source and is not made by a malicious third party.
+    * adminPrivilege: Ensures that only users with admin privileges can delete a user.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: Only users with `WEBMASTER` privileges can delete another user from the system.
+  
+  Request Parameters (URL Params):
+    - `Id`: (String) The unique identifier of the user to be deleted.
+  
+  Request Query Parameters:
+    - `_method`: (String) A query parameter that simulates the DELETE HTTP method. It should be set to `DELETE` to properly execute the delete operation.
+  
+  Response:
+    * Status 200: User successfully deleted. The request will return a success message indicating the user has been removed.
+    * Status 400: Bad request if the `userId` is invalid or missing.
+    * Status 404: Not found if the specified user does not exist.
+    * Status 500: Internal server error if an unexpected error occurs during the deletion process.
+  
+  Response Content:
+    - On success: Returns a success message confirming the deletion of the user.
+    - On error: Returns an error message describing the problem (e.g., invalid `userId`, user not found, server error).
+  
+  Example Request:
+    DELETE /delete-user/12345?_method=DELETE
+  
+  Example Success Response:
+    - Status 200, User deleted successfully:
+      ```
+      {
+        "status": "200",
+        "message": "User deleted successfully"
+      }
+      ```
+  
+  Example Error Response (User Not Found):
+    ```
+    {
+      "status": "404",
+      "error": "User not found"
+    }
+    ```
+  
+  Example Error Response (Invalid User ID):
+    ```
+    {
+      "status": "400",
+      "error": "Invalid user ID"
+    }
+    ```
+  
+  Example Error Response (Internal Server Error):
+    ```
+    {
+      "status": "500",
+      "error": "Internal Server Error"
+    }
+    ```
+  
+  Notes:
+    * Deleting a user will permanently remove the user from the system, including their posts and comments (if applicable).
+    * This route requires the user to be authenticated and have sufficient privileges (admin) to delete other users.
+    * Ensure that the `userId` is valid before sending the request to avoid unnecessary errors.
+}

@@ -1,0 +1,106 @@
+meta {
+  name: AddPost
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{url}}/admin/add-post
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  title: Test Title Page
+  thumbnailImageURI: sample image link
+  markdownbody: '''
+    ## Type Body in markdown.
+    
+    * this is super simple than using a rich text editor
+  '''
+  desc: a Short Desc
+  tags: tags
+  submit: Add
+}
+
+docs {
+  POST /admin/add-post
+  
+  Description:
+    Creates a new blog post. This route requires the user to be authenticated. It validates the title, markdown body, and description, ensuring they are within specified length limits before saving the post. The body of the post is converted from markdown to HTML.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If not present or invalid, it redirects to /admin.
+  
+  Access:
+    * Private — This route is accessible only by authenticated users.
+  
+  Privilege-based Behavior:
+    * The user must have sufficient privileges to create a post, usually required for admins or users with the ability to write posts.
+  
+  Request Body:
+    - title: Title of the post (string, required, max length 50 characters).
+    - markdownbody: The content of the post written in markdown (string, required).
+    - desc: Description of the post (string, required, max length 500 characters).
+    - tags: Tags associated with the post (string, optional).
+    - thumbnailImageURI: URI of the post’s thumbnail image (string, optional).
+  
+  Response:
+    * Status 200: If the post is successfully created, the user is redirected to the /dashboard.
+    * Status 400: If any of the required fields are missing or exceed the allowed length limits (e.g., title, body, or description).
+    * Status 500: Internal server error, such as failure during post creation.
+  
+  Notes:
+    * The post's body (in markdown) is converted to HTML before saving.
+    * A default thumbnail is used if a valid thumbnail URL is not provided.
+    * Logs the creation of the post with details of the user who created it.
+  
+  Example Request:
+    ```
+    {
+      "title": "My First Blog Post",
+      "markdownbody": "# This is a blog post in markdown",
+      "desc": "A description of my blog post.",
+      "tags": "Blog, Coding",
+      "thumbnailImageURI": "https://example.com/thumbnail.jpg"
+    }
+    ```
+  
+  Example Success Response:
+    - Redirects the user to /dashboard.
+  
+  Example Error Response:
+    ```
+    {
+      "status": "400",
+      "message": "Title, body, and description are required!"
+    }
+    ```
+  
+  Example Error Response (Exceeds Length Limit):
+    ```
+    {
+      "status": "400",
+      "message": "Title, body, and description must not exceed their respective limits!"
+    }
+    ```
+}

@@ -1,0 +1,57 @@
+meta {
+  name: ContactsPage
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{url}}/contact
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Connection: keep-alive
+  DNT: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+docs {
+  GET /contact
+  
+  * Description:
+    * Renders the Contact Us page of the site.
+    * This page is typically used to display contact information or a contact form.
+  
+  * Middleware Used:
+    1. fetchSiteConfig – Loads site-wide configuration and attaches it to res.locals.siteConfig.
+    2. csrfProtection – Generates and injects a CSRF token for form protection (if forms are present).
+  
+  * Access:
+    * Publicly accessible by all users.
+  
+  * Template Rendered:
+    * views/contact.ejs
+  
+  * Template Locals Passed:
+    * locals:
+      * title – Set to "Contact Us" concatenated with the site name from the configuration.
+      * config – Full site configuration.
+      * csrfToken – Token for CSRF protection.
+  
+  * Success Response:
+    1. HTTP Status: 200 OK
+    2. Content-Type: text/html
+    3. Renders the contact.ejs page with site metadata and CSRF token.
+}

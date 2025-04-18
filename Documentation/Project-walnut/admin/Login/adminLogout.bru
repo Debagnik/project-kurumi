@@ -1,0 +1,62 @@
+meta {
+  name: adminLogout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{url}}/logout
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+}
+
+docs {
+  POST /logout
+  
+  * Description:
+    Logs out the currently authenticated admin by clearing the session token (JWT cookie) and redirecting to the login page.
+  
+  * Middleware Used:
+    * fetchSiteConfig: Ensures site configuration is available in res.locals.
+    * csrfProtection: Ensures the logout request is protected by a CSRF token.
+    * authToken: Ensures the user is authenticated before allowing logout.
+  
+  * Access:
+    * Private route — accessible only to authenticated users (requires a valid JWT cookie).
+  
+  * Request Body:
+    * _csrf: CSRF token to prevent cross-site request forgery
+  
+  * Logic Flow:
+    * Validates the CSRF token.
+    * Clears the 'token' cookie from the user's browser.
+    * Redirects to /admin (login screen).
+  
+  * Success Response:
+    * Status 302: Redirects to /admin after clearing the token.
+  
+  * Failure Responses:
+    * If not authenticated: Redirects to /admin without processing logout.
+}

@@ -1,0 +1,66 @@
+meta {
+  name: WebMasterPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/admin/webmaster
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  If-None-Match: W/"4247-eT2SQniYwqy0IF4cmxCznr+V1Is"
+  Priority: u=0, i
+}
+
+docs {
+  GET /admin/webmaster
+  
+  Description:
+    This route is used to render the Webmaster panel page where a Webmaster can access and manage various site configurations and users. Only Webmasters have access to this page, and it provides tools for editing site configurations, managing users, and performing administrative tasks related to the platform.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: Only users with the `WEBMASTER` privilege can access this route and view the Webmaster panel.
+  
+  Request Parameters:
+    None.
+  
+  Response:
+    * Status 200: Successfully renders the Webmaster panel page if the user is authenticated and has the `WEBMASTER` privilege.
+    * Status 403: If the current user does not have the `WEBMASTER` privilege, they are redirected to an error page.
+    * Status 500: Internal server error if any issues occur while fetching the data for the page.
+  
+  Response Content:
+    - Renders the `admin/webmaster` page, which contains the following:
+      - Site configuration details (e.g., registration status, site name, analytics scripts).
+      - A list of users in the system (excluding the current Webmaster).
+      - Controls for managing site settings, such as enabling/disabling registration and managing email configurations.
+      - Forms for updating site-level settings.
+  
+  Example Request:
+    GET /admin/webmaster
+  
+  Notes:
+    * The page provides access to sensitive settings and features such as managing users and configuring site-wide settings. Therefore, it is protected and accessible only to Webmasters.
+    * The page will display an error message if the current user does not have the necessary privileges to access the page.
+    * Site configurations displayed on this page are stored in the database and can be edited by the Webmaster, including enabling or disabling registration, managing analytics scripts, and other critical settings.
+}

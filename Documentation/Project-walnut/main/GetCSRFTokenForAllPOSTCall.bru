@@ -1,0 +1,74 @@
+meta {
+  name: GetCSRFTokenForAllPOSTCall
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/api/test/getCsrfToken
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Cache-Control: max-age=0
+  Connection: keep-alive
+  DNT: 1
+  If-None-Match: W/"34-crO/zjR9Kjrk2loYfFiAJhHwwqA"
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: none
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+script:post-response {
+  let data = res.getBody();
+  
+  bru.setEnvVar("csrf_token", data.csrfToken);
+}
+
+docs {
+  GET /api/test/getCsrfToken
+  
+  Description:
+  * Provides a CSRF token for use in subsequent POST/DELETE requests.
+  * Useful for frontend JS frameworks or API testing tools (e.g., Postman).
+  
+  Middleware Used:
+  * csrfProtection – Automatically generates and attaches a CSRF token.
+  
+  Route Params:
+  * None
+  
+  Query Parameters:
+  * None
+  
+  Request Body Parameters:
+  * None
+  
+  Flow:
+  1. CSRF middleware generates a token for the session.
+  2. Token is returned in JSON format.
+  
+  Success Response:
+  * HTTP Status: 200 OK
+  * Content-Type: application/json
+  * Response Body:
+    {
+      "csrfToken": "string"
+    }
+  
+  Failure Responses:
+  * HTTP 403 (if environment is not set to dev or local)
+  
+  View Rendered:
+  * None (JSON response only)
+}

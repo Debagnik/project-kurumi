@@ -1,0 +1,91 @@
+meta {
+  name: PostComments
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{url}}/post/:id/post-comments
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:path {
+  id: 680148bc20abde10df2bb054
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Cache-Control: max-age=0
+  Connection: keep-alive
+  Content-Type: application/x-www-form-urlencoded
+  DNT: 1
+  Origin: null
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  postId: 680148bc20abde10df2bb054
+  commenterName: tester
+  commentBody: Testing
+  cf-turnstile-response: XXXX.DUMMY.TOKEN.XXXX
+}
+
+docs {
+  POST /post/:id/post-comments
+  
+  Description:
+  * Handles comment submission for a specific blog post.
+  * Stores the comment in the database (moderated or auto-approved based on settings).
+  * Validates CAPTCHA, CSRF token, and input fields.
+  
+  Middleware Used:
+  * csrfProtection – Validates CSRF token from the form.
+  * fetchSiteConfig – Loads site-wide settings.
+  * fetchPost – Loads the blog post by ID from the URL.
+  * turnstile.middleware.verify – Validates Cloudflare Turnstile CAPTCHA response.
+  
+  Request Body Parameters:
+  * name (string, required): Name of the commenter.
+  * email (string, optional): Email of the commenter (can be null/blank).
+  * comment (string, required): The actual comment content.
+  * _csrf (string, required): CSRF token to prevent cross-site request forgery.
+  
+  Flow:
+  1. Validates input fields:
+     * Name and comment must be non-empty.
+     * Comment length is restricted (based on config or logic).
+  2. Validates CAPTCHA using Turnstile.
+  3. Associates the comment with the corresponding post via `req.post._id`.
+  4. Sets `isApproved` based on moderation settings:
+     * true if moderation is disabled.
+     * false if moderation is enabled (admin must approve).
+  5. Saves the comment to MongoDB.
+  6. Flash message set (success or error).
+  7. Redirects back to the same post (`/post/:id`).
+  
+  Success Response:
+  * HTTP Status: 302 (Redirect)
+  * Flash message: Comment posted successfully (or "awaiting moderation" if enabled).
+  * Redirects to: `/post/:id`
+  
+  Failure Responses:
+  * HTTP 302 (Redirect with Flash message)
+    * If CAPTCHA fails.
+    * If validation fails.
+    * If saving fails.
+  
+  View Rendered:
+  * N/A (redirects to the post page)
+}

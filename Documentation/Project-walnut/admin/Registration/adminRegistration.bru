@@ -1,0 +1,76 @@
+meta {
+  name: adminRegistration
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{url}}/register
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  name: subiDoo
+  username: subi-doo
+  password: godFather@1
+  confirm_password: godFather@1
+}
+
+docs {
+  POST /register
+  
+  * Description:
+    Handles user registration for the admin panel. Validates inputs, ensures username uniqueness, checks password strength, and creates a new user if registration is enabled.
+  
+  * Middleware Used:
+    * fetchSiteConfig: Loads and attaches site-wide configuration to res.locals.
+    * csrfProtection: Provides CSRF protection for the registration form.
+  
+  * Access:
+    * Public — accessible to anyone, but actual registration only works if site config allows it.
+  
+  * Request Body:
+    * name (string): Full name of the user.
+    * username (string): Desired username.
+    * password (string): Password (must meet strength requirements).
+    * confirm_password (string): Should match the password field.
+  
+  * Validation:
+    1. All fields must be non-empty.
+    2. Username must match a safe regex pattern (alphanumeric, hyphen, underscore, dot, plus, @).
+    3. Password must be strong (min 8 chars, uppercase, lowercase, number, special char).
+    4. Password and confirm_password must match.
+    5. Username must not already exist.
+    6. Site registration must be enabled in config.
+  
+  * Success Response:
+    * Status 302: Redirects to `/admin/registration` on successful registration.
+  
+  * Failure Responses:
+    * Status 400–409: Renders the registration form with specific error messages (e.g., weak password, invalid username, user already exists).
+    * Status 500: Displays a generic internal server error message if something goes wrong during user creation.
+  
+  * Notes:
+    * Passwords are hashed using bcrypt before being stored in the database.
+    * All form inputs are rendered back to the user with appropriate flash messages on error.
+}

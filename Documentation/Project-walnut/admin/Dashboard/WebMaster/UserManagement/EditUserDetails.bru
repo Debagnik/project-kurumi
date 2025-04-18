@@ -1,0 +1,139 @@
+meta {
+  name: EditUserDetails
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{url}}/edit-user/:userId?_method=PUT
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:query {
+  _method: PUT
+}
+
+params:path {
+  userId: 680209335c40195dc94d3e31
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  name: Kingabed
+  privilege: 2
+}
+
+docs {
+  PUT /edit-user/:id
+  
+  Description:
+    This route allows a Webmaster to update the details of a user, identified by :id, in the admin panel. It enables modification of the user's name and privilege level.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+    * Privileges: Only users with the `WEBMASTER` privilege can access this route and edit other users' details.
+  
+  Request Parameters:
+    - id: The ID of the user to be edited (URL parameter, required).
+    - _method: PUT Method (Query paramameter, required)
+  
+  Request Body:
+    - name: The new name for the user. It should be a string that does not contain any invalid characters. It is required.
+    - privilege: The new privilege level for the user. It should be a valid interger [1 - 3 range] from `PRIVILEGE_LEVELS_ENUM` (e.g., 1 for `WEBMASTER`, 2 for `MODERATOR`, 3 for WRITER/`EDITOR`). It is required.
+  
+  Request Validation:
+    - The `name` must not be empty or contain invalid characters (only alphabets and spaces allowed).
+    - The `privilege` must be a valid level, as per the `PRIVILEGE_LEVELS_ENUM`. (Number, Required) [Min: 1 (Highest privilage), Max: 3 (Lowest Privilage)]
+  
+  Response:
+    * Status 200: The user's details have been updated successfully.
+    * Status 400: Validation error. Either the `name` is empty or contains invalid characters, or the `privilege` is not valid.
+    * Status 403: If the current user does not have the necessary privileges (WEBMASTER).
+    * Status 404: If the user with the specified :id does not exist.
+    * Status 500: Internal server error if an error occurs during the update process.
+  
+  Response Content:
+    - If the update is successful, the user is redirected to the `/admin/webmaster` page.
+    - If the request fails due to validation or privilege errors, an error message is sent as a response.
+  
+  Example Request:
+    PUT /edit-user/60c72b2f9f1b2c001d8f3b52
+    ```
+    {
+      "name": "Jane Doe",
+      "privilege": 2
+    }
+    ```
+  
+  Example Success Response:
+    - Status 200, User details updated successfully:
+      ```
+      {
+        "status": "200",
+        "message": "User updated successfully"
+      }
+      ```
+  
+  Example Error Response (Validation Error - Invalid Name):
+    ```
+    {
+      "status": "400",
+      "error": "validation error",
+      "message": "Invalid characters in name. Only alphabets and spaces are allowed."
+    }
+    ```
+  
+  Example Error Response (Validation Error - Invalid Privilege):
+    ```
+    {
+      "status": "400",
+      "message": "Invalid privilege level"
+    }
+    ```
+  
+  Example Error Response (Unauthorized):
+    ```
+    {
+      "status": "403",
+      "message": "Unauthorized access. Only Webmasters can edit users."
+    }
+    ```
+  
+  Example Error Response (User Not Found):
+    ```
+    {
+      "status": "404",
+      "message": "User not found"
+    }
+    ```
+  
+  Notes:
+    * This route is used to update the details of a user (e.g., their name and privilege).
+    * Only Webmasters can modify user data. If a non-Webmaster user tries to access this route, a 403 error will be returned.
+    * The privilege level of a user is updated based on the `privilege` value sent in the request body.
+    * A validation check ensures that the `name` only contains valid characters and that the `privilege` is one of the allowed values from `PRIVILEGE_LEVELS_ENUM`.
+    * After successful user modification, the user is redirected to the `/admin/webmaster` page.
+}

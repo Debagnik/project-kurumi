@@ -1,0 +1,65 @@
+meta {
+  name: EditPostFromIdPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/edit-post/:postId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  postId: 68020f705c40195dc94d3ed7
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+docs {
+  GET /edit-post/:id
+  
+  Description:
+    Retrieves the details of a specific post (identified by :id) for editing in the admin panel. This route allows the administrator to view the current content of a post and make changes to it. It checks for the user's authentication and renders an editing interface with the post's current data.
+  
+  Middleware Used:
+    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
+  
+  Access:
+    * Private — This route is accessible only to authenticated users.
+  
+  Privilege-based Behavior:
+    * The user must be authenticated, but no additional privileges are required to access this route.
+  
+  Request Parameters:
+    - id: The ID of the post to be edited (URL parameter, required).
+  
+  Response:
+    * Status 200: If the post is successfully retrieved, the post data is provided and the edit-post page is rendered with the current content.
+    * Status 404: If the post with the specified :id does not exist in the database.
+    * Status 500: Internal server error if an error occurs while retrieving the post.
+  
+  Notes:
+    * Retrieves the post data by its unique ID from the database.
+    * Renders the `admin/edit-post` template, which includes a form pre-filled with the post's current details (title, body, description, tags, and thumbnail image URI).
+    * Includes CSRF protection in the form (using `csrfToken`).
+    * The current user's privileges are checked to determine if they can approve or edit the post.
+    * The template also includes an indication of whether the current user is a webmaster or has other relevant privileges.
+  
+  Example Request:
+    * GET /edit-post/60c72b2f9f1b2c001d8f3b52
+}
