@@ -13,6 +13,8 @@ const siteConfig = require('../models/config');
 
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI } = require('../../utils/validations');
 
+const openRouterIntegration = require('../../utils/openRouterIntegration');
+
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
@@ -151,13 +153,13 @@ router.post('/register', async (req, res) => {
     const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
-      if(env && env.toLowerCase() === "production"){
+      if (env && env.toLowerCase() === "production") {
         console.error(400, 'Invalid username format');
       } else {
         console.error(400, 'Invalid username format', username);
       }
       return res.status(400).render('admin/index', {
-        errors: [{ msg: usernameErrorMessage}],
+        errors: [{ msg: usernameErrorMessage }],
         errors_login: [],
         config: res.locals.siteConfig,
         csrfToken: req.csrfToken(),
@@ -412,10 +414,22 @@ router.get('/admin/add-post', authToken, async (req, res) => {
  */
 router.post('/admin/add-post', authToken, async (req, res) => {
   try {
+    await savePostToDB(req, res);
+    return res.status(200).redirect('/dashboard');
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({'code':500, 'message':'Internal Server Error', 'stack':error});
+  }
+
+});
+
+
+async function savePostToDB(req, res) {
+  try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
-      return res.redirect('/admin');
+      console.error('User not found');
+      throw new Error("User not found while saving post.");
     }
 
     const currentSiteConfig = await siteConfig.findOne();
@@ -430,14 +444,16 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
-      return res.status(400).send('Title, body, and description are required!');
+      console.error('Missing required fields!');
+      throw new Error("Title, body, and description are required!");
     }
     const MAX_TITLE_LENGTH = 50;
     const MAX_DESCRIPTION_LENGTH = 500;
     const MAX_BODY_LENGTH = 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
-      return res.status(400).send('Title, body, and description must not exceed their respective limits!');
+      console.error('Title, body, and description must not exceed their respective limits!');
+      throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
@@ -458,13 +474,12 @@ router.post('/admin/add-post', authToken, async (req, res) => {
 
     console.log('New post added by ', currentUser.username, '\n', newPost);
 
-    res.redirect('/dashboard');
+    return newPost._id.toString();
 
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+    throw new Error(`Could not save post data: ${error.message}`);
   }
-});
+}
 
 /**
  * GET
@@ -548,7 +563,7 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       updatePostData.isApproved = req.body.isApproved === 'on'
-    } 
+    }
 
     await post.findByIdAndUpdate(req.params.id, updatePostData);
 
@@ -872,5 +887,28 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
   }
 
 });
+
+/**
+ * POST
+ * Admin - Generate post summary using AI
+ */
+router.post('/admin/generate-post-summary', authToken, async (req, res) => {
+  try {
+    var tempDesc = 'Error:\t' + process.env.RANDOM_NUMBER + 'Failed to write short description from AI check logs';
+    try{
+      tempDesc = await openRouterIntegration.summerizeMarkdownBody(req.body.markdownbody.trim());
+    } catch(error){
+      console.error('Unable to fetch AI Model', error);
+    }
+    req.body.desc = tempDesc;
+    const id = await savePostToDB(req, res);
+    return res.status(200).redirect(`/edit-post/${id}`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
 
 module.exports = router;
