@@ -448,7 +448,7 @@ async function savePostToDB(req, res) {
       throw new Error("Title, body, and description are required!");
     }
     const MAX_TITLE_LENGTH = 50;
-    const MAX_DESCRIPTION_LENGTH = 500;
+    const MAX_DESCRIPTION_LENGTH = 5000;
     const MAX_BODY_LENGTH = 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
