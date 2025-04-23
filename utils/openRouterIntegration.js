@@ -29,7 +29,7 @@ if (!systemPrompt) {
 }
 
 if (!LLM) {
-    throw new Error('LLM is not set in environment variables');
+    throw new Error('LLM_MODEL is not set in environment variables');
 }
 
 
@@ -39,7 +39,7 @@ const openai = new OpenAI({
 
 });
 
-async function summerizeMarkdownBody(markdown) {
+async function summarizeMarkdownBody(markdown) {
     try {
         const outgoingMessage = {
             model: LLM,
@@ -47,11 +47,11 @@ async function summerizeMarkdownBody(markdown) {
             messages: [
                 {
                     role: 'system',
-                    content: systemPrompt + ' ' + process.env.MAX_DESCRIPTION_LENGTH + ' charecters',
+                    content: `${systemPrompt} ${process.env.MAX_DESCRIPTION_LENGTH} characters`,
                 },
                 {
                     role: 'user',
-                    content: `Summarize the following blog written in Markdown (Aboulutely limit your response to ${process.env.MAX_DESCRIPTION_LENGTH} characters):\n\n${markdown}`,
+                    content: `Summarize the following blog written in Markdown (Absolutely limit your response to ${process.env.MAX_DESCRIPTION_LENGTH} characters):\n\n${markdown}`,
                 },
             ],
         };
@@ -69,4 +69,4 @@ async function summerizeMarkdownBody(markdown) {
     }
 }
 
-module.exports = { summerizeMarkdownBody };
+module.exports = { summarizeMarkdownBody };

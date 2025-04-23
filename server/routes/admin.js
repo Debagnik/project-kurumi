@@ -895,15 +895,14 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 router.post('/admin/generate-post-summary', authToken, async (req, res) => {
   try {
     let body = req.body;
-    let tempDesc = 'Error:\t' + process.env.RANDOM_NUMBER + '/nFailed to write short description from AI check logs';
+    const tempDesc = `Error:\t${process.env.RANDOM_NUMBER + '00' || '0000'}\nFailed to auto‑generate summary – check logs.`;
     if (body.markdownbody && body.title && body.tags) {
-      req.body.desc = process.env.RANDOM_NUMBER;
+      req.body.desc = tempDesc + '01';
       try {
-        tempDesc = await openRouterIntegration.summerizeMarkdownBody(req.body.markdownbody.trim());
+        req.body.desc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
       } catch (error) {
         console.error('Unable to fetch AI Model', error);
       }
-      req.body.desc = tempDesc;
     }
     const id = await savePostToDB(req, res);
     return res.status(200).redirect(`/edit-post/${id}`);
