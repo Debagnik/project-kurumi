@@ -41,25 +41,31 @@ const openai = new OpenAI({
 
 async function summerizeMarkdownBody(markdown) {
     try {
-        const completion = await openai.chat.completions.create({
+        const outgoingMessage = {
             model: LLM,
             stream: false,
             messages: [
                 {
                     role: 'system',
-                    content: systemPrompt,
+                    content: systemPrompt + ' ' + process.env.MAX_DESCRIPTION_LENGTH + ' charecters',
                 },
                 {
                     role: 'user',
-                    content: `Summarize the following blog written in Markdown:\n\n${markdown}`,
+                    content: `Summarize the following blog written in Markdown (Aboulutely limit your response to ${process.env.MAX_DESCRIPTION_LENGTH} characters):\n\n${markdown}`,
                 },
             ],
-        });
+        };
 
+        const completion = await openai.chat.completions.create(outgoingMessage);
+
+        if(process.env.NODE_ENV !== 'production'){
+            console.log("Outgoing Message to LLM:\n", outgoingMessage);
+            console.log("Incomming Message from LLM:\n", completion.choices[0].message)
+        }
         return completion.choices[0].message.content;
     } catch (error) {
         console.error('Error from OpenAI:', error);
-        throw new Error('Failed to enhance markdown with AI');
+        throw new Error('Failed to summerize markdown with AI');
     }
 }
 

@@ -418,7 +418,7 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     return res.status(200).redirect('/dashboard');
   } catch (error) {
     console.error(error);
-    res.status(500).json({'code':500, 'message':'Internal Server Error', 'stack':error});
+    res.status(500).json({ 'code': 500, 'message': 'Internal Server Error', 'stack': error });
   }
 
 });
@@ -540,9 +540,9 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       return res.status(400).send('Title, body, and description are required!');
     }
 
-    const MAX_TITLE_LENGTH = 50;
-    const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 100000;
+    const MAX_TITLE_LENGTH = process.env.MAX_TITLE_LENGTH;
+    const MAX_DESCRIPTION_LENGTH = process.env.MAX_DESCRIPTION_LENGTH;
+    const MAX_BODY_LENGTH = process.env.MAX_BODY_LENGTH;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
@@ -894,13 +894,17 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
  */
 router.post('/admin/generate-post-summary', authToken, async (req, res) => {
   try {
-    var tempDesc = 'Error:\t' + process.env.RANDOM_NUMBER + 'Failed to write short description from AI check logs';
-    try{
-      tempDesc = await openRouterIntegration.summerizeMarkdownBody(req.body.markdownbody.trim());
-    } catch(error){
-      console.error('Unable to fetch AI Model', error);
+    let body = req.body;
+    let tempDesc = 'Error:\t' + process.env.RANDOM_NUMBER + '/nFailed to write short description from AI check logs';
+    if (body.markdownbody && body.title && body.tags) {
+      req.body.desc = process.env.RANDOM_NUMBER;
+      try {
+        tempDesc = await openRouterIntegration.summerizeMarkdownBody(req.body.markdownbody.trim());
+      } catch (error) {
+        console.error('Unable to fetch AI Model', error);
+      }
+      req.body.desc = tempDesc;
     }
-    req.body.desc = tempDesc;
     const id = await savePostToDB(req, res);
     return res.status(200).redirect(`/edit-post/${id}`);
   } catch (error) {
