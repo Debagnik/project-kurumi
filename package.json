@@ -30,6 +30,7 @@
     "marked": "^15.0.2",
     "method-override": "^3.0.0",
     "mongoose": "^8.9.5",
+    "openai": "^4.95.1",
     "sanitize-html": "^2.13.1"
   },
   "devDependencies": {

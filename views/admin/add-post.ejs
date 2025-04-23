@@ -3,7 +3,7 @@
     <h1>Add New Post</h1>
 </div>
 
-<form action="add-post" method="post" autocomplete="off" novalidate>
+<form method="post" autocomplete="off" novalidate>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="title">Title:</label>
     <input type="text" id="title" name="title" required placeholder="Add Title Here">
@@ -14,12 +14,14 @@
     <label for="body">Body (type and format in Markdown):</label>
     <textarea id="markdownbody" name="markdownbody" cols="10" rows="10" required placeholder="Enter Body"></textarea>
 
-    <label for="desc">Short Description:</label>
-    <textarea id="desc" name="desc" placeholder="Enter Short Description under 10-50 words" required></textarea>
-
     <label for="tags">Tags:</label>
     <input type="text" id="tags" name="tags" placeholder="Add Tags (comma-separated)" required>
 
-    <input type="submit" id="submit" name="submit" value="Add" class="btn">
+    <label for="desc">Short Description:</label>
+    <textarea id="desc" name="desc" placeholder="Enter Short Description under 10-50 words" required></textarea>
+    <button type="submit" formaction="/admin/generate-post-summary" class="btn">Generate Summary (Beta) </button><p/>
+
+    <button type="submit" formaction="/admin/add-post" class="btn">Add</button>
+    <!--<input type="submit" id="submit" name="submit" value="Add" class="btn">-->
 
 </form>
