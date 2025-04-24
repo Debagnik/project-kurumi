@@ -94,7 +94,7 @@ exports.isWebMaster = (currentUser) => {
  * console.log(result); // Valid script or fallback dummy string
  */
 exports.isValidTrackingScript = (script) => {
-  const dummyString = process.env.DUMMY_STRING;
+  let dummyString = process.env.DUMMY_STRING;
   if(!dummyString){
     dummyString = 'Error on script validation'
     console.warn('Environment Variable DUMMY_STRING that is the default error message for when tracking script fails is not set, please report to Webmaster');

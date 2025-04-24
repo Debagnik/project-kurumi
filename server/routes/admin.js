@@ -913,17 +913,35 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 });
 
 /**
- * POST
- * Admin - Generate post summary using AI
+ * @route POST /admin/generate-post-summary
+ * @description
+ * Admin-only endpoint to generate a blog post summary using an AI model via OpenRouter.
+ * If successful, the summary is injected into the `desc` field and the post is saved.
+ * The user is then redirected to the edit-post page with the generated data pre-filled.
+ *
+ * @access Private (requires `authToken` middleware)
+ * @middleware aiSummaryLimiter - Rate limits excessive summary generation requests
+ *
+ * @param {string} req.body.markdownbody - The raw markdown content of the blog post
+ * @param {string} req.body.title - The title of the blog post
+ * @param {string} req.body.tags - Comma-separated list of tags
+ *
+ * @returns {302 Redirect} Redirects to `/edit-post/:id` on success
+ * @returns {500 InternalServerError} On unexpected failure during summarization or saving
+ *
+ * @notes
+ * - If the AI model fails, a fallback error message is saved in the post description.
+ * - This route still saves the post even if the summary fails to generate.
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryLimiter, async (req, res) => {
   try {
     let body = req.body;
-    const tempDesc = 'Error: Failed to auto-generate summary – check logs.';
+    let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
     if (body.markdownbody && body.title && body.tags) {
-      req.body.desc = tempDesc;
+      req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
       try {
-        req.body.desc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+        tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+        req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
       } catch (error) {
         console.error('Unable to generate summary with AI model:', error);
         req.body.desc = `${tempDesc} Error: ${error.message || 'Unknown error'}`;
