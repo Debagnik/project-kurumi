@@ -71,8 +71,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
       SYSTEM_PROMPT=You are an assistant editor that summarizes the blogpost body in  #Required if AI Integration is enabled from webmaster.
       USER_PROMPT=Summarize the following blog written in Markdown (Absolutely limit your response to #Required if AI Integration is enabled from webmaster.
       USER_PROMPT_2=characters) do not add character/word count in the response. #Required if AI Integration is enabled from webmaster.
--     LLM_MODEL=<The Model name of your choice> #Required if AI Integration is enabled from webmaster.
-+     LLM_MODEL=<The Model name supported by OpenRouter, e.g., "anthropic/claude-3-opus"> #Required if AI Integration is enabled from webmaster.
+      LLM_MODEL=<The Model name supported by OpenRouter, e.g., "anthropic/claude-3-opus"> #Required if AI Integration is enabled from webmaster.
      ```
 5. **Start the application:**
    ```bash
