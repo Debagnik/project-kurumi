@@ -4,10 +4,10 @@
  * Utility functions and constants for validating URIs and user privileges in the system.
  */
 
-// Regular expression patterns for tracking scripts
+// Regular expression patterns for tracking scripts issue #87
 const GA_REGEX = /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/;
-const INSPECTLET_REGEX = new RegExp('window\\.__insp\\s*=\\s*window\\.__insp\\s*\\|\\|\\s*\\[\\];.*inspectlet\\.js\\?wid=\\d+', 's');
-const CLARITY_REGEX = new RegExp(`<script[^>]*>\\s*\\(function\\([^)]*\\)\\{[\\s\\S]*?["']https:\\/\\/www\\.clarity\\.ms\\/tag\\/["']\\s*\\+\\s*[a-zA-Z0-9]+[\\s\\S]*?\\}\\)\\([^)]*\\);\\s*<\\/script>`,'s');
+const INSPECTLET_REGEX = /window\.__insp\s*=\s*window\.__insp\s*\|\|\s*\[\];.*inspectlet\.js\?wid=\d+/s;
+const CLARITY_REGEX = /<script[^>]*>\s*\(function\([^)]*\)\{[\s\S]*?["']https:\/\/www\.clarity\.ms\/tag\/["']\s*\+\s*[a-zA-Z0-9]+[\s\S]*?\}\)\([^)]*\);\s*<\/script>/s;
 
 /**
  * Enum for privilege levels used to determine user roles.
@@ -95,6 +95,10 @@ exports.isWebMaster = (currentUser) => {
  */
 exports.isValidTrackingScript = (script) => {
   const dummyString = process.env.DUMMY_STRING;
+  if(!dummyString){
+    dummyString = 'Error on script validation'
+    console.warn('Environment Variable DUMMY_STRING that is the default error message for when tracking script fails is not set, please report to Webmaster');
+  }
 
   // Basic validation
   if (typeof script !== 'string' || script.length > 5000) {

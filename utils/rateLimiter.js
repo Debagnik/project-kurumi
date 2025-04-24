@@ -17,4 +17,18 @@ const aiSummaryLimiter = rateLimit({
   legacyHeaders: false,  // Disable deprecated `X-RateLimit-*` headers
 });
 
-module.exports = { aiSummaryLimiter };
+/**
+ * Rate limiter middleware for authentication endpoints (e.g., login).
+ *
+ * Limits each IP to 5 requests every 15 minutes to mitigate brute-force attacks.
+ *
+ * @constant
+ * @type {import('express-rate-limit').RateLimitRequestHandler}
+ */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, //15 mins
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many login attempts in small time, timeout'
+});
+
+module.exports = { aiSummaryLimiter, authLimiter };
