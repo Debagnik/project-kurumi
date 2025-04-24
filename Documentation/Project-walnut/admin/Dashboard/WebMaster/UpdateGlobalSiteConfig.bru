@@ -73,100 +73,79 @@ body:form-urlencoded {
 }
 
 docs {
-  POST /edit-site-config
+  # POST /edit-site-config
   
-  Description:
-    This route is used to update the global site configurations. It allows Webmasters to modify settings like site name, registration options, meta tags, analytics scripts, and more. Only Webmasters have the privilege to access and update the site configuration.
+  ## Description
   
-  Middleware Used:
-    * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
-    * CSRF Protection: Ensures that the request is made from a valid session and not from a third-party malicious site.
+  This route updates the global configuration settings of the site. It allows users with `WEBMASTER` privileges to modify values related to SEO metadata, analytics, default UI elements, pagination, CAPTCHA integration, and feature toggles such as user registration and comment functionality.
   
-  Access:
-    * Private — This route is accessible only to authenticated users.
-    * Privileges: Only users with the `WEBMASTER` Access Level of 1 privilege can access and update the site configuration.
+  ---
   
-  Request Parameters (Form Data):
-    - `siteName`: (String) The name of the site (e.g., "My Blog").
-    - `siteMetaDataKeywords`: (String) Meta keywords for SEO optimization.
-    - `siteMetaDataAuthor`: (String) Author name for meta tag.
-    - `siteMetaDataDescription`: (String) Meta description for the site.
-    - `siteAdminEmail`: (String) The email address for the site admin (must be a valid email format).
-    - `siteDefaultThumbnailUri`: (String) URI for the default post thumbnail image.
-    - `defaultPaginationLimit`: (Number) The default number of items per page for pagination (must be between 1 and 100).
-    - `googleAnalyticsScript`: (String) Google Analytics tracking script.
-    - `inspectletScript`: (String) Inspectlet tracking script.
-    - `homeWelcomeText`: (String) Welcome text for the homepage.
-    - `homeWelcomeSubText`: (String) Subtext for the homepage welcome message.
-    - `homepageWelcomeImage`: (String) URI for the homepage welcome image.
-    - `copyrightText`: (String) The copyright text to be displayed on the site.
-    - `searchLimit`: (Number) The maximum number of search results per query (must be between 1 and 50).
-    - `cloudflareSiteKey`: (String) Cloudflare site key for CAPTCHA integration.
-    - `cloudflareServerKey`: (String) Cloudflare server key for CAPTCHA validation.
-    - `isRegistrationEnabled`: (Boolean) Whether registration is enabled on the site.
-    - `isCommentsEnabled`: (Boolean) Whether comments are enabled on the site.
-    - `isCaptchaEnabled`: (Boolean) Whether CAPTCHA protection is enabled for form submissions.
+  ## Middleware Used
   
-  Response:
-    * Status 200: Successfully updated the site configuration.
-    * Status 400: Validation error, invalid input data (e.g., invalid email format, pagination limit out of range).
-    * Status 500: Internal server error, if any issues occur during the update process.
+  - **authToken**: Validates the JWT token of the user to ensure authentication.
+  - **CSRF Protection**: Ensures the request is legitimate and originates from a valid user session.
   
-  Response Content:
-    - On success: Redirects to `/admin/webmaster` with an updated site configuration.
-    - On error: Returns an error message with a relevant HTTP status code.
+  ---
   
-  Example Request:
-    POST /edit-site-config
-    {
-      "siteName": "My New Blog",
-      "siteMetaDataKeywords": "blog, tech, coding",
-      "siteMetaDataAuthor": "John Doe",
-      "siteMetaDataDescription": "A tech blog about coding",
-      "siteAdminEmail": "admin@myblog.com",
-      "siteDefaultThumbnailUri": "http://example.com/default-thumbnail.jpg",
-      "defaultPaginationLimit": 10,
-      "googleAnalyticsScript": "UA-12345678-1",
-      "inspectletScript": "INS-1234567890",
-      "homeWelcomeText": "Welcome to My Blog!",
-      "homeWelcomeSubText": "Sharing knowledge and insights on tech and coding.",
-      "homepageWelcomeImage": "http://example.com/welcome.jpg",
-      "copyrightText": "© 2025 My Blog",
-      "searchLimit": 20,
-      "cloudflareSiteKey": "example-site-key",
-      "cloudflareServerKey": "example-server-key",
-      "isRegistrationEnabled": true,
-      "isCommentsEnabled": true,
-      "isCaptchaEnabled": true
-    }
+  ## Access Control
   
-  Example Success Response:
-    - Status 200, Site configuration updated successfully:
-      {
-        "status": "200",
-        "message": "Site configuration updated successfully"
-      }
+  - **Access**: Private
+  - **Required Role**: Only users with `WEBMASTER` access level (typically privilege level 1) are allowed to access this route.
   
-  Example Error Response (Invalid Email Format):
-    {
-      "status": "400",
-      "error": "Invalid email format"
-    }
+  ---
   
-  Example Error Response (Invalid Pagination Limit):
-    {
-      "status": "400",
-      "error": "Invalid pagination limit"
-    }
+  ## Request Body Parameters
   
-  Example Error Response (Internal Server Error):
-    {
-      "status": "500",
-      "error": "Internal Server Error"
-    }
+  | Field                      | Type     | Required | Description                                                                 |
+  |---------------------------|----------|----------|-----------------------------------------------------------------------------|
+  | `siteName`                | String   | Yes      | Name of the site to display.                                                |
+  | `siteMetaDataKeywords`    | String   | Yes      | SEO keywords for meta tag.                                                  |
+  | `siteMetaDataAuthor`      | String   | Yes      | Author name for the site's metadata.                                        |
+  | `siteMetaDataDescription` | String   | Yes      | Description for SEO and browser previews.                                   |
+  | `siteAdminEmail`          | String   | Yes      | Email address of the site administrator (must be valid email format).       |
+  | `siteDefaultThumbnailUri` | String   | Yes      | Default thumbnail image URL for posts.                                      |
+  | `defaultPaginationLimit`  | Number   | Yes      | Default number of posts per page (range: 1–100).                            |
+  | `googleAnalyticsScript`   | String   | Optional | Google Analytics tracking code.                                             |
+  | `inspectletScript`        | String   | Optional | Inspectlet script for behavior analytics.                                   |
+  | `homeWelcomeText`         | String   | Yes      | Main welcome message on the homepage.                                       |
+  | `homeWelcomeSubText`      | String   | Yes      | Subtext or tagline for the homepage.                                        |
+  | `homepageWelcomeImage`    | String   | Yes      | Image URL shown on the homepage hero section.                               |
+  | `copyrightText`           | String   | Yes      | Copyright message displayed in the site footer.                             |
+  | `searchLimit`             | Number   | Yes      | Maximum number of search results per request (range: 1–50).                 |
+  | `cloudflareSiteKey`       | String   | Optional | CAPTCHA site key for Cloudflare Turnstile.                                  |
+  | `cloudflareServerKey`     | String   | Optional | CAPTCHA server key for validation.                                          |
+  | `isRegistrationEnabled`   | Boolean  | Yes      | Enables/disables user account registration.                                 |
+  | `isCommentsEnabled`       | Boolean  | Yes      | Enables/disables blog comment functionality.                                |
+  | `isCaptchaEnabled`        | Boolean  | Yes      | Enables/disables CAPTCHA validation on forms.                               |
+  | `isAISummerizerEnabled`   | Boolean  | Yes      | Enables/disables AI-powered blog summary generation.                        |
   
-  Notes:
-    * The route allows Webmasters to update critical settings related to the site's functionality, such as registration, comment system, pagination, and more.
-    * All fields are validated for correctness, including email format, pagination limits, and URL validity.
-    * If the site configuration does not already exist, it will be created with the provided data.
+  ---
+  
+  ## Responses
+  
+  ### Success
+  
+  - **Status Code**: `200 OK`
+  - **Action**: Redirects to `/admin/webmaster` with a success message.
+  
+  ### Client Error
+  
+  - **Status Code**: `400 Bad Request`
+  - **Cause**: Validation errors such as invalid email format or out-of-bound numeric fields.
+  
+  ### Server Error
+  
+  - **Status Code**: `500 Internal Server Error`
+  - **Cause**: Any server-side issue while processing the update.
+  
+  ---
+  
+  ## Notes
+  
+  - This route is intended for backend administrative tasks and should only be accessible to trusted users.
+  - If the site configuration does not already exist, a new record is created based on submitted data.
+  - All field inputs are validated for data type, range, and format.
+  - Enabling/disabling features via boolean toggles gives admins fine control over the site behavior.
+  
 }
