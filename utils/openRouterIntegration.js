@@ -82,7 +82,8 @@ async function summarizeMarkdownBody(markdown) {
          };
     } catch (error) {
         console.error('Error from OpenRouter:', error);
-        throw new Error('Failed to summarize markdown with AI');
+        throw new Error(`Failed to summarize markdown with AI: ${error.message || 'Unknown error'}`);
+
     }
 }
 

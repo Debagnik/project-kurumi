@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
  */
-const aiSummaryLimiter = rateLimit({
+const aiSummaryRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 10, // Limit each IP to 10 requests per minute
   message: 'Too many summary generation attempts, please try again later.',
@@ -25,10 +25,11 @@ const aiSummaryLimiter = rateLimit({
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
  */
-const authLimiter = rateLimit({
+const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, //15 mins
   max: 5, // limit each IP to 5 requests per windowMs
   message: 'Too many login attempts in small time, timeout'
 });
 
-module.exports = { aiSummaryLimiter, authLimiter };
+module.exports = { aiSummaryRateLimiter, authRateLimiter };
+
