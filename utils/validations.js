@@ -4,6 +4,11 @@
  * Utility functions and constants for validating URIs and user privileges in the system.
  */
 
+// Regular expression patterns for tracking scripts
+const GA_REGEX = /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/;
+const INSPECTLET_REGEX = new RegExp('window\\.__insp\\s*=\\s*window\\.__insp\\s*\\|\\|\\s*\\[\\];.*inspectlet\\.js\\?wid=\\d+', 's');
+const CLARITY_REGEX = new RegExp(`<script[^>]*>\\s*\\(function\\([^)]*\\)\\{[\\s\\S]*?["']https:\\/\\/www\\.clarity\\.ms\\/tag\\/["']\\s*\\+\\s*[a-zA-Z0-9]+[\\s\\S]*?\\}\\)\\([^)]*\\);\\s*<\\/script>`,'s');
+
 /**
  * Enum for privilege levels used to determine user roles.
  * @readonly
@@ -67,4 +72,55 @@ exports.isWebMaster = (currentUser) => {
     return false;
   }
   return typeof currentUser.privilege === 'number' && currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER;
+};
+
+/**
+ * Validates whether a given script string matches one of the known safe tracking scripts.
+ *
+ * Supported tracking scripts:
+ * - Google Analytics (GA4)
+ * - Inspectlet
+ * - Microsoft Clarity
+ *
+ * This function uses strict regular expressions and structure checks to validate known
+ * safe script patterns, preventing injection of arbitrary or malicious scripts.
+ *
+ * @param {string} script - The script content to validate.
+ * @returns {string} - Returns the original script if it's valid. Otherwise, returns a dummy
+ *                     placeholder string defined in the `DUMMY_STRING` environment variable.
+ *
+ * @example
+ * const result = isValidTrackingScript(req.body.googleAnalyticsScript);
+ * console.log(result); // Valid script or fallback dummy string
+ */
+exports.isValidTrackingScript = (script) => {
+  const dummyString = process.env.DUMMY_STRING;
+
+  // Basic validation
+  if (typeof script !== 'string' || script.length > 5000) {
+    return dummyString;
+  }
+
+  try {
+    // Google Analytics validation: must match regex and contain 'gtag('config')'
+    if (GA_REGEX.test(script) && script.includes("gtag('config'")) {
+      return script;
+    }
+
+    // Inspectlet validation
+    if (INSPECTLET_REGEX.test(script)) {
+      return script;
+    }
+
+    // Microsoft Clarity validation
+    if (CLARITY_REGEX.test(script)) {
+      return script;
+    }
+
+    // None matched
+    return dummyString;
+  } catch (error) {
+    console.error('Error validating tracking script:', error);
+    return dummyString;
+  }
 };

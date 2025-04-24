@@ -11,7 +11,7 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 
@@ -674,8 +674,38 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
 });
 
 /**
- * POST
- * Site Level Settings
+ * @route POST /edit-site-config
+ * @description Updates global site configuration settings. This route is protected and accessible only to users
+ *              with `WEBMASTER` privilege. It validates and sanitizes user input, updates the settings in the
+ *              database, and handles both the creation and updating of site configuration records.
+ * 
+ * @middleware authToken - Ensures the request is authenticated and attaches `req.userId`.
+ * 
+ * @request
+ * @body {string} siteName - The name of the site (sanitized).
+ * @body {string} siteMetaDataKeywords - Meta keywords for the site (sanitized).
+ * @body {string} siteMetaDataAuthor - Author metadata (sanitized).
+ * @body {string} siteMetaDataDescription - Site meta description (sanitized).
+ * @body {string} googleAnalyticsScript - Google Analytics script (validated).
+ * @body {string} inspectletScript - Inspectlet or Microsoft Clarity tracking script (validated).
+ * @body {string} siteAdminEmail - Site admin email (validated).
+ * @body {string} siteDefaultThumbnailUri - Default thumbnail URI for posts (validated as URL).
+ * @body {number} defaultPaginationLimit - Default pagination count (validated).
+ * @body {number} searchLimit - Default search result limit (validated).
+ * @body {string} homeWelcomeText - Homepage welcome text (sanitized).
+ * @body {string} homeWelcomeSubText - Homepage welcome subtext (sanitized).
+ * @body {string} homepageWelcomeImage - Homepage image URL (validated as URL).
+ * @body {string} copyrightText - Copyright notice (sanitized).
+ * @body {string} cloudflareSiteKey - CAPTCHA site key for Cloudflare Turnstile (sanitized).
+ * @body {string} cloudflareServerKey - CAPTCHA secret key for Cloudflare Turnstile (sanitized).
+ * @body {string} isRegistrationEnabled - 'on' if registration is enabled.
+ * @body {string} isCommentsEnabled - 'on' if comments are enabled.
+ * @body {string} isCaptchaEnabled - 'on' if CAPTCHA is enabled.
+ * 
+ * @returns {302} Redirects to /admin/webmaster on success.
+ * @returns {400} If any field fails validation.
+ * @returns {403} If the user is not authorized.
+ * @returns {500} If an internal server error occurs.
  */
 router.post('/edit-site-config', authToken, async (req, res) => {
   try {
@@ -723,24 +753,24 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         isRegistrationEnabled: registrationEnable,
         isCommentsEnabled: commentsEnabled,
         isCaptchaEnabled: captchaEnabled,
-        siteName: req.body.siteName,
-        siteMetaDataKeywords: req.body.siteMetaDataKeywords,
-        siteMetaDataAuthor: req.body.siteMetaDataAuthor,
-        siteMetaDataDescription: req.body.siteMetaDataDescription,
-        siteAdminEmail: req.body.siteAdminEmail,
+        siteName: sanitizeHtml(req.body.siteName),
+        siteMetaDataKeywords: sanitizeHtml(req.body.siteMetaDataKeywords),
+        siteMetaDataAuthor: sanitizeHtml(req.body.siteMetaDataAuthor),
+        siteMetaDataDescription: sanitizeHtml(req.body.siteMetaDataDescription),
+        googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
+        siteAdminEmail: sanitizeHtml(req.body.siteAdminEmail),
         siteDefaultThumbnailUri: validUrl,
         defaultPaginationLimit: req.body.defaultPaginationLimit,
         lastModifiedDate: Date.now(),
         lastModifiedBy: currentUser.username,
-        googleAnalyticsScript: req.body.googleAnalyticsScript,
-        inspectletScript: req.body.inspectletScript,
-        homeWelcomeText: req.body.homeWelcomeText,
-        homeWelcomeSubText: req.body.homeWelcomeSubText,
+        inspectletScript: isValidTrackingScript(req.body.inspectletScript),
+        homeWelcomeText: sanitizeHtml(req.body.homeWelcomeText),
+        homeWelcomeSubText: sanitizeHtml(req.body.homeWelcomeSubText),
         homepageWelcomeImage: validHomePageImageUri,
-        copyrightText: req.body.copyrightText,
+        copyrightText: sanitizeHtml(req.body.copyrightText),
         searchLimit: searchLimit,
-        cloudflareSiteKey: req.body.cloudflareSiteKey,
-        cloudflareServerKey: req.body.cloudflareServerKey
+        cloudflareSiteKey: sanitizeHtml(req.body.cloudflareSiteKey),
+        cloudflareServerKey: sanitizeHtml(req.body.cloudflareServerKey)
       });
 
       if (!globalSiteConfig) {
