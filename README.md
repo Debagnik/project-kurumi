@@ -1,6 +1,6 @@
 # Project Walnut (クルミ)
 
-![Walnut_Lycoris-Recoil](https://github.com/user-attachments/assets/e387eeb7-0bff-48b1-a277-264d28ccf0a9)   
+![Walnut_Lycoris-Recoil](public\img\kurumi.png)   
 [Walnut the mascot](https://lycoris-recoil.fandom.com/wiki/Kurumi)
 
 Welcome to the **Project Walnut** project. It is a simple webapp for small-startups to post their blogs, or news outlets for publishing news article 
@@ -20,6 +20,8 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
   - Comments posting
   - Comments to be turned off sitewide from global config
   - Cloudflare Turnstile intregation for Bot attacks.
+- **AI Integration**
+  - LLM Based Paraphrazer/Summarizer/TL;DR generation (In Beta Stage)
 - **Responsive Design**
   - Accessible on both desktop and mobile devices.
   - Accessible Dark/light UI for better reading experience (planned future scope)
@@ -51,12 +53,25 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
 4. **Configure the environment variables:**
    - Create a `.env` file and add your MongoDB URI and any other required configurations as below.
      ```text
-     MONGO_DB_URI=mongodb://username:password@host/blog #Required
-     PORT= #Optonal, defaults to 5000
-     JWT_SECRET=your-default-jwt-secrets #Required
-     SESSION_SECRET=your-secure-session-secret #Required
-     NODE_ENV=dev-local #Defaults to dev-local use production in production scenario
-     DEFAULT_POST_THUMBNAIL_LINK=/img/placeholder.webp #Keep it as is
+      ### Must have to run this application
+      MONGO_DB_URI=mongodb+srv://<test>@blog-site.hx49l.mongodb.net/<test> #Required
+      PORT= #Optonal, defaults to 5000
+      JWT_SECRET=your-default-jwt-secrets #Required
+      SESSION_SECRET=your-secure-session-secret #Required
+      NODE_ENV=dev-local #Defaults to dev-local use production in production scenario
+      DEFAULT_POST_THUMBNAIL_LINK=/img/placeholder.webp #Keep it as is
+      
+      MAX_TITLE_LENGTH=100 
+      MAX_DESCRIPTION_LENGTH=10000
+      MAX_BODY_LENGTH=100000
+      DUMMY_STRING=Error Message: The Tracking URL is not valid check with Web Master
+
+      ## Enviroment variable Required if LLM Based Blog Summary generator is enabled.
+      OPENROUTER_API_KEY=<Your OpenRouter API Key> #Optional OpenAI or OpenRouter Secret Key for AI Integration
+      SYSTEM_PROMPT=You are an assistant editor that summarizes the blogpost body in  #Required if AI Integration is enabled from webmaster.
+      USER_PROMPT=Summarize the following blog written in Markdown (Absolutely limit your response to #Required if AI Integration is enabled from webmaster.
+      USER_PROMPT_2=characters) do not add character/word count in the response. #Required if AI Integration is enabled from webmaster.
+      LLM_MODEL=<The Model name of your choice> #Required if AI Integration is enabled from webmaster.
      ```
 5. **Start the application:**
    ```bash
@@ -95,4 +110,5 @@ For any questions or concerns, you can reach out at [info@debagnik.in](mailto:in
 ## Acknowledgments
 This project is enhanced by:
 - [CodeRabbitAI](https://coderabbit.ai) - Code review assistance
-- [Tabnine AI](https://www.tabnine.com/) - Code completion support
+- [Tabnine AI](https://www.tabnine.com/) - Code completion support (Discontinued)
+- [ChatGPT](https://chatgpt.com) - Google and Stack overflow alternative
