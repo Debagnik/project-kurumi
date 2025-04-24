@@ -1,7 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
 const sanitizeHtml = require('sanitize-html');
 const marked = require('marked');
@@ -11,7 +10,11 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
+
+const openRouterIntegration = require('../../utils/openRouterIntegration');
+const { aiSummaryRateLimiter, authRateLimiter } = require('../../utils/rateLimiter');
+
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -20,11 +23,6 @@ const adminLayout = '../views/layouts/admin';
 if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
 }
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, //15 mins
-  max: 5 // limit each IP to 5 requests per windowMs
-});
 
 // adding admin CSRF protection middleware
 const csrfProtection = csrf({ cookie: true });
@@ -52,23 +50,20 @@ const authToken = (req, res, next) => {
 /**
  * Site config Middleware
  */
-
 const fetchSiteConfig = async (req, res, next) => {
   try {
     const config = await siteConfig.findOne();
     if (!config) {
       console.warn('Site config is not available');
-      res.locals.siteConfig = {};
-    } else {
-      res.locals.siteConfig = config;
     }
-    next();
+    res.locals.siteConfig = config || {};
   } catch (error) {
     console.error("Site Config Fetch error", error.message);
     res.locals.siteConfig = {};
-    next();
   }
-}
+  next();
+};
+
 
 router.use(fetchSiteConfig);
 
@@ -106,7 +101,6 @@ function markdownToHtml(markdownString) {
  */
 router.get('/admin', async (req, res) => {
   try {
-
     const locals = {
       title: "Admin Panel",
       description: "Admin Panel",
@@ -151,13 +145,13 @@ router.post('/register', async (req, res) => {
     const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
-      if(env && env.toLowerCase() === "production"){
+      if (env && env.toLowerCase() === "production") {
         console.error(400, 'Invalid username format');
       } else {
         console.error(400, 'Invalid username format', username);
       }
       return res.status(400).render('admin/index', {
-        errors: [{ msg: usernameErrorMessage}],
+        errors: [{ msg: usernameErrorMessage }],
         errors_login: [],
         config: res.locals.siteConfig,
         csrfToken: req.csrfToken(),
@@ -249,7 +243,7 @@ router.post('/register', async (req, res) => {
  * POST
  * Admin - Check Login
  */
-router.post('/admin', authLimiter, async (req, res) => {
+router.post('/admin', authRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -412,10 +406,22 @@ router.get('/admin/add-post', authToken, async (req, res) => {
  */
 router.post('/admin/add-post', authToken, async (req, res) => {
   try {
+    await savePostToDB(req, res);
+    return res.status(200).redirect('/dashboard');
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ 'code': 500, 'message': 'Internal Server Error', 'stack': error });
+  }
+
+});
+
+
+async function savePostToDB(req, res) {
+  try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
-      return res.redirect('/admin');
+      console.error('User not found');
+      throw new Error("User not found while saving post.");
     }
 
     const currentSiteConfig = await siteConfig.findOne();
@@ -430,14 +436,15 @@ router.post('/admin/add-post', authToken, async (req, res) => {
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
-      return res.status(400).send('Title, body, and description are required!');
+      console.error('Missing required fields!');
+      throw new Error("Title, body, and description are required!");
     }
-    const MAX_TITLE_LENGTH = 50;
-    const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 100000;
-
+    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
+    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
+    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
-      return res.status(400).send('Title, body, and description must not exceed their respective limits!');
+      console.error('Title, body, and description must not exceed their respective limits!');
+      throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
@@ -458,13 +465,12 @@ router.post('/admin/add-post', authToken, async (req, res) => {
 
     console.log('New post added by ', currentUser.username, '\n', newPost);
 
-    res.redirect('/dashboard');
+    return newPost._id.toString();
 
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+    throw new Error(`Could not save post data: ${error.message}`);
   }
-});
+}
 
 /**
  * GET
@@ -525,9 +531,9 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       return res.status(400).send('Title, body, and description are required!');
     }
 
-    const MAX_TITLE_LENGTH = 50;
-    const MAX_DESCRIPTION_LENGTH = 500;
-    const MAX_BODY_LENGTH = 100000;
+    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
+    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
+    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
@@ -548,7 +554,7 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
 
     if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       updatePostData.isApproved = req.body.isApproved === 'on'
-    } 
+    }
 
     await post.findByIdAndUpdate(req.params.id, updatePostData);
 
@@ -660,8 +666,38 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
 });
 
 /**
- * POST
- * Site Level Settings
+ * @route POST /edit-site-config
+ * @description Updates global site configuration settings. This route is protected and accessible only to users
+ *              with `WEBMASTER` privilege. It validates and sanitizes user input, updates the settings in the
+ *              database, and handles both the creation and updating of site configuration records.
+ * 
+ * @middleware authToken - Ensures the request is authenticated and attaches `req.userId`.
+ * 
+ * @request
+ * @body {string} siteName - The name of the site (sanitized).
+ * @body {string} siteMetaDataKeywords - Meta keywords for the site (sanitized).
+ * @body {string} siteMetaDataAuthor - Author metadata (sanitized).
+ * @body {string} siteMetaDataDescription - Site meta description (sanitized).
+ * @body {string} googleAnalyticsScript - Google Analytics script (validated).
+ * @body {string} inspectletScript - Inspectlet or Microsoft Clarity tracking script (validated).
+ * @body {string} siteAdminEmail - Site admin email (validated).
+ * @body {string} siteDefaultThumbnailUri - Default thumbnail URI for posts (validated as URL).
+ * @body {number} defaultPaginationLimit - Default pagination count (validated).
+ * @body {number} searchLimit - Default search result limit (validated).
+ * @body {string} homeWelcomeText - Homepage welcome text (sanitized).
+ * @body {string} homeWelcomeSubText - Homepage welcome subtext (sanitized).
+ * @body {string} homepageWelcomeImage - Homepage image URL (validated as URL).
+ * @body {string} copyrightText - Copyright notice (sanitized).
+ * @body {string} cloudflareSiteKey - CAPTCHA site key for Cloudflare Turnstile (sanitized).
+ * @body {string} cloudflareServerKey - CAPTCHA secret key for Cloudflare Turnstile (sanitized).
+ * @body {string} isRegistrationEnabled - 'on' if registration is enabled.
+ * @body {string} isCommentsEnabled - 'on' if comments are enabled.
+ * @body {string} isCaptchaEnabled - 'on' if CAPTCHA is enabled.
+ * 
+ * @returns {302} Redirects to /admin/webmaster on success.
+ * @returns {400} If any field fails validation.
+ * @returns {403} If the user is not authorized.
+ * @returns {500} If an internal server error occurs.
  */
 router.post('/edit-site-config', authToken, async (req, res) => {
   try {
@@ -698,6 +734,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
       const commentsEnabled = req.body.isCommentsEnabled === 'on';
       const captchaEnabled = req.body.isCaptchaEnabled === 'on';
+      const aISummerizerEnabled = req.body.isAISummerizerEnabled === 'on';
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
       if (req.body.homepageWelcomeImage) {
@@ -705,35 +742,36 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
 
       // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled) => ({
+      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled) => ({
         isRegistrationEnabled: registrationEnable,
         isCommentsEnabled: commentsEnabled,
         isCaptchaEnabled: captchaEnabled,
-        siteName: req.body.siteName,
-        siteMetaDataKeywords: req.body.siteMetaDataKeywords,
-        siteMetaDataAuthor: req.body.siteMetaDataAuthor,
-        siteMetaDataDescription: req.body.siteMetaDataDescription,
-        siteAdminEmail: req.body.siteAdminEmail,
+        siteName: sanitizeHtml(req.body.siteName),
+        siteMetaDataKeywords: sanitizeHtml(req.body.siteMetaDataKeywords),
+        siteMetaDataAuthor: sanitizeHtml(req.body.siteMetaDataAuthor),
+        siteMetaDataDescription: sanitizeHtml(req.body.siteMetaDataDescription),
+        googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
+        siteAdminEmail: sanitizeHtml(req.body.siteAdminEmail),
         siteDefaultThumbnailUri: validUrl,
         defaultPaginationLimit: req.body.defaultPaginationLimit,
         lastModifiedDate: Date.now(),
         lastModifiedBy: currentUser.username,
-        googleAnalyticsScript: req.body.googleAnalyticsScript,
-        inspectletScript: req.body.inspectletScript,
-        homeWelcomeText: req.body.homeWelcomeText,
-        homeWelcomeSubText: req.body.homeWelcomeSubText,
+        inspectletScript: isValidTrackingScript(req.body.inspectletScript),
+        homeWelcomeText: sanitizeHtml(req.body.homeWelcomeText),
+        homeWelcomeSubText: sanitizeHtml(req.body.homeWelcomeSubText),
         homepageWelcomeImage: validHomePageImageUri,
-        copyrightText: req.body.copyrightText,
+        copyrightText: sanitizeHtml(req.body.copyrightText),
         searchLimit: searchLimit,
-        cloudflareSiteKey: req.body.cloudflareSiteKey,
-        cloudflareServerKey: req.body.cloudflareServerKey
+        cloudflareSiteKey: sanitizeHtml(req.body.cloudflareSiteKey),
+        cloudflareServerKey: sanitizeHtml(req.body.cloudflareServerKey),
+        isAISummerizerEnabled: aISummerizerEnabled
       });
 
       if (!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled));
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled), { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
@@ -871,6 +909,55 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 
+});
+
+/**
+ * @route POST /admin/generate-post-summary
+ * @description
+ * Admin-only endpoint to generate a blog post summary using an AI model via OpenRouter.
+ * If successful, the summary is injected into the `desc` field and the post is saved.
+ * The user is then redirected to the edit-post page with the generated data pre-filled.
+ *
+ * @access Private (requires `authToken` middleware)
+ * @middleware aiSummaryLimiter - Rate limits excessive summary generation requests
+ *
+ * @param {string} req.body.markdownbody - The raw markdown content of the blog post
+ * @param {string} req.body.title - The title of the blog post
+ * @param {string} req.body.tags - Comma-separated list of tags
+ *
+ * @returns {302 Redirect} Redirects to `/edit-post/:id` on success
+ * @returns {500 InternalServerError} On unexpected failure during summarization or saving
+ *
+ * @notes
+ * - If the AI model fails, a fallback error message is saved in the post description.
+ * - This route still saves the post even if the summary fails to generate.
+ */
+router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
+  try {
+    let body = req.body;
+    let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
+    if (res.locals.siteConfig.isAISummerizerEnabled) {
+      if (body.markdownbody && body.title && body.tags) {
+        req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
+        try {
+          tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+          req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
+        } catch (error) {
+          console.error('Unable to generate summary with AI model:', error);
+          req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);
+
+        }
+      }
+    } else {
+      console.error('AI Summary Generator not enabled on site config, check with Web Master');
+      req.body.desc = 'AI Summary Generator is not enabled - Check with webmaster';
+    }
+    const id = await savePostToDB(req, res);
+    return res.status(200).redirect(`/edit-post/${id}`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 module.exports = router;

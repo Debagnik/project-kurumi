@@ -60,6 +60,11 @@
             <%= config.isCaptchaEnabled? 'checked' : '' %>>
         <br>
 
+        <label for="isAISummerizerEnabled">LLM(AI)-Based Blog Summary Generation enabled:</label>
+        <input type="checkbox" id="isAISummerizerEnabled" name="isAISummerizerEnabled"
+            <%= config.isAISummerizerEnabled? 'checked' : '' %>>
+        <br>
+
         <div class="admin-title">
             <h2>Site Metadata and SEO Settings</h2>
         </div>
@@ -75,7 +80,7 @@
         <input type="text" id="siteMetaDataDescription" name="siteMetaDataDescription"
             value="<%= config.siteMetaDataDescription %>">
 
-        <label for="googleAnalyticsScript">Google Analytics</label>
+        <label for="googleAnalyticsScript">Google Analytics (Only Supports GA4 scripts with gtags)</label>
         <textarea id="googleAnalyticsScript" name="googleAnalyticsScript" placeholder="<!-- Google tag (gtag.js) -->
             &lt;script async src=&quot;https://www.googletagmanager.com/gtag/js?id=&lt;your Google Tag Code&gt;&quot;></script>
             &lt;script>
@@ -86,7 +91,7 @@
               gtag('config', '&lt;your Google Tag Code&gt;');
               &lt;/script>" cols="50" rows="15"><%= config.googleAnalyticsScript %></textarea>
 
-        <label for="inspectletScript">Inspectlet Analytics</label>
+        <label for="inspectletScript">Inspectlet Analytics (Or Microsoft Clarity)</label>
         <textarea id="inspectletScript" name="inspectletScript" cols="50" rows="15" placeholder="&lt;!-- Begin Inspectlet Asynchronous Code --&gt;
         &lt;script type=&quot;text/javascript&quot;>
         (function() {
