@@ -11,7 +11,7 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 
@@ -789,44 +789,6 @@ router.post('/edit-site-config', authToken, async (req, res) => {
     return res.status(500).send('Internal Server Error');
   }
 });
-
-/**
- * Validates whether the given script string matches known safe tracking scripts:
- * - Google Analytics (GA4)
- * - Inspectlet
- * - Microsoft Clarity
- *
- * This function uses strict regular expressions to whitelist only specific trusted
- * scripts, preventing injection of arbitrary or malicious JavaScript.
- *
- * @param {string} script - The input script string to be validated.
- * @returns {string} - Returns the original script if it matches any known safe pattern.
- *                     Otherwise, returns a dummy placeholder string defined by
- *                     the environment variable `DUMMY_STRING`.
- *
- * @example
- * const validScript = isValidTrackingScript(req.body.googleAnalyticsScript);
- * // => returns script if valid, else "is a false string you dum dum"
- */
-function isValidTrackingScript(script) {
-  const dummyString = process.env.DUMMY_STRING
-  if (typeof script !== 'string') return dummyString;
-
-  // Google Analytics (GA4)
-  const gaRegex = /<script[^>]*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/s;
-
-  // Inspectlet
-  const inspectletRegex = /<script[^>]*src="https:\/\/cdn\.inspectlet\.com\/inspectlet\.js\?wid=\d+"[^>]*>[\s\S]*window\.__insp\.push\(\['wid',\s*\d+\]\)[\s\S]*<\/script>/s;
-
-  // Microsoft Clarity
-  const clarityRegex = /<script[^>]*>[\s\S]*?\(function\(\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+\)\s*\{[\s\S]*?c\[\w+\]\s*=\s*c\[\w+\]\s*\|\|\s*function\(\)\s*\{\(c\[\w+\.q\]=c\[\w+\.q\]||\[\]\)\.push\(arguments\)\};[\s\S]*?t\.src\s*=\s*"https:\/\/www\.clarity\.ms\/tag\/[a-zA-Z0-9]+";[\s\S]*?\}\)\(window,\s*document,\s*"clarity",/;
-
-  if (gaRegex.test(script) || inspectletRegex.test(script) || clarityRegex.test(script)) {
-    return script;
-  }
-
-  return dummyString;
-}
 
 /**
  * DELETE
