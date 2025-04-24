@@ -813,13 +813,13 @@ function isValidTrackingScript(script) {
   if (typeof script !== 'string') return dummyString;
 
   // Google Analytics (GA4)
-  const gaRegex = /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/s;
+  const gaRegex = /<script[^>]*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/s;
 
   // Inspectlet
-  const inspectletRegex = /<script[^>]*>\s*\(function\(\)\s*\{\s*window\.__insp\s*=\s*window\.__insp\s*\|\|\s*\[\];\s*__insp\.push\(\['wid',\s*\d+\]\);\s*var\s+ldinsp\s*=\s*function\(\)\s*\{[\s\S]*?cdn\.inspectlet\.com\/inspectlet\.js\?wid=\d+[\s\S]*?\};\s*setTimeout\(ldinsp,\s*0\);\s*\}\)\(\);\s*<\/script>/s;
+  const inspectletRegex = /<script[^>]*src="https:\/\/cdn\.inspectlet\.com\/inspectlet\.js\?wid=\d+"[^>]*>[\s\S]*window\.__insp\.push\(\['wid',\s*\d+\]\)[\s\S]*<\/script>/s;
 
   // Microsoft Clarity
-  const clarityRegex = /<script[^>]*>\s*\(function\(\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+\)\s*\{\s*[\s\S]*?c\[\w+\]\s*=\s*c\[\w+\]\s*\|\|\s*function\(\)\s*\{\s*\(c\[\w+\.q\]=c\[\w+\.q\]||\[\]\)\.push\(arguments\)\};[\s\S]*?t\.src\s*=\s*"https:\/\/www\.clarity\.ms\/tag\/[a-zA-Z0-9]+";[\s\S]*?<\/script>/s;
+  const clarityRegex = /<script[^>]*>[\s\S]*?\(function\(\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+\)\s*\{[\s\S]*?c\[\w+\]\s*=\s*c\[\w+\]\s*\|\|\s*function\(\)\s*\{\(c\[\w+\.q\]=c\[\w+\.q\]||\[\]\)\.push\(arguments\)\};[\s\S]*?t\.src\s*=\s*"https:\/\/www\.clarity\.ms\/tag\/[a-zA-Z0-9]+";[\s\S]*?\}\)\(window,\s*document,\s*"clarity",/;
 
   if (gaRegex.test(script) || inspectletRegex.test(script) || clarityRegex.test(script)) {
     return script;
