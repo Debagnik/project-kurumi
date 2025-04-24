@@ -15,6 +15,7 @@ const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter } = require('../../utils/rateLimiter');
 
+
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
 
@@ -934,6 +935,7 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
  * - This route still saves the post even if the summary fails to generate.
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
+
   try {
     let body = req.body;
     let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
@@ -945,6 +947,7 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
       } catch (error) {
         console.error('Unable to generate summary with AI model:', error);
         req.body.desc = req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);;
+
       }
     }
     const id = await savePostToDB(req, res);

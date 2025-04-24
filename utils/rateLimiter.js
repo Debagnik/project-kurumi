@@ -32,3 +32,4 @@ const authRateLimiter = rateLimit({
 });
 
 module.exports = { aiSummaryRateLimiter, authRateLimiter };
+

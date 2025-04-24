@@ -15,6 +15,7 @@
  * @throws Will throw an error if the API request fails or the environment variables are not set.
  */
 const { OpenAI } = require('openai');
+const user = require('../server/models/user');
 
 const openRouterApiSecretKey = process.env.OPENROUTER_API_KEY;
 const systemPrompt = process.env.SYSTEM_PROMPT;
@@ -82,6 +83,7 @@ async function summarizeMarkdownBody(markdown) {
     } catch (error) {
         console.error('Error from OpenRouter:', error);
         throw new Error(`Failed to summarize markdown with AI: ${error.message || 'Unknown error'}`);
+
     }
 }
 
