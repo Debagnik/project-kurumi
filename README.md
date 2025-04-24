@@ -1,6 +1,6 @@
 # Project Walnut (クルミ)
 
-![Walnut_Lycoris-Recoil](public\img\kurumi.png)   
+![Walnut_Lycoris-Recoil](public/img/kurumi.png)
 [Walnut the mascot](https://lycoris-recoil.fandom.com/wiki/Kurumi)
 
 Welcome to the **Project Walnut** project. It is a simple webapp for small-startups to post their blogs, or news outlets for publishing news article 
