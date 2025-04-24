@@ -944,7 +944,7 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
           req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
         } catch (error) {
           console.error('Unable to generate summary with AI model:', error);
-          req.body.desc = req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);;
+          req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);
 
         }
       }
