@@ -14,6 +14,7 @@ const siteConfig = require('../models/config');
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
+const { aiSummaryLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -921,7 +922,7 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
  * POST
  * Admin - Generate post summary using AI
  */
-router.post('/admin/generate-post-summary', authToken, async (req, res) => {
+router.post('/admin/generate-post-summary', authToken, aiSummaryLimiter, async (req, res) => {
   try {
     let body = req.body;
     const tempDesc = `Error:\t${process.env.RANDOM_NUMBER + '00' || '0000'}\nFailed to auto‑generate summary – check logs.`;
@@ -940,7 +941,5 @@ router.post('/admin/generate-post-summary', authToken, async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
-
-
 
 module.exports = router;
