@@ -1,7 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
 const sanitizeHtml = require('sanitize-html');
 const marked = require('marked');
@@ -14,6 +13,7 @@ const siteConfig = require('../models/config');
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
+const { aiSummaryLimiter, authLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -22,11 +22,6 @@ const adminLayout = '../views/layouts/admin';
 if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
 }
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, //15 mins
-  max: 5 // limit each IP to 5 requests per windowMs
-});
 
 // adding admin CSRF protection middleware
 const csrfProtection = csrf({ cookie: true });
@@ -447,9 +442,9 @@ async function savePostToDB(req, res) {
       console.error('Missing required fields!');
       throw new Error("Title, body, and description are required!");
     }
-    const MAX_TITLE_LENGTH = process.env.MAX_TITLE_LENGTH;
-    const MAX_DESCRIPTION_LENGTH = process.env.MAX_DESCRIPTION_LENGTH;
-    const MAX_BODY_LENGTH = process.env.MAX_BODY_LENGTH;
+    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
+    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
+    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       console.error('Title, body, and description must not exceed their respective limits!');
       throw new Error('Title, body, and description must not exceed their respective limits!')
@@ -539,9 +534,9 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
       return res.status(400).send('Title, body, and description are required!');
     }
 
-    const MAX_TITLE_LENGTH = process.env.MAX_TITLE_LENGTH;
-    const MAX_DESCRIPTION_LENGTH = process.env.MAX_DESCRIPTION_LENGTH;
-    const MAX_BODY_LENGTH = process.env.MAX_BODY_LENGTH;
+    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
+    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
+    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       return res.status(400).send('Title, body, and description must not exceed their respective limits!');
@@ -918,19 +913,38 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 });
 
 /**
- * POST
- * Admin - Generate post summary using AI
+ * @route POST /admin/generate-post-summary
+ * @description
+ * Admin-only endpoint to generate a blog post summary using an AI model via OpenRouter.
+ * If successful, the summary is injected into the `desc` field and the post is saved.
+ * The user is then redirected to the edit-post page with the generated data pre-filled.
+ *
+ * @access Private (requires `authToken` middleware)
+ * @middleware aiSummaryLimiter - Rate limits excessive summary generation requests
+ *
+ * @param {string} req.body.markdownbody - The raw markdown content of the blog post
+ * @param {string} req.body.title - The title of the blog post
+ * @param {string} req.body.tags - Comma-separated list of tags
+ *
+ * @returns {302 Redirect} Redirects to `/edit-post/:id` on success
+ * @returns {500 InternalServerError} On unexpected failure during summarization or saving
+ *
+ * @notes
+ * - If the AI model fails, a fallback error message is saved in the post description.
+ * - This route still saves the post even if the summary fails to generate.
  */
-router.post('/admin/generate-post-summary', authToken, async (req, res) => {
+router.post('/admin/generate-post-summary', authToken, aiSummaryLimiter, async (req, res) => {
   try {
     let body = req.body;
-    const tempDesc = `Error:\t${process.env.RANDOM_NUMBER + '00' || '0000'}\nFailed to auto‑generate summary – check logs.`;
+    let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
     if (body.markdownbody && body.title && body.tags) {
-      req.body.desc = tempDesc + '01';
+      req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
       try {
-        req.body.desc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+        tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+        req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
       } catch (error) {
-        console.error('Unable to fetch AI Model', error);
+        console.error('Unable to generate summary with AI model:', error);
+        req.body.desc = `${tempDesc} Error: ${error.message || 'Unknown error'}`;
       }
     }
     const id = await savePostToDB(req, res);
@@ -940,7 +954,5 @@ router.post('/admin/generate-post-summary', authToken, async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
-
-
 
 module.exports = router;
