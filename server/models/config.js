@@ -101,6 +101,11 @@ const configSchema = new schema({
     cloudflareServerKey:{
         type: String,
         default: "1x0000000000000000000000000000000AA"  //Cloudflare Server verify Test Key used as placeholder  --- use actual keys on higher environments
+    },
+    isAISummerizerEnabled:{
+        type: Boolean,
+        default: false,
+        required: true
     }
 });
 
