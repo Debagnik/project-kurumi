@@ -60,6 +60,11 @@
             <%= config.isCaptchaEnabled? 'checked' : '' %>>
         <br>
 
+        <label for="isAISummerizerEnabled">LLM(AI)-Based Blog Summary Generation enabled:</label>
+        <input type="checkbox" id="isAISummerizerEnabled" name="isAISummerizerEnabled"
+            <%= config.isAISummerizerEnabled? 'checked' : '' %>>
+        <br>
+
         <div class="admin-title">
             <h2>Site Metadata and SEO Settings</h2>
         </div>

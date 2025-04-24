@@ -50,23 +50,20 @@ const authToken = (req, res, next) => {
 /**
  * Site config Middleware
  */
-
 const fetchSiteConfig = async (req, res, next) => {
   try {
     const config = await siteConfig.findOne();
     if (!config) {
       console.warn('Site config is not available');
-      res.locals.siteConfig = {};
-    } else {
-      res.locals.siteConfig = config;
     }
-    next();
+    res.locals.siteConfig = config || {};
   } catch (error) {
     console.error("Site Config Fetch error", error.message);
     res.locals.siteConfig = {};
-    next();
   }
-}
+  next();
+};
+
 
 router.use(fetchSiteConfig);
 
@@ -104,7 +101,6 @@ function markdownToHtml(markdownString) {
  */
 router.get('/admin', async (req, res) => {
   try {
-
     const locals = {
       title: "Admin Panel",
       description: "Admin Panel",
@@ -738,6 +734,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       const registrationEnable = req.body.isRegistrationEnabled === 'on';
       const commentsEnabled = req.body.isCommentsEnabled === 'on';
       const captchaEnabled = req.body.isCaptchaEnabled === 'on';
+      const aISummerizerEnabled = req.body.isAISummerizerEnabled === 'on';
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
       if (req.body.homepageWelcomeImage) {
@@ -745,7 +742,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
       }
 
       // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled) => ({
+      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled) => ({
         isRegistrationEnabled: registrationEnable,
         isCommentsEnabled: commentsEnabled,
         isCaptchaEnabled: captchaEnabled,
@@ -766,14 +763,15 @@ router.post('/edit-site-config', authToken, async (req, res) => {
         copyrightText: sanitizeHtml(req.body.copyrightText),
         searchLimit: searchLimit,
         cloudflareSiteKey: sanitizeHtml(req.body.cloudflareSiteKey),
-        cloudflareServerKey: sanitizeHtml(req.body.cloudflareServerKey)
+        cloudflareServerKey: sanitizeHtml(req.body.cloudflareServerKey),
+        isAISummerizerEnabled: aISummerizerEnabled
       });
 
       if (!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled));
+        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled));
         await globalSiteConfig.save();
       } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled), { new: true });
+        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       res.redirect('/admin/webmaster');
@@ -935,20 +933,24 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
  * - This route still saves the post even if the summary fails to generate.
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
-
   try {
     let body = req.body;
     let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
-    if (body.markdownbody && body.title && body.tags) {
-      req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-      try {
-        tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+    if (res.locals.siteConfig.isAISummerizerEnabled) {
+      if (body.markdownbody && body.title && body.tags) {
         req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-      } catch (error) {
-        console.error('Unable to generate summary with AI model:', error);
-        req.body.desc = req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);;
+        try {
+          tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
+          req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
+        } catch (error) {
+          console.error('Unable to generate summary with AI model:', error);
+          req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);
 
+        }
       }
+    } else {
+      console.error('AI Summary Generator not enabled on site config, check with Web Master');
+      req.body.desc = 'AI Summary Generator is not enabled - Check with webmaster';
     }
     const id = await savePostToDB(req, res);
     return res.status(200).redirect(`/edit-post/${id}`);
