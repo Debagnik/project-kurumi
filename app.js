@@ -13,26 +13,62 @@ const flash = require('connect-flash');
 const app = express();
 // Add security headers.
 app.use(helmet());
-app.use(helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://www.googletagmanager.com", // Google Tag Manager
-        "https://cdn.inspectlet.com",  // User Behaivior Tracking
-        "https://challenges.cloudflare.com", // Cloudflare Turnstile
-        "https://www.clarity.ms",  // Clarity Session Tracking
-        "https://fonts.googleapis.com" // Google Fonts
-      ],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      frameSrc: [
-        "'self'",
-        "https://challenges.cloudflare.com"
-      ]
-    },
-  }));
+app.use(
+    helmet.contentSecurityPolicy({
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://www.googletagmanager.com",
+          "https://cdn.inspectlet.com",
+          "https://challenges.cloudflare.com",
+          "https://www.clarity.ms",
+          "https://fonts.googleapis.com",
+          "https://static.cloudflareinsights.com"
+        ],
+        scriptSrcElem: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://www.googletagmanager.com",
+          "https://cdn.inspectlet.com",
+          "https://challenges.cloudflare.com",
+          "https://www.clarity.ms",
+          "https://fonts.googleapis.com",
+          "https://static.cloudflareinsights.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com"
+        ],
+        styleSrcElem: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com"
+        ],
+        connectSrc: [
+          "'self'",
+          "https://www.google-analytics.com"
+        ],
+        imgSrc: ["'self'", "data:", "https:"],
+        frameSrc: [
+          "'self'",
+          "https://challenges.cloudflare.com"
+        ],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        upgradeInsecureRequests: []
+      }
+    })
+  );
 
 const PORT = process.env.PORT || 5000;
 
