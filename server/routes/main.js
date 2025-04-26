@@ -9,7 +9,7 @@ const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
 
-const { genericOpenRateLimiter, genericAdminRateLimiter } = require('../../utils/rateLimiter');
+const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
@@ -269,7 +269,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  * /posts/post-comments
  * Add comments to a post
  */
-router.post('/post/:id/post-comments', genericOpenRateLimiter, async (req, res) => {
+router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
