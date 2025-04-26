@@ -96,8 +96,9 @@ function markdownToHtml(markdownString) {
 
 //Routes
 /**
- * GET /
- * ADMIN - Login
+ * @route GET /admin
+ * @description Admin login page. Redirects to /dashboard if user is already authenticated.
+ * @access Public
  */
 router.get('/admin', async (req, res) => {
   try {
