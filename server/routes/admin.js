@@ -96,8 +96,9 @@ function markdownToHtml(markdownString) {
 
 //Routes
 /**
- * GET /
- * ADMIN - Login
+ * @route GET /admin
+ * @description Admin login page. Redirects to /dashboard if user is already authenticated.
+ * @access Public
  */
 router.get('/admin', async (req, res) => {
   try {
@@ -913,50 +914,36 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 
 /**
  * @route POST /admin/generate-post-summary
- * @description
- * Admin-only endpoint to generate a blog post summary using an AI model via OpenRouter.
- * If successful, the summary is injected into the `desc` field and the post is saved.
- * The user is then redirected to the edit-post page with the generated data pre-filled.
- *
- * @access Private (requires `authToken` middleware)
- * @middleware aiSummaryLimiter - Rate limits excessive summary generation requests
- *
- * @param {string} req.body.markdownbody - The raw markdown content of the blog post
- * @param {string} req.body.title - The title of the blog post
- * @param {string} req.body.tags - Comma-separated list of tags
- *
- * @returns {302 Redirect} Redirects to `/edit-post/:id` on success
- * @returns {500 InternalServerError} On unexpected failure during summarization or saving
- *
- * @notes
- * - If the AI model fails, a fallback error message is saved in the post description.
- * - This route still saves the post even if the summary fails to generate.
+ * @description Generates a summary of a blog post's markdown body using an LLM via OpenRouter.
+ * @access Private (Admin only)
+ * @middleware
+ *    - authToken: Ensures the user is authenticated.
+ *    - aiSummaryRateLimiter: Prevents abuse by rate limiting summary generation requests.
+ * 
+ * @body
+ * @param {string} markdownbody - Raw markdown content of the blog post. (Required)
+ * 
+ * @returns {Object} JSON response
+ * @returns {number} code - HTTP-style status code
+ * @returns {string} message - HTML-formatted AI-generated summary or error message
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
   try {
-    let body = req.body;
-    let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
-    if (res.locals.siteConfig.isAISummerizerEnabled) {
-      if (body.markdownbody && body.title && body.tags) {
-        req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-        try {
-          tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
-          req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-        } catch (error) {
-          console.error('Unable to generate summary with AI model:', error);
-          req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);
-
-        }
-      }
-    } else {
-      console.error('AI Summary Generator not enabled on site config, check with Web Master');
-      req.body.desc = 'AI Summary Generator is not enabled - Check with webmaster';
+    if(!req.body.markdownbody){
+      return res.status(400).json({ 'code':400,
+        'message': 'Blog Body is a must for generating summary'
+      });
     }
-    const id = await savePostToDB(req, res);
-    return res.status(200).redirect(`/edit-post/${id}`);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+    const response = await openRouterIntegration.summarizeMarkdownBody(sanitizeHtml(req.body.markdownbody).trim());
+    const htmlResponse = markdownToHtml(response.summary + response.attribute);
+    return res.status(200).json({ 'code':200,
+      'message': htmlResponse
+    });
+  } catch(error) {
+    console.error('error generating summary: ', error);
+    return res.status(500).json({ 'code':500,
+      'message': 'Internal Server Error'
+    });
   }
 });
 

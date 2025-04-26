@@ -21,7 +21,10 @@
     <textarea id="desc" name="desc" placeholder="Enter Short Description under 10-50 words" required></textarea>
     
     <% if (siteConfig.isAISummerizerEnabled) { %>
-        <button type="submit" formaction="/admin/generate-post-summary" class="btn">Generate Summary (Beta) </button><p/>
+        <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
+            <span class="button-text">Generate Summary (Beta)</span>
+            <span class="spinner"></span>
+        </button><p/>
     <% } %>
 
     <button type="submit" formaction="/admin/add-post" class="btn">Add</button>
