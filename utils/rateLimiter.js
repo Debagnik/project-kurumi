@@ -1,35 +1,86 @@
 const rateLimit = require('express-rate-limit');
 
 /**
- * Rate limiter middleware for AI summary generation endpoint.
+ * Creates a standardized rate limiter middleware.
+ * 
+ * Applies common settings like enabling standard `RateLimit-*` headers
+ * and disabling legacy headers, while allowing custom rate limit values.
  *
- * Limits each IP to 10 requests per minute to prevent abuse of AI-powered post summarization.
- * Uses standard `RateLimit-*` headers for rate limit metadata.
+ * @param {Object} options - Rate limiter configuration.
+ * @param {number} options.windowMs - Time window for rate limit in milliseconds.
+ * @param {number} options.max - Maximum number of allowed requests per window.
+ * @param {string} options.message - Message to send when limit is exceeded.
+ * @returns {import('express-rate-limit').RateLimitRequestHandler} Express middleware for rate limiting.
+ */
+function createRateLimiter({ windowMs, max, message }) {
+  return rateLimit({
+    windowMs,
+    max,
+    message: { code: 429, message }, // Return JSON
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+}
+
+/**
+ * Rate limiter for AI-powered post summarization feature.
+ *
+ * Limits each IP to 10 requests per minute to prevent overuse of AI resources.
  *
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
  */
-const aiSummaryRateLimiter = rateLimit({
+const aiSummaryRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // Limit each IP to 10 requests per minute
+  max: 10,
   message: 'Too many summary generation attempts, please try again later.',
-  standardHeaders: true, // Enable `RateLimit-*` headers
-  legacyHeaders: false,  // Disable deprecated `X-RateLimit-*` headers
 });
 
 /**
- * Rate limiter middleware for authentication endpoints (e.g., login).
+ * Rate limiter for authentication endpoints (e.g., login forms).
  *
  * Limits each IP to 5 requests every 15 minutes to mitigate brute-force attacks.
  *
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
  */
-const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, //15 mins
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: 'Too many login attempts in small time, timeout'
+const authRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: 'Too many login attempts in a short time, please try again later.',
 });
 
-module.exports = { aiSummaryRateLimiter, authRateLimiter };
+/**
+ * Rate limiter for generic admin routes (e.g., admin dashboard).
+ *
+ * Limits each IP to 10 requests per minute to ensure server stability.
+ *
+ * @constant
+ * @type {import('express-rate-limit').RateLimitRequestHandler}
+ */
+const genericAdminRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  message: 'Ohh, Slow down choom, you are gonna kill us, again!',
+});
 
+/**
+ * Rate limiter for generic open (public) routes.
+ *
+ * Limits each IP to 5 requests per minute to prevent abuse from unauthenticated traffic.
+ *
+ * @constant
+ * @type {import('express-rate-limit').RateLimitRequestHandler}
+ */
+const genericOpenRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  message: 'Your Kita-aura is too high, Its blinding the Bocchi',
+});
+
+module.exports = {
+  aiSummaryRateLimiter,
+  authRateLimiter,
+  genericAdminRateLimiter,
+  genericOpenRateLimiter,
+};

@@ -13,7 +13,7 @@ const siteConfig = require('../models/config');
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
-const { aiSummaryRateLimiter, authRateLimiter } = require('../../utils/rateLimiter');
+const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter } = require('../../utils/rateLimiter');
 
 
 const jwtSecretKey = process.env.JWT_SECRET;
@@ -125,7 +125,7 @@ router.get('/admin', async (req, res) => {
  * POST /
  * ADMIN - Register
  */
-router.post('/register', async (req, res) => {
+router.post('/register', genericAdminRateLimiter, async (req, res) => {
   try {
     const { username, password, name, confirm_password } = req.body;
 
@@ -405,7 +405,7 @@ router.get('/admin/add-post', authToken, async (req, res) => {
  * POST
  * Admin - new post
  */
-router.post('/admin/add-post', authToken, async (req, res) => {
+router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     await savePostToDB(req, res);
     return res.status(200).redirect('/dashboard');
@@ -509,7 +509,7 @@ router.get('/edit-post/:id', authToken, async (req, res) => {
  * PUT /
  * Admin - Edit Post
 */
-router.put('/edit-post/:id', authToken, async (req, res) => {
+router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
@@ -577,7 +577,7 @@ router.put('/edit-post/:id', authToken, async (req, res) => {
  * DELETE
  * Admin - Post - Delete
  */
-router.delete('/delete-post/:id', authToken, async (req, res) => {
+router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
@@ -700,7 +700,7 @@ router.get('/admin/webmaster', authToken, async (req, res) => {
  * @returns {403} If the user is not authorized.
  * @returns {500} If an internal server error occurs.
  */
-router.post('/edit-site-config', authToken, async (req, res) => {
+router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
@@ -789,7 +789,7 @@ router.post('/edit-site-config', authToken, async (req, res) => {
  * DELETE
  * Webmaster - User - Delete
  */
-router.delete('/delete-user/:id', authToken, async (req, res) => {
+router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
@@ -863,7 +863,7 @@ router.get('/edit-user/:id', authToken, async (req, res) => {
  * PUT /
  * Webmaster - Edit users
 */
-router.put('/edit-user/:id', authToken, async (req, res) => {
+router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
