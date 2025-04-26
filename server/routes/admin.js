@@ -913,24 +913,18 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
 
 /**
  * @route POST /admin/generate-post-summary
- * @description
- * Admin-only endpoint to generate a blog post summary using an AI model via OpenRouter.
- * If successful, the summary is injected into the `desc` field and the post is saved.
- * The user is then redirected to the edit-post page with the generated data pre-filled.
- *
- * @access Private (requires `authToken` middleware)
- * @middleware aiSummaryLimiter - Rate limits excessive summary generation requests
- *
- * @param {string} req.body.markdownbody - The raw markdown content of the blog post
- * @param {string} req.body.title - The title of the blog post
- * @param {string} req.body.tags - Comma-separated list of tags
- *
- * @returns {302 Redirect} Redirects to `/edit-post/:id` on success
- * @returns {500 InternalServerError} On unexpected failure during summarization or saving
- *
- * @notes
- * - If the AI model fails, a fallback error message is saved in the post description.
- * - This route still saves the post even if the summary fails to generate.
+ * @description Generates a summary of a blog post's markdown body using an LLM via OpenRouter.
+ * @access Private (Admin only)
+ * @middleware
+ *    - authToken: Ensures the user is authenticated.
+ *    - aiSummaryRateLimiter: Prevents abuse by rate limiting summary generation requests.
+ * 
+ * @body
+ * @param {string} markdownbody - Raw markdown content of the blog post. (Required)
+ * 
+ * @returns {Object} JSON response
+ * @returns {number} code - HTTP-style status code
+ * @returns {string} message - HTML-formatted AI-generated summary or error message
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
   try {
