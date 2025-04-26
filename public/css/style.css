@@ -15,6 +15,7 @@
 	--bg-dark: rgb(34, 37, 45);
 	--text-light: #111318;
 	--text-dark: #ffffff;
+	--text-secondary: rgba(255, 255, 255, 0.7);
 	--accent-dark: rgb(61, 234, 164);
 	--accent-hover: rgb(97, 253, 176);
 	--border-dark: rgb(50, 54, 65);
@@ -319,12 +320,16 @@ img {
 }
 
 .article {
-	white-space: pre-wrap;
-	background-color: rgba(34, 37, 45, 0.7);
-	border-radius: var(--border-radius);
-	padding: 20px;
-	margin: 10px 0;
-	backdrop-filter: blur(5px);
+    white-space: pre-wrap;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin: 10px 0;
+    backdrop-filter: blur(5px);
+}
+/* Then, in your dark-mode section, add: */
+[data-theme="dark"] .article {
+    background-color: rgba(34, 37, 45, 0.7);
 }
 
 /*Footer*/
@@ -619,11 +624,6 @@ img {
 	border-bottom: 1px solid var(--border-dark);
 }
 
-/* Header styles in dark mode */
-[data-theme="dark"] .header {
-	border-bottom: 1px solid var(--border-dark);
-}
-
 [data-theme="dark"] .header__nav ul a {
 	color: var(--text-dark);
 }
@@ -736,9 +736,31 @@ img {
 	color: var(--accent-dark);
 }
 
-/* Add smooth transitions for all color changes */
-* {
-	transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+/* Add smooth transitions for common interactive elements */
+a, button, input, .btn, .header__logo, .header__nav ul a, .article-ul li, 
+.flash-message, .searchBar, .header__button button, .pagination,
+.admin-posts-controls .btn, #themeToggle {
+    transition: color 0.3s ease, 
+                background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                box-shadow 0.3s ease,
+                transform 0.3s ease;
+}
+
+/* Specific transitions for containers that need them */
+.container,
+.main,
+.header,
+.modal,
+.overlay {
+    transition: background-color 0.3s ease;
+}
+
+/* Keep specific transitions for theme changes */
+body {
+    transition: background-color 0.3s ease,
+                color 0.3s ease,
+                background-image 0.3s ease;
 }
 
 /* Add theme toggle styles */
@@ -792,11 +814,6 @@ img {
 /* Smooth theme transition */
 body {
 	transition: background-color 0.3s, color 0.3s;
-}
-
-/* Additional dark mode styles for header */
-[data-theme="dark"] .header {
-	border-bottom: 1px solid var(--border-dark);
 }
 
 [data-theme="dark"] .header__logo {
