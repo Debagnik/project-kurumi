@@ -56,4 +56,73 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('commentBody').addEventListener('input', function() {
         document.getElementById('charCount').textContent = this.value.length;
     });
+
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Script loaded');
+        
+        // Get the generate summary button and its elements
+        const generateButton = document.getElementById('generateSummaryBtn');
+        if (!generateButton) return;
+
+        const buttonText = generateButton.querySelector('.button-text');
+        const spinner = generateButton.querySelector('.spinner');
+        
+        // Function to set loading state
+        function setLoading(isLoading) {
+            if (isLoading) {
+                generateButton.disabled = true;
+                buttonText.textContent = 'Generating...';
+                spinner.style.display = 'inline-block';
+            } else {
+                generateButton.disabled = false;
+                buttonText.textContent = 'Generate Summary (Beta)';
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Add click event listener
+        generateButton.addEventListener('click', async function() {
+            console.log('Generate Summary clicked');
+            
+            // Show loading state
+            setLoading(true);
+
+            const formData = {
+                title: document.getElementById('title').value,
+                thumbnailImageURI: document.getElementById('thumbnailImageURI').value,
+                markdownbody: document.getElementById('markdownbody').value,
+                tags: document.getElementById('tags').value,
+                _csrf: document.querySelector('input[name="_csrf"]').value
+            };
+
+            console.log('Form data:', formData);
+
+            try {
+                const response = await fetch('/admin/generate-post-summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': formData._csrf
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                console.log('API response:', data);
+                
+                if (data.code === 200) {
+                    document.getElementById('desc').value = data.message;
+                } else {
+                    alert('Error generating summary: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error generating summary: ' + error.message);
+            } finally {
+                // Hide loading state
+                setLoading(false);
+            }
+        });
+    });
 });

@@ -934,29 +934,21 @@ router.put('/edit-user/:id', authToken, async (req, res) => {
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
   try {
-    let body = req.body;
-    let tempDesc = { summary: 'Error: Failed to auto-generate summary – check logs.', attribute: 'System' };
-    if (res.locals.siteConfig.isAISummerizerEnabled) {
-      if (body.markdownbody && body.title && body.tags) {
-        req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-        try {
-          tempDesc = await openRouterIntegration.summarizeMarkdownBody(req.body.markdownbody.trim());
-          req.body.desc = markdownToHtml(tempDesc.summary + tempDesc.attribute);
-        } catch (error) {
-          console.error('Unable to generate summary with AI model:', error);
-          req.body.desc = markdownToHtml(`${tempDesc.summary} Error: ${error.message || 'Unknown error'}${tempDesc.attribute}`);
-
-        }
-      }
-    } else {
-      console.error('AI Summary Generator not enabled on site config, check with Web Master');
-      req.body.desc = 'AI Summary Generator is not enabled - Check with webmaster';
+    if(!req.body.markdownbody){
+      return res.status(400).json({ 'code':400,
+        'message': 'Blog Body is a must for generating summary'
+      });
     }
-    const id = await savePostToDB(req, res);
-    return res.status(200).redirect(`/edit-post/${id}`);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+    const response = await openRouterIntegration.summarizeMarkdownBody(sanitizeHtml(req.body.markdownbody).trim());
+    const htmlResponse = markdownToHtml(response.summary + response.attribute);
+    return res.status(200).json({ 'code':200,
+      'message': htmlResponse
+    });
+  } catch(error) {
+    console.error('error generating summary: ', error);
+    return res.status(500).json({ 'code':500,
+      'message': 'Internal Server Error'
+    });
   }
 });
 
