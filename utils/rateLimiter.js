@@ -53,7 +53,7 @@ const authRateLimiter = createRateLimiter({
 /**
  * Rate limiter for generic admin routes (e.g., admin dashboard).
  *
- * Limits each IP to 10 requests per minute to ensure server stability.
+ * Limits each IP to 50 requests per minute to ensure server stability.
  *
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
@@ -61,7 +61,7 @@ const authRateLimiter = createRateLimiter({
 const genericAdminRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 50,
-  message: 'Ohh, Slow down choom, you are gonna kill us, again!',
+  message: 'Ohh, Slow down choom, you are gonna kill us, again! - Jonny Silverhand',
 });
 
 /**
@@ -81,7 +81,7 @@ const genericOpenRateLimiter = createRateLimiter({
 /**
  * Rate limiter for comments posting routes.
  *
- * Limits each IP to 5 requests per minute to prevent abuse from unauthenticated traffic.
+ * Limits each IP to 20 requests per minute to prevent abuse from unauthenticated traffic.
  *
  * @constant
  * @type {import('express-rate-limit').RateLimitRequestHandler}
@@ -89,7 +89,7 @@ const genericOpenRateLimiter = createRateLimiter({
 const commentsRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 20,
-  message: 'Your Kita-aura is too high, Its blinding the Bocchi',
+  message: 'Youre shooting requests faster than I can dodge! Give me a break, okay? - Chisato',
 });
 
 module.exports = {
