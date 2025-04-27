@@ -53,7 +53,7 @@ router.use(csrfProtection);
 /**
  * GET /api/test/getCsrfToken
  */
-router.get('/api/test/getCsrfToken', csrfProtection, (req, res) => {
+router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimiter, (req, res) => {
     if(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local'){
         return res.status(200).json({ csrfToken: req.csrfToken() });
     }

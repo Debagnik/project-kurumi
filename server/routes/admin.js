@@ -13,7 +13,7 @@ const siteConfig = require('../models/config');
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
-const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter } = require('../../utils/rateLimiter');
+const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
 
 const jwtSecretKey = process.env.JWT_SECRET;
@@ -325,7 +325,7 @@ router.get('/admin/registration', async (req, res) => {
  * GET
  * Admin - Dashboard
  */
-router.get('/dashboard', authToken, async (req, res) => {
+router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const locals = {
       title: 'Admin Dashboard',
@@ -374,7 +374,7 @@ router.get('/dashboard', authToken, async (req, res) => {
  * GET
  * Admin - new post
  */
-router.get('/admin/add-post', authToken, async (req, res) => {
+router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const locals = {
       title: 'Add Post',
@@ -477,7 +477,7 @@ async function savePostToDB(req, res) {
  * GET
  * Admin Edit post
  */
-router.get('/edit-post/:id', authToken, async (req, res) => {
+router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
 
     const data = await post.findOne({ _id: req.params.id });
@@ -611,7 +611,7 @@ router.post('/logout', (req, res) => {
 /**
  * GET - Admin Webmaster
  */
-router.get('/admin/webmaster', authToken, async (req, res) => {
+router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
@@ -825,7 +825,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
  * GET
  * Webmaster Edit user
  */
-router.get('/edit-user/:id', authToken, async (req, res) => {
+router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
 
     const selectedUser = await user.findOne({ _id: req.params.id });

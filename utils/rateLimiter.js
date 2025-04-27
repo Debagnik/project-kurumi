@@ -75,7 +75,7 @@ const genericAdminRateLimiter = createRateLimiter({
 const genericOpenRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 5,
-  message: 'Your Kita-aura is too high, Its blinding the Bocchi, Slow down please',
+  message: `Your Kita-aura is too high, It's blinding the Bocchi. Slow down please`,
 });
 
 /**
@@ -89,7 +89,21 @@ const genericOpenRateLimiter = createRateLimiter({
 const commentsRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 20,
-  message: 'Youre shooting requests faster than I can dodge! Give me a break, okay? - Chisato',
+  message: `You're shooting requests faster than I can dodge! Give me a break, okay? - Chisato`,
+});
+
+/**
+ * Generic Rate limiter for get requests
+ *
+ * Limits each IP to 200 requests per minute to prevent abuse from unauthenticated traffic.
+ *
+ * @constant
+ * @type {import('express-rate-limit').RateLimitRequestHandler}
+ */
+const genericGetRequestRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  message: `This pace... even Himmel the hero would have told you to breathe first. Slow Down - Frienen`,
 });
 
 module.exports = {
@@ -97,5 +111,6 @@ module.exports = {
   authRateLimiter,
   genericAdminRateLimiter,
   genericOpenRateLimiter,
-  commentsRateLimiter
+  commentsRateLimiter,
+  genericGetRequestRateLimiter
 };
