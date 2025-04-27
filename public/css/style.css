@@ -11,15 +11,30 @@
 	--font-size-lg: clamp(1.56rem, 1vw + 1.31rem, 2.11rem);
 	--font-size-xl: clamp(2.44rem, 2.38vw + 1.85rem, 3.75rem);
 	--border-radius: 10px;
+	--bg-light: #FAF5EE;
+	--bg-dark: rgb(34, 37, 45);
+	--text-light: #111318;
+	--text-dark: #ffffff;
+	--text-secondary: rgba(255, 255, 255, 0.7);
+	--accent-dark: rgb(61, 234, 164);
+	--accent-hover: rgb(97, 253, 176);
+	--border-dark: rgb(50, 54, 65);
 }
 
 body {
 	font-family: 'Poppins', sans-serif;
-	color: var(--black);
+	color: var(--text-light);
 	font-size: var(--font-size-base);
-	background-color: #FAF5EE;
+	background-color: var(--bg-light);
 	background-image: url("/img/noise.png");
+	background-repeat: repeat;
+	background-attachment: fixed;
+	background-position: center;
+	min-height: 100vh;
 	margin: 0;
+	transition: background-color 0.3s ease,
+		color 0.3s ease,
+		background-image 0.3s ease;
 }
 
 a {
@@ -53,19 +68,26 @@ textarea {
 	margin-bottom: 1rem;
 }
 
-.btn {
-	background-color: var(--black);
+.btn,
+button.btn {
+	background-color: rgb(0, 0, 0);
 	border: none;
 	color: var(--white);
 	text-decoration: none;
 	padding: 16px 32px;
 	margin: 4px 2px;
 	cursor: pointer;
+	border-radius: 5px;
 }
 
 .btn-delete {
-	padding: 10px 16px;
 	background-color: var(--red);
+	padding: 8px 16px;
+	min-width: 80px;
+	text-align: center;
+	line-height: 1;
+	border-radius: 5px;
+	color: var(--white);
 }
 
 img {
@@ -78,10 +100,12 @@ img {
 	max-width: 982px;
 	margin: 0 auto;
 	padding: 0 10px;
+	background: transparent;
 }
 
 .main {
 	padding: 20px 0;
+	background: transparent;
 }
 
 /* profile image section */
@@ -97,8 +121,8 @@ img {
 	overflow: hidden;
 	border-radius: var(--border-radius);
 	display: block;
-  	margin-left: auto;
-  	margin-right: auto;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 /*main header*/
@@ -110,6 +134,8 @@ img {
 	grid-template-areas:
 		"logo search"
 		"menu menu";
+	border-bottom: 1px solid rgba(126, 126, 126, 0.2);
+	background: transparent;
 }
 
 @media only screen and (min-width: 768px) {
@@ -122,25 +148,33 @@ img {
 
 .header__logo {
 	grid-area: logo;
-	font-weight: 800;
-	font-size: 25px;
+	font-size: 1.5rem;
+	font-weight: bold;
 	text-decoration: none;
+	color: var(--text-light);
 }
 
 .header__logo:hover {
+	color: var(--text-light);
 	text-decoration: underline;
+}
+
+.header__logo:active {
+	color: var(--text-light);
 }
 
 .header__nav {
 	grid-area: menu;
 	display: flex;
 	justify-content: center;
+	background: transparent;
 }
 
 .header__button {
 	grid-area: search;
 	display: flex;
-	justify-content: end;
+	gap: 10px;
+	align-items: center;
 }
 
 .header__button button {
@@ -168,6 +202,7 @@ img {
 	gap: 1rem;
 	font-weight: 600;
 	padding: 0;
+	background: transparent;
 }
 
 .header__nav ul a {
@@ -188,6 +223,7 @@ img {
 .author {
 	padding: 10px 0;
 	text-align: center;
+	background: transparent;
 }
 
 .author__heading {
@@ -236,7 +272,7 @@ img {
 	width: 260px;
 }
 
-.article-list__tags{
+.article-list__tags {
 	font-size: 0.75rem;
 	color: var(--gray);
 
@@ -284,7 +320,16 @@ img {
 }
 
 .article {
-	white-space: pre-wrap;
+    white-space: pre-wrap;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin: 10px 0;
+    backdrop-filter: blur(5px);
+}
+/* Then, in your dark-mode section, add: */
+[data-theme="dark"] .article {
+    background-color: rgba(34, 37, 45, 0.7);
 }
 
 /*Footer*/
@@ -346,79 +391,95 @@ img {
 	padding: 10px 0;
 }
 
-.admin-posts-controls .btn {
+.admin-posts-controls .btn:not(.btn-delete) {
 	display: inline-block;
-	background-color: var(--black);
-	color: var(--gray-light);
+	background-color: rgb(0, 0, 0);
+	color: var(--white);
 	border: 0;
 	text-decoration: none;
 	font-size: 0.8rem;
-	padding: 4px, 8px;
-	line-height: 2;
-	border-radius: var(--border-radius);
+	padding: 8px 16px;
+	line-height: 1;
+	min-width: 80px;
+	text-align: center;
+	border-radius: 5px;
+}
+
+.admin-posts-controls .btn-delete {
+	display: inline-block;
+	background-color: var(--red);
+	color: var(--white);
+	border: 0;
+	text-decoration: none;
+	font-size: 0.8rem;
+	padding: 8px 16px;
+	line-height: 1;
+	min-width: 80px;
+	text-align: center;
+	border-radius: 5px;
 }
 
 .button-link {
 	display: inline-block;
 	padding: 8px 16px;
-	background-color: var(--black);
+	background-color: rgb(0, 0, 0);
 	color: var(--white);
 	text-decoration: none;
-	border-radius: 4px;
+	border-radius: 5px;
 	text-align: center;
-  }
+}
 
-  .home-page{
+.home-page {
 	width: 100%;
 	text-align: center;
 	margin-top: 10rem;
-  }
+}
 
-  .no-search-result{
+.no-search-result {
 	text-decoration: none;
 	text-align: center;
-  }
+}
 
-  .registration-success {
+.registration-success {
 	padding: 10px 0;
 	text-align: center;
 }
 
 .alert {
-    padding: 20px;
-    background-color: #e47c7c;
-    color: var(--red);
-    opacity: 1;
-    transition: opacity 0.6s;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    position: relative;
+	padding: 20px;
+	background-color: #e47c7c;
+	color: var(--red);
+	opacity: 1;
+	transition: opacity 0.6s;
+	margin-bottom: 15px;
+	border-radius: 5px;
+	position: relative;
 	display: inline-block;
 }
 
 .closebtn {
-    margin-left: 15px;
-    color: #d94040;
-    font-weight: bold;
-    float: right;
-    font-size: 22px;
-    line-height: 20px;
-    cursor: pointer;
-    transition: 0.3s;
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
+	margin-left: 15px;
+	color: #d94040;
+	font-weight: bold;
+	float: right;
+	font-size: 22px;
+	line-height: 20px;
+	cursor: pointer;
+	transition: 0.3s;
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
 }
 
 .closebtn:hover {
-    color: var(--black);
+	color: var(--black);
 }
 
 /** Comments Section **/
 
 .comments-ul {
-    list-style-type: none;
+	list-style-type: none;
 	padding: 0;
 	margin: 0;
 	font-size: clamp(1.13rem, calc(1.08rem + 0.22vw), 1.25rem);
@@ -435,6 +496,9 @@ img {
 .comments {
 	white-space: pre-wrap;
 	font-size: 15px;
+	word-break: break-word;
+	overflow-wrap: break-word;
+	white-space: normal;
 }
 
 .comment-date {
@@ -443,46 +507,403 @@ img {
 
 /** Flash Messaging Styles **/
 .flash-message {
-    position: relative;
-    padding: 1em;
-    margin-bottom: 1em;
-    border-radius: 10px;
-    font-weight: bold;
-    opacity: 1;
-    transition: opacity 0.5s ease-out;
+	position: relative;
+	padding: 1em;
+	margin-bottom: 1em;
+	border-radius: 10px;
+	font-weight: bold;
+	opacity: 1;
+	transition: opacity 0.5s ease-out;
 }
 
 .flash-error {
-    background-color: #ffe6e6;
-    border: 2px solid #ff4d4d;
-    color: #990000;
+	background-color: #ffe6e6;
+	border: 2px solid #ff4d4d;
+	color: #990000;
 }
 
 .flash-success {
-    background-color: #e6ffe6;
-    border: 2px solid #33cc33;
-    color: #006600;
+	background-color: #e6ffe6;
+	border: 2px solid #33cc33;
+	color: #006600;
 }
 
 .flash-info {
-    background-color: #cce7ff;
-    border: 2px solid #a1c6ea;
-    color: #0056b3;
+	background-color: #cce7ff;
+	border: 2px solid #a1c6ea;
+	color: #0056b3;
 }
 
 .flash-message .close-btn {
-    position: absolute;
-    top: 5px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 1.2em;
-    cursor: pointer;
-    color: inherit;
+	position: absolute;
+	top: 5px;
+	right: 10px;
+	background: none;
+	border: none;
+	font-size: 1.2em;
+	cursor: pointer;
+	color: inherit;
 }
 
 .flash-message.hide {
-    opacity: 0;
+	opacity: 0;
 }
 
+/* Add dark mode styles */
+[data-theme="dark"] {
+	color: var(--text-dark);
+}
 
+[data-theme="dark"] body {
+	background-color: var(--bg-dark);
+	background-image: url("/img/noise_dark.png");
+	background-repeat: repeat;
+	background-attachment: fixed;
+	background-position: center;
+	color: var(--text-dark);
+}
+
+/* Container background in dark mode */
+[data-theme="dark"] .container {
+	background: transparent;
+}
+
+/* Main content area background in dark mode */
+[data-theme="dark"] .main {
+	background: transparent;
+}
+
+/* Header background in dark mode */
+[data-theme="dark"] .header {
+	background: transparent;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Search bar background in dark mode */
+[data-theme="dark"] .searchBar {
+	background-color: var(--bg-dark);
+}
+
+/* Update any modal or overlay backgrounds */
+[data-theme="dark"] .modal,
+[data-theme="dark"] .overlay {
+	background-color: var(--bg-dark);
+}
+
+/* Ensure transitions are smooth */
+.container,
+.main,
+.header,
+.searchBar,
+.modal,
+.overlay {
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Text colors in dark mode */
+[data-theme="dark"] a,
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] .author__heading,
+[data-theme="dark"] .author__body,
+[data-theme="dark"] .articles__heading,
+[data-theme="dark"] .article-ul li a span,
+[data-theme="dark"] .pagination {
+	color: var(--text-dark);
+}
+
+/* Article list styles in dark mode */
+[data-theme="dark"] .article-list__date {
+	color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-ul li:not(:last-child) {
+	border-bottom: 1px solid var(--border-dark);
+}
+
+[data-theme="dark"] .header__nav ul a {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .header__button button {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .header__button button:hover {
+	border-color: var(--accent-dark);
+}
+
+[data-theme="dark"] .searchBtn svg path,
+[data-theme="dark"] .searchBtn svg line {
+	stroke: var(--text-dark);
+}
+
+/* Search bar styles in dark mode */
+[data-theme="dark"] .searchBar {
+	background-color: var(--bg-dark);
+	border-bottom: 1px solid var(--border-dark);
+}
+
+[data-theme="dark"] #searchClose {
+	color: var(--text-dark);
+}
+
+/* Form elements in dark mode */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+	background-color: var(--bg-dark);
+	border: 1px solid var(--border-dark);
+	color: var(--text-dark);
+}
+
+/* Button styles in dark mode */
+[data-theme="dark"] .btn:not(.btn-delete) {
+	background-color: var(--accent-dark);
+	color: var(--bg-dark);
+}
+
+[data-theme="dark"] button.btn:not(.btn-delete) {
+	background-color: var(--accent-dark);
+	color: var(--bg-dark);
+}
+
+[data-theme="dark"] .btn:hover {
+	background-color: var(--accent-hover);
+}
+
+/* Footer styles in dark mode */
+[data-theme="dark"] .footer {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .footer a {
+	color: var(--text-dark);
+}
+
+/* Alert and flash message styles in dark mode */
+[data-theme="dark"] .flash-message {
+	background-color: var(--bg-dark);
+	border-color: var(--border-dark);
+}
+
+[data-theme="dark"] .flash-error {
+	background-color: rgba(255, 0, 0, 0.1);
+	border-color: var(--red);
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .flash-success {
+	background-color: rgba(0, 255, 0, 0.1);
+	border-color: var(--accent-dark);
+	color: var(--text-dark);
+}
+
+/* Comments section in dark mode */
+[data-theme="dark"] .comments-ul li {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .comment-date {
+	color: var(--text-secondary);
+}
+
+/* Admin dashboard in dark mode */
+[data-theme="dark"] .admin-posts li {
+	border-bottom: 1px solid var(--border-dark);
+}
+
+[data-theme="dark"] .admin-posts-controls .btn:not(.btn-delete) {
+	background-color: var(--accent-dark);
+	color: var(--bg-dark);
+}
+
+/* Hero image shadow in dark mode */
+[data-theme="dark"] .hero-image,
+[data-theme="dark"] .post-image {
+	filter: drop-shadow(0px 44px 34px rgba(0, 0, 0, 0.5));
+}
+
+/* Hover effects in dark mode */
+[data-theme="dark"] a:hover,
+[data-theme="dark"] .header__nav ul a:hover {
+	color: var(--accent-dark);
+}
+
+/* Add smooth transitions for common interactive elements */
+a, button, input, .btn, .header__logo, .header__nav ul a, .article-ul li, 
+.flash-message, .searchBar, .header__button button, .pagination,
+.admin-posts-controls .btn, #themeToggle {
+    transition: color 0.3s ease, 
+                background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                box-shadow 0.3s ease,
+                transform 0.3s ease;
+}
+
+/* Specific transitions for containers that need them */
+.container,
+.main,
+.header,
+.modal,
+.overlay {
+    transition: background-color 0.3s ease;
+}
+
+/* Keep specific transitions for theme changes */
+body {
+    transition: background-color 0.3s ease,
+                color 0.3s ease,
+                background-image 0.3s ease;
+}
+
+/* Add theme toggle styles */
+#themeToggle {
+	width: 40px;
+	height: 40px;
+	cursor: pointer;
+	padding: 8px;
+	border-radius: 50%;
+	border: none;
+	background: none;
+	color: inherit;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.3s, transform 0.2s;
+}
+
+#themeToggle:hover {
+	background-color: rgba(0, 0, 0, 0.1);
+	transform: scale(1.1);
+}
+
+#themeToggle:active {
+	transform: scale(0.9);
+}
+
+[data-theme="dark"] #themeToggle:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+#themeToggle svg {
+	width: 20px;
+	height: 20px;
+	transition: transform 0.5s ease;
+}
+
+#themeToggle:hover svg {
+	transform: rotate(30deg);
+}
+
+/* Icon visibility in different themes */
+[data-theme="dark"] .sun-icon {
+	display: none;
+}
+
+[data-theme="dark"] .moon-icon {
+	display: block !important;
+}
+
+/* Smooth theme transition */
+body {
+	transition: background-color 0.3s, color 0.3s;
+}
+
+[data-theme="dark"] .header__logo {
+	color: var(--text-dark);
+	background: transparent;
+}
+
+[data-theme="dark"] .header__logo:hover {
+	color: var(--text-dark);
+	text-decoration: underline;
+}
+
+[data-theme="dark"] .header__logo:active {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .author {
+	background: transparent;
+}
+
+[data-theme="dark"] .header__nav {
+	background: transparent;
+}
+
+[data-theme="dark"] .header__nav ul {
+	background: transparent;
+}
+
+[data-theme="dark"] .header__nav ul a {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .header__nav ul a:hover {
+	color: var(--accent-dark);
+}
+
+[data-theme="dark"] .btn-delete {
+	background-color: var(--red);
+	color: var(--white);
+}
+
+[data-theme="dark"] .admin-posts-controls .btn:not(.btn-delete) {
+	background-color: var(--accent-dark);
+	color: var(--bg-dark);
+}
+
+[data-theme="dark"] .btn-delete:hover {
+	background-color: var(--red);
+	color: var(--white);
+}
+
+[data-theme="dark"] .admin-posts-controls .btn-delete:hover {
+	background-color: var(--red);
+	color: var(--white);
+}
+
+.spinner {
+	width: 20px;
+	height: 20px;
+	border: 3px solid rgba(0, 0, 0, 0.5);
+	border-top: 3px solid white;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-left: 10px;
+	vertical-align: middle;
+	display: none;
+}
+
+[data-theme="dark"] .btn .spinner {
+	border: 3px solid rgba(255, 255, 255, 0.5);
+	border-top: 3px solid white;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.btn-with-spinner {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+[data-theme="dark"] #generateSummaryBtn .button-text {
+	color: rgb(34, 37, 45);
+}

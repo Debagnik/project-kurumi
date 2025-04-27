@@ -62,11 +62,11 @@ async function summarizeMarkdownBody(markdown) {
             messages: [
                 {
                     role: 'system',
-                    content: `${systemPrompt} ${process.env.MAX_DESCRIPTION_LENGTH} characters`,
+                    content: `${systemPrompt} ${process.env.MAX_DESCRIPTION_LENGTH * 0.8} characters`,
                 },
                 {
                     role: 'user',
-                    content: `${userPrompt} ${process.env.MAX_DESCRIPTION_LENGTH} ${userPrompt2}:\n\n${markdown}`,
+                    content: `${userPrompt} ${process.env.MAX_DESCRIPTION_LENGTH * 0.8} ${userPrompt2}:\n\n${markdown}`,
                 },
             ],
         };

@@ -25,7 +25,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
   - LLM Based Paraphrazer/Summarizer/TL;DR generation (In Beta Stage)
 - **Responsive Design**
   - Accessible on both desktop and mobile devices.
-  - Accessible Dark/light UI for better reading experience (planned future scope)
+  - Accessible Midnight/Daylight themed UI for better reading experience
 
 ## Technologies Used
 

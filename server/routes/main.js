@@ -9,6 +9,8 @@ const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
 
+const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
+
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
 /**
@@ -51,7 +53,7 @@ router.use(csrfProtection);
 /**
  * GET /api/test/getCsrfToken
  */
-router.get('/api/test/getCsrfToken', csrfProtection, (req, res) => {
+router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimiter, (req, res) => {
     if(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local'){
         return res.status(200).json({ csrfToken: req.csrfToken() });
     }
@@ -213,7 +215,7 @@ const getCommentsFromPostId = async (postId) => {
  * POST /
  * Search: Search term
  */
-router.post('/search', async (req, res) => {
+router.post('/search', genericOpenRateLimiter, async (req, res) => {
     try {
 
         let searchLimit = res.locals.siteConfig.searchLimit;
@@ -267,7 +269,7 @@ router.post('/search', async (req, res) => {
  * /posts/post-comments
  * Add comments to a post
  */
-router.post('/post/:id/post-comments', async (req, res) => {
+router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
@@ -375,7 +377,7 @@ router.post('/post/:id/post-comments', async (req, res) => {
  * /posts/post-comments/:commentId
  * Delete a comment from a post if the User is Authorized (Only Admin or Moderator)
  */
-router.post('/post/delete-comment/:commentId', async (req, res) => {
+router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
     const { commentId } = req.params;
     try {
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
