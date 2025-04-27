@@ -9,7 +9,7 @@ const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
 
-const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter } = require('../../utils/rateLimiter');
+const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
