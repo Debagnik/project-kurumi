@@ -54,13 +54,13 @@ router.use(csrfProtection);
  * GET /api/test/getCsrfToken
  */
 router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimiter, (req, res) => {
-    if(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local'){
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local') {
         return res.status(200).json({ csrfToken: req.csrfToken() });
     }
-    else{
+    else {
         return res.status(403).json({ message: 'Forbidden' });
     }
-  });
+});
 
 /**
  * GET /
@@ -76,7 +76,7 @@ router.get('', async (req, res) => {
         }
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
-        let page = req.query.page || 1;
+        let page = parseInt(req.query.page) || 1;
 
         const data = await post.aggregate([
             { $match: { isApproved: true } },
@@ -87,13 +87,18 @@ router.get('', async (req, res) => {
         const nextPage = parseInt(page) + 1;
         const hasNextPage = nextPage <= Math.ceil(count / perPage);
 
+        const previousPage = parseInt(page) - 1;
+        const hasPreviousPage = previousPage >= 1;
+
 
         res.render('index', {
             locals,
             data,
-            current: page,
+            currentPage: page,
             nextPage: hasNextPage ? nextPage : null,
-            csrfToken: req.csrfToken()
+            previousPage: hasPreviousPage ? hasPreviousPage : null,
+            csrfToken: req.csrfToken(),
+            totalPages: Math.ceil(count / perPage)
         });
         console.log(`DB Posts Data fetched`);
     } catch (error) {
@@ -238,20 +243,36 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             description: "Simple Search Page",
             config: res.locals.siteConfig
         }
+        let page = req.body.page || 1;
 
-        const data = await post.find(
-            {
-                $and: [
-                    { $text: { $search: searchNoSpecialChar } },
-                    { isApproved: true }
-                ]
-            },
+        const filter = {
+            $and: [
+                { $text: { $search: searchNoSpecialChar } },
+                { isApproved: true }
+            ]
+        };
+        let data = null;
+        data = await post.find(
+            filter,
             { score: { $meta: 'textScore' } }
-        )
-            .sort({ score: { $meta: 'textScore' } })
-            .limit(searchLimit);
+        ).sort({ score: { $meta: 'textScore' } }).skip(searchLimit * page - searchLimit).limit(searchLimit).exec();
+        const count = await post.countDocuments(filter);
+        const nextPage = parseInt(page) + 1;
+        const hasNextPage = nextPage <= Math.ceil(count / searchLimit);
 
-        res.render('search', { data, locals, searchTerm: searchTerm, csrfToken: req.csrfToken() });
+        const previousPage = parseInt(page) - 1;
+        const hasPreviousPage = previousPage >= 1;
+
+        res.render('search', {
+            data,
+            locals,
+            searchTerm: searchTerm,
+            currentPage: page,
+            nextPage: hasNextPage ? nextPage : null,
+            previousPage: hasPreviousPage ? hasPreviousPage : null,
+            totalPages: Math.ceil(count / searchLimit),
+            csrfToken: req.csrfToken()
+        });
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).render('error', {
@@ -275,7 +296,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
     if (!siteConfig.isCommentsEnabled) {
         console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
         req.flash('error', 'Comments are disabled or Cloudflare keys are not set');
-        if(process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 1:', req.session);
         }
         return res.status(403).redirect(`/post/${postId}`);
@@ -283,8 +304,8 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
 
     if (siteConfig.isCaptchaEnabled && (!siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey)) {
         console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
-        req.flash('error', 'CAPTCHA config error, contact the webmaster.' );
-        if(process.env.NODE_ENV !== 'production') {
+        req.flash('error', 'CAPTCHA config error, contact the webmaster.');
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 2:', req.session);
         }
         return res.status(403).redirect(`/post/${postId}`);
@@ -298,7 +319,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         if (!isUserHuman) {
             console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': remoteIp });
             req.flash('error', 'CAPTCHA verification failed, please try again.');
-            if(process.env.NODE_ENV !== 'production') {
+            if (process.env.NODE_ENV !== 'production') {
                 console.log('Session after flash 3:', req.session);
             }
             return res.status(403).redirect(`/post/${postId}`);
@@ -308,7 +329,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
     if (!commenterName || !commentBody) {
         console.error(400, 'Invalid comment data');
         req.flash('error', 'Invalid comment data, please ensure all fields are filled out.');
-        if(process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 4:', req.session);
         }
         return res.status(400).redirect(`/post/${postId}`);
@@ -316,7 +337,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
     if (commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
         console.error(400, 'Invalid comment data', 'Size mismatch');
         req.flash('error', 'Invalid comment data, please ensure comment length is between 1 and 500 characters and commenter name length is between 3 and 50 characters.');
-        if(process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 5:', req.session);
         }
         return res.status(400).redirect(`/post/${postId}`);
@@ -327,12 +348,12 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
         const existingPost = await post.findById(postId);
         if (!existingPost) {
-            console.error({"error": 404, "message": 'No post found', "Post_Id": postId});
+            console.error({ "error": 404, "message": 'No post found', "Post_Id": postId });
             return res.status(404).redirect('/404');
         }
 
         if (!existingPost.isApproved) {
-            console.error({"error": 403, "message": 'Post is not approved', "Post_Id": existingPost._id});
+            console.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost._id });
             return res.status(403).redirect(`/404`);
         }
 
@@ -352,7 +373,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
         req.flash('success_msg', 'Comment submitted successfully');
-        if(process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 6:', req.session);
         }
         res.status(200).redirect(`/post/${postId}`);
@@ -363,8 +384,8 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         } else {
             console.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         }
-        req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error' );
-        if(process.env.NODE_ENV !== 'production') {
+        req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 7:', req.session);
         }
         res.status(500).redirect(`/post/${postId}`);
@@ -397,7 +418,7 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
         await thisComment.deleteOne()
         console.log({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
         req.flash('info', `Comment deleted successfully by ${currentUser.username}`);
-        if(process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 8:', req.session);
         }
         return res.status(200).redirect(`/post/${thisComment.postId}`);
@@ -405,12 +426,12 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
     } catch (err) {
         console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
         req.flash('error', 'Error deleting comment, contact the webmaster. Internal Server Error');
-        if(process.env.NODE_ENV!== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 9:', req.session);
         }
-        if(thisComment.postId) {
+        if (thisComment.postId) {
             return res.status(500).redirect(`/post/${thisComment.postId}`);
-        } else { 
+        } else {
             return res.status(404).redirect('/404');
         }
     }

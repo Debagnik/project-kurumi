@@ -17,4 +17,37 @@
         <% } %>
     </ul>
 
+    <% if (data.length > 0) { %>
+        <div class="pagination-container">
+            <div class="pagination-nav">
+                <% if (previousPage) { %>
+                    <form action="/search" method="POST" style="display: inline;">
+                        <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
+                        <input type="hidden" name="page" value="<%= currentPage - 1 %>">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button type="submit" class="pagination prev">&lt; View previous results</button>
+                    </form>
+                <% } else { %>
+                    <span></span> <!-- Empty span to maintain layout -->
+                <% } %>
+                
+                <% if (nextPage !== null) { %>
+                    <form action="/search" method="POST" style="display: inline;">
+                        <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
+                        <input type="hidden" name="page" value="<%= nextPage %>">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button type="submit" class="pagination next">View next results &gt;</button>
+                    </form>
+                <% } %>
+            </div>
+            
+            <form action="/search" method="POST" class="pagination-counter-form">
+                <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <label>
+                    Page <input type="number" name="page" value="<%= currentPage %>" min="1" max="<%= totalPages %>" class="page-input"> of <%= totalPages %>
+                </label>
+            </form>
+        </div>
+    <% } %>
 </section>
