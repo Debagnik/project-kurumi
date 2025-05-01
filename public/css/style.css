@@ -363,6 +363,7 @@ img {
 }
 
 .search__form {
+	position: relative;
 	background-color: var(--black);
 	padding: 10px 20px;
 	border-radius: var(--border-radius);
