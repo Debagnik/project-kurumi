@@ -416,6 +416,24 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
 
 });
 
+function parseTags(textTags) {
+  if (typeof textTags !== 'string') {
+    return [];
+  }
+
+  return textTags
+    .split(',')
+    .map(tag => tag.trim())
+    .map(tag =>
+      sanitizeHtml(tag, {
+        allowedTags: [],
+        allowedAttributes: {}
+      })
+    )
+    .map(tag => tag.replace(/[^a-zA-Z0-9-_]/g, ''))
+    .filter(tag => tag.length > 0);
+}
+
 
 async function savePostToDB(req, res) {
   try {
@@ -455,7 +473,7 @@ async function savePostToDB(req, res) {
       markdownbody: req.body.markdownbody.trim(),
       body: htmlBody,
       author: currentUser.username.trim(),
-      tags: req.body.tags.trim(),
+      tags: parseTags(req.body.tags),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
@@ -547,7 +565,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
-      tags: req.body.tags.trim(),
+      tags: parseTags(req.body.tags.trim()),
       thumbnailImageURI: defaultThumbnailImageURI,
       modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username

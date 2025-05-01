@@ -253,6 +253,7 @@ img {
 	max-width: 600px;
 }
 
+/* Light mode styles */
 .pagination {
 	font-size: 1.3rem;
 	color: var(--black);
@@ -269,15 +270,9 @@ button.pagination {
 	color: var(--black);
 }
 
-.pagination:hover {
+.pagination:hover,
+button.pagination:hover {
 	color: var(--gray);
-}
-
-.pagination-counter {
-	font-size: 1.1rem;
-	color: var(--gray);
-	font-weight: 500;
-	text-align: center;
 }
 
 .pagination-counter-form {
@@ -322,23 +317,17 @@ button.pagination {
 	-moz-appearance: textfield;
 }
 
-/* Dark mode styles with better contrast */
+/* Dark mode styles */
 [data-theme="dark"] .pagination,
-[data-theme="dark"] button.pagination {
-	color: rgba(255, 255, 255, 0.8);
-}
-
-[data-theme="dark"] .pagination-counter {
+[data-theme="dark"] button.pagination,
+[data-theme="dark"] .pagination-counter-form,
+[data-theme="dark"] .pagination-counter-form label {
 	color: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="dark"] .pagination:hover,
 [data-theme="dark"] button.pagination:hover {
 	color: var(--accent-dark);
-}
-
-[data-theme="dark"] .pagination-counter-form {
-	color: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="dark"] .page-input {
