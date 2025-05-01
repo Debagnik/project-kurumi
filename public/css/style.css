@@ -345,8 +345,8 @@ img {
 .searchBar {
 	visibility: hidden;
 	transform: translateY(-100px);
-	background-color: var(--black);
-	padding: 4px 0;
+	background-color: transparent;
+	padding: 0;
 	position: absolute;
 	left: 0;
 	right: 0;
@@ -357,19 +357,71 @@ img {
 	transition: transform 0.1s;
 }
 
+.searchBar .container {
+	background-color: transparent;
+	padding: 0;
+}
+
+.search__form {
+	background-color: var(--black);
+	padding: 10px 20px;
+	border-radius: var(--border-radius);
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	max-width: 600px;
+	margin: 0 auto;
+}
+
 .searchBar input {
 	margin: 0;
-	padding: 0;
+	padding: 15px;
+	font-size: 1.0rem;
+	width: 100%;
+	border: none;
+	background: transparent;
+	color: var(--white);
+	outline: none;
+}
+
+.searchBar input::placeholder {
+	color: rgba(255, 255, 255, 0.7);
 }
 
 #searchClose {
 	position: absolute;
 	top: 0;
 	right: 0;
-	color: var(--gray-light);
+	color: var(--black);
 	padding: 15px;
 	margin-bottom: 1rem;
+	font-size: 2rem;
+	line-height: 1;
+	cursor: pointer;
+	transition: color 0.3s ease;
+	z-index: 10;
+	width: 50px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(0, 0, 0, 0.1);
+	border-radius: 50%;
+}
 
+#searchClose:hover {
+	color: var(--red);
+	background-color: rgba(0, 0, 0, 0.2);
+	transform: scale(1.1);
+}
+
+[data-theme="dark"] #searchClose {
+	color: var(--text-dark);
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] #searchClose:hover {
+	color: var(--red);
+	background-color: rgba(255, 255, 255, 0.2);
+	transform: scale(1.1);
 }
 
 /* Admin Dashboard*/
@@ -584,7 +636,7 @@ img {
 
 /* Search bar background in dark mode */
 [data-theme="dark"] .searchBar {
-	background-color: var(--bg-dark);
+	background-color: transparent;
 }
 
 /* Update any modal or overlay backgrounds */
@@ -646,8 +698,24 @@ img {
 
 /* Search bar styles in dark mode */
 [data-theme="dark"] .searchBar {
+	background-color: transparent;
+}
+
+[data-theme="dark"] .searchBar .container {
+	background-color: transparent;
+}
+
+[data-theme="dark"] .search__form {
 	background-color: var(--bg-dark);
-	border-bottom: 1px solid var(--border-dark);
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .searchBar input {
+	color: var(--text-dark);
+}
+
+[data-theme="dark"] .searchBar input::placeholder {
+	color: var(--text-secondary);
 }
 
 [data-theme="dark"] #searchClose {
