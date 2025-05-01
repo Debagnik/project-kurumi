@@ -60,6 +60,44 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    //Post Content Body TAB Behaiviour #107
+    const textarea = document.getElementById('markdownbody');
+    textarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+
+            // Insert 4 spaces at cursor position
+            const spaces = "    ";
+            this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
+            // Move cursor
+            this.selectionStart = this.selectionEnd = start + spaces.length;
+        }
+    });
+
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const beforeCursor = this.value.substring(0, start);
+        const afterCursor = this.value.substring(end);
+
+        // Match the last group of 4+ spaces before cursor
+        const match = beforeCursor.match(/( {4,})$/);
+
+        if (match) {
+          const spacesToRemove = match[0].length >= 4 ? 4 : 0;
+          const newBefore = beforeCursor.slice(0, -spacesToRemove);
+          this.value = newBefore + afterCursor;
+          this.selectionStart = this.selectionEnd = start - spacesToRemove;
+        }
+      }
+    });
+
     // Generate Summary functionality
     const generateButton = document.getElementById('generateSummaryBtn');
     if (generateButton) {

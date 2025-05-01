@@ -2,32 +2,37 @@
 <div class="admin-title">
     <h1>Add New Post</h1>
 </div>
+<div class="post-form">
+    <form method="post" autocomplete="off" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required placeholder="Add Title Here">
 
-<form method="post" autocomplete="off" novalidate>
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="title">Title:</label>
-    <input type="text" id="title" name="title" required placeholder="Add Title Here">
-    
-    <label for="thumbnailImageURI">Thumbnail Image link</label>
-    <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" placeholder="Add Thumbnail link" onchange="previewImage(this.value)" pattern="https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)">
+        <label for="thumbnailImageURI">Thumbnail Image link</label>
+        <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" placeholder="Add Thumbnail link"
+            onchange="previewImage(this.value)"
+            pattern="https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)">
 
-    <label for="body">Body (type and format in Markdown):</label>
-    <textarea id="markdownbody" name="markdownbody" cols="10" rows="10" required placeholder="Enter Body"></textarea>
-    
-    <label for="desc">Short Summary:</label>
-    <textarea id="desc" name="desc" placeholder="Enter Short Summary/Description under 10-50 words" required></textarea>
-    
-    <label for="tags">Tags:</label>
-    <input type="text" id="tags" name="tags" placeholder="Add Tags (comma-separated)" required>
+        <label for="body">Body (type and format in Markdown):</label>
+        <textarea id="markdownbody" name="markdownbody" cols="10" rows="10" required
+            placeholder="Enter Body"></textarea>
 
-    <% if (siteConfig.isAISummerizerEnabled) { %>
-        <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
-            <span class="button-text">Generate Summary (Beta)</span>
-            <span class="spinner"></span>
-        </button><p/>
-    <% } %>
+        <label for="desc">Short Summary:</label>
+        <textarea id="desc" name="desc" placeholder="Enter Short Summary/Description under 10-50 words"
+            required></textarea>
 
-    <button type="submit" formaction="/admin/add-post" class="btn">Add</button>
-    <!--<input type="submit" id="submit" name="submit" value="Add" class="btn">-->
+        <label for="tags">Tags:</label>
+        <input type="text" id="tags" name="tags" placeholder="Add Tags (comma-separated)" required>
 
-</form>
+        <% if (siteConfig.isAISummerizerEnabled) { %>
+            <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
+                <span class="button-text">Generate Summary (Beta)</span>
+                <span class="spinner"></span>
+            </button>
+            <p />
+            <% } %>
+
+                <button type="submit" formaction="/admin/add-post" class="btn">Add</button>
+
+    </form>
+</div>
