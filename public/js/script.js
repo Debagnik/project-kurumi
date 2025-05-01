@@ -55,55 +55,50 @@ document.addEventListener('DOMContentLoaded', function () {
     // Comment character count
     const commentBody = document.getElementById('commentBody');
     if (commentBody) {
-        commentBody.addEventListener('input', function() {
+        commentBody.addEventListener('input', function () {
             document.getElementById('charCount').textContent = this.value.length;
         });
     }
 
-    //Post Content Body TAB Behaiviour #107
+    //Post Content Body TAB Behavior #107
     const textarea = document.getElementById('markdownbody');
-    textarea.addEventListener('keydown', function(e) {
-        if (e.key === 'Tab' && !e.shiftKey) {
-            e.preventDefault();
+    if (textarea) {
+        textarea.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
 
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
 
-            // Insert 4 spaces at cursor position
-            const spaces = "    ";
-            this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
-            // Move cursor
-            this.selectionStart = this.selectionEnd = start + spaces.length;
-        }
-    });
+                if (!e.shiftKey) {
+                    // Insert 4 spaces at cursor position
+                    const spaces = "    ";
+                    this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
+                    // Move cursor
+                    this.selectionStart = this.selectionEnd = start + spaces.length;
+                } else {
+                    const beforeCursor = this.value.substring(0, start);
+                    const afterCursor = this.value.substring(end);
 
-    textarea.addEventListener('keydown', function (e) {
-      if (e.key === 'Tab' && e.shiftKey) {
-        e.preventDefault();
-
-        const start = this.selectionStart;
-        const end = this.selectionEnd;
-        const beforeCursor = this.value.substring(0, start);
-        const afterCursor = this.value.substring(end);
-
-        // Match the last group of 4+ spaces before cursor
-        const match = beforeCursor.match(/( {4,})$/);
-
-        if (match) {
-          const spacesToRemove = match[0].length >= 4 ? 4 : 0;
-          const newBefore = beforeCursor.slice(0, -spacesToRemove);
-          this.value = newBefore + afterCursor;
-          this.selectionStart = this.selectionEnd = start - spacesToRemove;
-        }
-      }
-    });
+                    // Match the last group of 4+ spaces before cursor
+                    const match = beforeCursor.match(/( {4,})$/);
+                    if (match) {
+                        const spacesToRemove = match[0].length >= 4 ? 4 : 0;
+                        const newBefore = beforeCursor.slice(0, -spacesToRemove);
+                        this.value = newBefore + afterCursor;
+                        this.selectionStart = this.selectionEnd = start - spacesToRemove;
+                    }
+                }
+            }
+        });
+    }
 
     // Generate Summary functionality
     const generateButton = document.getElementById('generateSummaryBtn');
     if (generateButton) {
         const buttonText = generateButton.querySelector('.button-text');
         const spinner = generateButton.querySelector('.spinner');
-        
+
         function setLoading(isLoading) {
             if (isLoading) {
                 generateButton.disabled = true;
@@ -116,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        generateButton.addEventListener('click', async function() {
+        generateButton.addEventListener('click', async function () {
             console.log('Generate Summary clicked');
             setLoading(true);
 
@@ -139,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 const data = await response.json();
-                
+
                 if (data.code === 200) {
                     document.getElementById('desc').value = data.message;
                 } else {
