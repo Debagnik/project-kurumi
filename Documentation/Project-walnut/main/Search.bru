@@ -1,7 +1,7 @@
 meta {
   name: Search
   type: http
-  seq: 6
+  seq: 9
 }
 
 post {
@@ -12,7 +12,7 @@ post {
 
 headers {
   Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
-  Accept-Language: en-US,en;q=0.6
+  Accept-Language: en-US,en;q=0.8
   Cache-Control: max-age=0
   Connection: keep-alive
   Content-Type: application/x-www-form-urlencoded
@@ -24,53 +24,102 @@ headers {
   Sec-Fetch-User: ?1
   Sec-GPC: 1
   Upgrade-Insecure-Requests: 1
-  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
-  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36
+  sec-ch-ua: "Chromium";v="136", "Brave";v="136", "Not.A/Brand";v="99"
   sec-ch-ua-mobile: ?0
   sec-ch-ua-platform: "Windows"
 }
 
 body:form-urlencoded {
-  searchTerm: post
+  searchTerm: miku
+  title: 
+  author: 
+  tags: 
   _csrf: {{csrf_token}}
+  isAdvancedSearch: true
 }
 
 docs {
-  POST /search
+  # Route: POST /search
   
-  Description:
-  * Handles a blog post search request.
-  * Returns a list of approved posts that match the provided search term, using MongoDB's full-text search.
+  ## Overview
   
-  Middleware Used:
-  * csrfProtection – Validates the CSRF token.
-  * fetchSiteConfig – Loads site-wide settings like title, description, etc.
+  This route handles **simple** and **advanced** blog post searches. It supports keyword-based search, as well as filtering by title, author, and tags. In advanced mode, if no results are found, it automatically falls back to regex-based matching. The results are rendered using the `search.ejs` view.
   
-  Request Body Parameters:
-  * searchTerm (string, required): The text to search for.
-    * Must be a non-empty string.
-    * Maximum length: 100 characters.
-  * _csrf (string, required): CSRF token to prevent cross-site request forgery.
+  ---
   
-  Flow:
-  1. The input `searchTerm` is sanitized to remove unsafe characters.
-  2. A text search is performed in the `posts` collection with `isApproved: true`.
-  3. Results are sorted by MongoDB's text score (relevance).
-  4. The number of results returned is limited by `siteConfig.searchLimit`.
+  ## Middleware
   
-  Success Response:
-  * HTTP Status: 200
-  * Renders the `search.ejs` view.
-  * Response data includes:
-    * data: Array of matched posts.
-    * searchTerm: Original input value.
-    * csrfToken: For securing form actions.
-    * Additional data from site config via `res.locals`.
+  - `genericOpenRateLimiter`: Limits request frequency to prevent abuse.
   
-  Failure Responses:
-  * HTTP 400 – If `searchTerm` is missing or invalid.
-  * HTTP 500 – For server/database/view rendering errors.
+  ---
   
-  View Rendered:
-  * views/search.ejs – Displays search results or a no-match message.
+  ## Required Request Body Parameters
+  
+  | Parameter         | Type      | Required | Description                                                                 |
+  |-------------------|-----------|----------|-----------------------------------------------------------------------------|
+  | `searchTerm`      | String    | ❌ No    | Keyword to search in post `title` and `body`. Used in both simple and advanced search. |
+  | `title`           | String    | ❌ No    | (Advanced only) Match posts by exact or partial title.                     |
+  | `author`          | String    | ❌ No    | (Advanced only) Full name of the author (matched against user display name). |
+  | `tags`            | String    | ❌ No    | (Advanced only) Comma-separated list of tags.                              |
+  | `isAdvancedSearch`| Boolean/String | ✅ Yes | Set to `"true"` or `"false"` to enable advanced or simple search modes.     |
+  | `isNextPage`      | String    | ❌ No    | `"yes"` or `"no"` to move forward/backward in pagination.                  |
+  | `page`            | Number    | ❌ No    | Current page number; defaults to `1` if omitted or invalid.                |
+  
+  ---
+  
+  ## Logic Breakdown
+  
+  ### 1. **Pagination**
+  
+  - Uses `page` to determine skip offset.
+  - Supports relative navigation using `isNextPage`.
+  
+  ### 2. **Sanitization**
+  
+  - `searchTerm`, `title`, and `author` are sanitized using `sanitizeHtml()`.
+  - `tags` are parsed using a custom `parseTags()` function.
+  
+  ### 3. **Advanced Search Mode**
+  
+  - Matches posts by:
+    - Keyword (regex on `title` and `body`)
+    - Exact `title`
+    - Author name → resolved to username
+    - Tags (`$in` match)
+  - If no results are found, retries with fallback regex on `title` and `body`.
+  
+  ### 4. **Simple Search Mode**
+  
+  - Uses MongoDB `$text` index with `searchTerm`.
+  - Validates keyword length and sanitizes for injection safety.
+  
+  ### 5. **Response**
+  
+  - On success:
+    - Renders the `search.ejs` view with results, pagination, and input values.
+  - On failure:
+    - Returns `400` if invalid/missing input.
+    - Returns `500` for internal server errors.
+  
+  ---
+  
+  ## Return Behavior
+  
+  | Scenario                                  | HTTP Status | Behavior                                                   |
+  |-------------------------------------------|-------------|------------------------------------------------------------|
+  | Search results found                      | 200 OK      | Renders `search.ejs` with post data and pagination info    |
+  | Invalid keyword in simple search          | 400         | Returns `{ error: "Invalid keyword for simple search" }`   |
+  | Missing/invalid `isAdvancedSearch` flag   | 400         | Returns `{ error: "Missing or invalid isAdvancedSearch flag" }` |
+  | Internal error (DB, logic failure, etc.)  | 500         | Renders `error.ejs` with a generic message                 |
+  
+  ---
+  
+  ## Notes
+  
+  - Pagination is **stateful**, handled using `page` and `isNextPage`.
+  - Regex fallback only occurs in advanced search mode when initial search yields zero results.
+  - Author name resolution queries the `user` collection for a matching display name.
+  - `csrfToken` is generated and included in the rendered search view for CSRF protection.
+  
 }

@@ -53,7 +53,7 @@
         <%- data.desc %>
     </div>
     <br />
-    <div class="post-tags"><b>Tags:</b> <%= data.tags %></div>
+    <div class="post-tags"><b>Tags:</b> <%= data.tags.join(', ') %></div>
     <br />
     <% if (siteConfig.isCommentsEnabled) { %>
         <div>

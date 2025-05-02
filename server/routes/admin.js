@@ -10,7 +10,7 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
@@ -416,7 +416,6 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
 
 });
 
-
 async function savePostToDB(req, res) {
   try {
     const currentUser = await user.findById(req.userId);
@@ -455,7 +454,7 @@ async function savePostToDB(req, res) {
       markdownbody: req.body.markdownbody.trim(),
       body: htmlBody,
       author: currentUser.username.trim(),
-      tags: req.body.tags.trim(),
+      tags: parseTags(req.body.tags),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
@@ -547,7 +546,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
-      tags: req.body.tags.trim(),
+      tags: parseTags(req.body.tags.trim()),
       thumbnailImageURI: defaultThumbnailImageURI,
       modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username

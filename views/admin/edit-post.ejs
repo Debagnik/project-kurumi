@@ -21,7 +21,7 @@
     <textarea id="desc" name="desc" required placeholder="Enter Short Summary/Description under 10-50 words"><%= data.desc %></textarea>
 
     <label for="tags">Tags (comma-separated):</label>
-    <input type="text" id="tags" name="tags" value="<%= data.tags %>" required placeholder="Post Tags (comma-separated)">
+    <input type="text" id="tags" name="tags" value="<%= data.tags.join(', ') %>" required placeholder="Post Tags (comma-separated)">
 
     <% if (currentUser.privilege !== 3) { %>
         <label for="isApproved">Approval Status:</label>
