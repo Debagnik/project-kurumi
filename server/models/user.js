@@ -37,6 +37,15 @@ const userSchema = new schema({
     modifiedAt:{
         type: Date,
         default: Date.now
+    },
+    isPasswordReset: {
+        type: Boolean,
+        default: false,
+        require: true
+    },
+    adminTempPassword: {
+        type: String,
+        require: false
     }
 });
 

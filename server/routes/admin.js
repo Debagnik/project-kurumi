@@ -172,16 +172,6 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       });
     }
 
-    //Define strong passwords
-    const isStrongPassword = (password) => {
-      const minLength = 8;
-      const hasUppercase = /[A-Z]/.test(password);
-      const hasLowercase = /[a-z]/.test(password);
-      const hasNumber = /[0-9]/.test(password);
-      const hasSpecialChar = /[!@#$%^&*()]/.test(password);
-      return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
-    }
-
     //check password and confirm password match
     if (!(password === confirm_password)) {
       console.error('Password and confirm passwords do not match');
@@ -874,6 +864,24 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       return res.status(400).send('Name is required');
     }
 
+    let hashedTempPassword = '';
+    let hasAdminResettedPassword = false;
+    if (req.body.adminTempPassword) {
+      hasAdminResettedPassword = true;
+      const tempPassword = req.body.adminTempPassword.trim();
+      if (!isStrongPassword(tempPassword)) {
+        return res.render('admin/index', {
+          errors: [{ msg: 'Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.' }],
+          errors_login: [],
+          config: res.locals.siteConfig,
+          csrfToken: req.csrfToken(),
+          isWebMaster: false
+        });
+      }
+
+      hashedTempPassword = await bcrypt.hash(tempPassword, 10);
+    }
+
     const sanitizedName = sanitizeHtml(req.body.name.trim(), {
       allowedTags: [],
       allowedAttributes: {}
@@ -890,11 +898,23 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       return res.status(400).send('Invalid privilege level');
     }
 
-    await user.findByIdAndUpdate(req.params.id, {
-      name: req.body.name.trim(),
-      privilege: req.body.privilege,
-      modifiedAt: Date.now()
-    });
+    if (hasAdminResettedPassword) {
+      await user.findByIdAndUpdate(req.params.id, {
+        name: req.body.name.trim(),
+        privilege: req.body.privilege,
+        isPasswordReset: hasAdminResettedPassword,
+        adminTempPassword: hashedTempPassword,
+        password: '',
+        modifiedAt: Date.now()
+      });
+    } else {
+      await user.findByIdAndUpdate(req.params.id, {
+        name: req.body.name.trim(),
+        privilege: req.body.privilege,
+        isPasswordReset: hasAdminResettedPassword,
+        modifiedAt: Date.now()
+      });
+    }
 
     const updatedUser = await user.findById(req.params.id);
     if (!updatedUser) {
@@ -910,6 +930,15 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
   }
 
 });
+
+function isStrongPassword(password) {
+  const minLength = 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()]/.test(password);
+  return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+}
 
 /**
  * @route POST /admin/generate-post-summary
@@ -928,19 +957,22 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
   try {
-    if(!req.body.markdownbody){
-      return res.status(400).json({ 'code':400,
+    if (!req.body.markdownbody) {
+      return res.status(400).json({
+        'code': 400,
         'message': 'Blog Body is a must for generating summary'
       });
     }
     const response = await openRouterIntegration.summarizeMarkdownBody(sanitizeHtml(req.body.markdownbody).trim());
     const htmlResponse = markdownToHtml(response.summary + response.attribute);
-    return res.status(200).json({ 'code':200,
+    return res.status(200).json({
+      'code': 200,
       'message': htmlResponse
     });
-  } catch(error) {
+  } catch (error) {
     console.error('error generating summary: ', error);
-    return res.status(500).json({ 'code':500,
+    return res.status(500).json({
+      'code': 500,
       'message': 'Internal Server Error'
     });
   }
