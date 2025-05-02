@@ -243,7 +243,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             description: "Simple Search Page",
             config: res.locals.siteConfig
         }
-        let page = req.body.page || 1;
+        let page = parseInt(req.body.page) || 1;
 
         const filter = {
             $and: [
