@@ -217,8 +217,10 @@ const getCommentsFromPostId = async (postId) => {
 }
 
 /**
- * POST /
- * Search: Search term
+ * @route POST /search
+ * @description Handles simple and advanced blog post search. Supports keyword, title, author, and tags.
+ *              Falls back to regex search in advanced mode if no results are found.
+ * @access Public
  */
 router.post('/search', genericOpenRateLimiter, async (req, res) => {
     try {
@@ -228,50 +230,54 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             author = '',
             tags = '',
             isAdvancedSearch,
-            isNextPage
+            isNextPage,
         } = req.body;
 
         const searchLimit = res.locals.siteConfig.searchLimit;
         const rawPage = parseInt(req.body.page, 10);
         const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
-        let page = 1;
-        if(isNextPage !== undefined){
-            page = isNextPage === 'yes' ? currentPage + 1 : currentPage - 1;
-        }
-        const skip = (page - 1) * searchLimit;
+        const page = isNextPage !== undefined
+            ? (isNextPage === 'yes' ? currentPage + 1 : currentPage - 1)
+            : currentPage;
+
+        const skip = Math.max((page - 1) * searchLimit, 0);
+
         const locals = {
             title: 'Search - ' + (searchTerm || title || author || tags),
             description: 'Search Results',
             config: res.locals.siteConfig
         };
 
-        let filter = { $and: [{ isApproved: true }] };
-        let data = [];
-        let count = 0;
-
-        // Sanitize and prepare inputs
         const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
         const tagArray = parseTags(tags);
 
+        let filter = { $and: [{ isApproved: true }] };
+        let data = [];
+        let count = 0;
+
+        // === Advanced Search Logic ===
         if (isAdvancedSearch === 'true' || isAdvancedSearch === true) {
-            // Advanced Search
             const orConditions = [];
 
+            // Keyword search (title/body)
             if (keyword) {
                 const regex = new RegExp(keyword.replace(/[^a-zA-Z0-9 ]/g, ''), 'i');
                 orConditions.push({ title: regex }, { body: regex });
             }
 
+            // Title-specific search
             if (sanitizedTitle) {
                 orConditions.push({ title: new RegExp(sanitizedTitle, 'i') });
             }
 
+            // Tag search
             if (tagArray.length > 0) {
                 filter.$and.push({ tags: { $in: tagArray } });
             }
 
+            // Author name -> username resolution
             if (sanitizedAuthor) {
                 const userModel = await user.findOne({
                     name: new RegExp('^' + sanitizedAuthor + '$', 'i')
@@ -286,26 +292,23 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 filter.$and.push({ $or: orConditions });
             }
 
+            // Initial query
             data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
             count = await post.countDocuments(filter);
 
-            // Fallback to regex if no results
+            // Fallback: regex-only search if no results
             if (data.length === 0 && keyword) {
                 const fallbackRegex = new RegExp(keyword, 'i');
-                const fallbackOr = [
-                    { title: fallbackRegex },
-                    { body: fallbackRegex }
-                ];
-
-                filter.$and = filter.$and.filter(c => !c.$text); // Remove text search
-                filter.$and.push({ $or: fallbackOr });
+                filter.$and = filter.$and.filter(condition => !condition.$text); // remove any accidental $text usage
+                filter.$and.push({ $or: [{ title: fallbackRegex }, { body: fallbackRegex }] });
 
                 data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
                 count = await post.countDocuments(filter);
             }
 
-        } else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
-            // Simple Search only
+        } 
+        // === Simple Search Logic ===
+        else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
             if (!keyword || keyword.length === 0 || keyword.length > 100) {
                 return res.status(400).json({ error: 'Invalid keyword for simple search' });
             }
@@ -319,14 +322,16 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 .exec();
 
             count = await post.countDocuments(filter);
-        } else {
+        } 
+        // === Invalid Search Mode ===
+        else {
             return res.status(400).json({ error: 'Missing or invalid isAdvancedSearch flag' });
         }
 
         const totalPages = Math.ceil(count / searchLimit);
-        const nextPage = parseInt(page) + 1;
+        const nextPage = page + 1;
         const hasNextPage = nextPage <= totalPages;
-        const previousPage = parseInt(page) - 1;
+        const previousPage = page - 1;
         const hasPreviousPage = previousPage >= 1;
 
         return res.render('search', {
@@ -336,7 +341,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             title: sanitizedTitle,
             author: sanitizedAuthor,
             tags: req.body.tags,
-            currentPage: parseInt(page),
+            currentPage: page,
             nextPage: hasNextPage ? nextPage : null,
             previousPage: hasPreviousPage ? previousPage : null,
             totalPages,

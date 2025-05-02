@@ -148,4 +148,67 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // Function to handle tag input restrictions and formatting
+    function initializeTagInputs() {
+        // Find all tag input fields across different pages
+        const tagInputs = document.querySelectorAll('input[name="tags"]');
+        
+        tagInputs.forEach(input => {
+            // Function to format tags properly
+            function formatTags(value) {
+                // Convert to lowercase
+                let formatted = value.toLowerCase();
+                
+                // Only allow letters, numbers, hyphens, underscores, and commas
+                formatted = formatted.replace(/[^a-z0-9\-_,\s]/g, '');
+                
+                // Split by comma, trim whitespace, and filter out empty tags
+                let tags = formatted.split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                // Join back with ", " format
+                return tags.join(', ');
+            }
+
+            // Show error message for capital letters
+            function showError(input, message) {
+                // Remove any existing error message
+                const existingError = input.parentElement.querySelector('.tag-error');
+                if (existingError) {
+                    existingError.remove();
+                }
+
+                // Create and show new error message if there are capital letters
+                if (/[A-Z]/.test(input.value)) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'tag-error';
+                    errorDiv.style.color = 'var(--red)';
+                    errorDiv.style.fontSize = '0.8rem';
+                    errorDiv.style.marginTop = '0.25rem';
+                    errorDiv.textContent = message;
+                    input.parentElement.appendChild(errorDiv);
+                }
+            }
+
+            // Handle input events to show error for capital letters
+            input.addEventListener('input', function() {
+                showError(this, 'Please use lowercase letters only');
+            });
+
+            // Format tags when input loses focus
+            input.addEventListener('blur', function() {
+                this.value = formatTags(this.value);
+                // Remove error message after formatting
+                const errorDiv = this.parentElement.querySelector('.tag-error');
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            });
+        });
+    }
+
+    // Initialize tag inputs when DOM is loaded
+    initializeTagInputs();
 });

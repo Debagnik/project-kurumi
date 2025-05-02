@@ -1243,3 +1243,15 @@ th {
 [data-theme="dark"] .search-btn svg {
 	stroke: var(--bg-dark);
 }
+
+/* Tag input error styling */
+.tag-error {
+	color: var(--red);
+	font-size: 0.8rem;
+	margin-top: 0.25rem;
+	transition: opacity 0.3s ease;
+}
+
+[data-theme="dark"] .tag-error {
+	color: #ff6b6b;
+}
