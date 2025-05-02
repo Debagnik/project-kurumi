@@ -228,10 +228,16 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             author = '',
             tags = '',
             isAdvancedSearch,
-            page = 1
+            isNextPage
         } = req.body;
 
         const searchLimit = res.locals.siteConfig.searchLimit;
+        const rawPage = parseInt(req.body.page, 10);
+        const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+        let page = 1;
+        if(isNextPage !== undefined){
+            page = isNextPage === 'yes' ? currentPage + 1 : currentPage - 1;
+        }
         const skip = (page - 1) * searchLimit;
         const locals = {
             title: 'Search - ' + (searchTerm || title || author || tags),
@@ -314,7 +320,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
 
             count = await post.countDocuments(filter);
         } else {
-            return res.status(400).json({ error: 'Missing or invalid isAdvanceSearch flag' });
+            return res.status(400).json({ error: 'Missing or invalid isAdvancedSearch flag' });
         }
 
         const totalPages = Math.ceil(count / searchLimit);
@@ -327,11 +333,15 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             data,
             locals,
             searchTerm: keyword,
+            title: sanitizedTitle,
+            author: sanitizedAuthor,
+            tags: req.body.tags,
             currentPage: parseInt(page),
             nextPage: hasNextPage ? nextPage : null,
             previousPage: hasPreviousPage ? previousPage : null,
             totalPages,
-            csrfToken: req.csrfToken()
+            csrfToken: req.csrfToken(),
+            isAdvancedSearch
         });
 
     } catch (error) {

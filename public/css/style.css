@@ -353,10 +353,6 @@ button.pagination:hover {
 	color: var(--text-secondary);
 }
 
-[data-theme="dark"] .pagination:hover {
-	color: var(--text-dark);
-}
-
 /*Article List - Homepage*/
 .articles__heading {
 	margin-top: 4rem;

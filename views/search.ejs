@@ -3,48 +3,63 @@
 </div>
 <section class="articles">
     <ul class="article-ul">
-        <% if (data.length > 0) { %>
-            <% data.forEach(post => { %>
+        <% if (data.length> 0) { %>
+            <% data.forEach(post=> { %>
                 <li>
                     <a href="/post/<%= post._id %>">
-                        <span><%= post.title %></span>
-                        <span class="article-list_date"><%= post.createdAt.toDateString() %></span>
+                        <span>
+                            <%= post.title %>
+                        </span>
+                        <span class="article-list_date">
+                            <%= post.createdAt.toDateString() %>
+                        </span>
                     </a>
                 </li>
-            <% }) %>
-        <% } else { %>
-             <div class="no-search-result">No results found... (；一_一)</div>
-             <form action="/advanced-search" method="GET" style="text-align: center;">
-                <button type="submit" class="btn advanced-search-btn">Try Advanced Search</button>
-             </form>
-        <% } %>
+                <% }) %>
+                    <% } else { %>
+                        <div class="no-search-result">No results found... (；一_一)</div>
+                        <form action="/advanced-search" method="GET" style="text-align: center;">
+                            <button type="submit" class="btn advanced-search-btn">Try Advanced Search</button>
+                        </form>
+                        <% } %>
     </ul>
 
-    <% if (data.length > 0) { %>
+    <% if (data.length> 0) { %>
         <div class="pagination-container">
             <div class="pagination-nav">
                 <% if (previousPage) { %>
                     <form action="/search" method="POST" style="display: inline;">
                         <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
-                        <input type="hidden" name="page" value="<%= currentPage - 1 %>">
+                        <input type="hidden" name="title" value="<%= title %>">
+                        <input type="hidden" name="author" value="<%= author %>">
+                        <input type="hidden" name="tags" value="<%= tags %>">
+                        <input type="hidden" name="isAdvancedSearch" value="<%= isAdvancedSearch %>">
+                        <input type="hidden" name="page" id="page" value="<%= currentPage %>">
+                        <input type="hidden" name="isNextPage" id="isNextPage" value="no">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <button type="submit" class="pagination prev">&lt; View newer results</button>
                     </form>
-                <% } else { %>
-                    <span></span> <!-- Empty span to maintain layout -->
-                <% } %>
-                
-                <% if (nextPage !== null) { %>
-                    <form action="/search" method="POST" style="display: inline;">
-                        <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
-                        <input type="hidden" name="page" value="<%= nextPage %>">
-                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        <button type="submit" class="pagination next">View older results &gt;</button>
-                    </form>
-                <% } %>
+                    <% } else { %>
+                        <span></span> <!-- Empty span to maintain layout -->
+                        <% } %>
+
+                            <% if (nextPage !==null) { %>
+                                <form action="/search" method="POST" style="display: inline;">
+                                    <input type="hidden" name="searchTerm" value="<%= searchTerm %>">
+                                    <input type="hidden" name="title" value="<%= title %>">
+                                    <input type="hidden" name="author" value="<%= author %>">
+                                    <input type="hidden" name="tags" value="<%= tags %>">
+                                    <input type="hidden" name="isAdvancedSearch" value="<%= isAdvancedSearch %>">
+                                    <input type="hidden" name="page" id="page" value="<%= currentPage %>">
+                                    <input type="hidden" name="isNextPage" id="isNextPage" value="yes">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                    <button type="submit" class="pagination next">View older results &gt;</button>
+                                </form>
+                                <% } %>
             </div>
-            
-            <div class="pagination-counter">Page <%= currentPage %> of <%= totalPages %></div>
+
+            <div class="pagination-counter">Page <%= currentPage %> of <%= totalPages %>
+            </div>
         </div>
-    <% } %>
+        <% } %>
 </section>
