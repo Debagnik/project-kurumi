@@ -12,7 +12,7 @@ const sanitizeHtml = require('sanitize-html');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, parseTags } = require('../../utils/validations');
 /**
  * Site config Middleware
  */
@@ -222,65 +222,126 @@ const getCommentsFromPostId = async (postId) => {
  */
 router.post('/search', genericOpenRateLimiter, async (req, res) => {
     try {
+        const {
+            searchTerm = '',
+            title = '',
+            author = '',
+            tags = '',
+            isAdvancedSearch,
+            page = 1
+        } = req.body;
 
-        let searchLimit = res.locals.siteConfig.searchLimit;
-        let searchTerm = req.body.searchTerm;
-        searchTerm = searchTerm.trim().replace(/[<>]/g, '');
-        if (!searchTerm || typeof searchTerm !== 'string') {
-            return res.status(400).json({ error: 'Invalid search term' });
-        }
-        if (searchTerm.trim().length == 0) {
-            return res.status(400).json({ error: 'Search term cannot be empty' });
-        }
-        if (searchTerm.trim().length > 100) {
-            return res.status(400).json({ error: 'Search term is too long' });
-        }
-        const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
-        console.log(new Date(), " - Simple Search - ", searchTerm, " - regex search: ", searchNoSpecialChar);
-
+        const searchLimit = res.locals.siteConfig.searchLimit;
+        const skip = (page - 1) * searchLimit;
         const locals = {
-            title: "Search - " + searchTerm,
-            description: "Simple Search Page",
+            title: 'Search - ' + (searchTerm || title || author || tags),
+            description: 'Search Results',
             config: res.locals.siteConfig
-        }
-        let page = parseInt(req.body.page) || 1;
-
-        const filter = {
-            $and: [
-                { $text: { $search: searchNoSpecialChar } },
-                { isApproved: true }
-            ]
         };
-        let data = null;
-        data = await post.find(
-            filter,
-            { score: { $meta: 'textScore' } }
-        ).sort({ score: { $meta: 'textScore' } }).skip(searchLimit * page - searchLimit).limit(searchLimit).exec();
-        const count = await post.countDocuments(filter);
-        const nextPage = parseInt(page) + 1;
-        const hasNextPage = nextPage <= Math.ceil(count / searchLimit);
 
+        let filter = { $and: [{ isApproved: true }] };
+        let data = [];
+        let count = 0;
+
+        // Sanitize and prepare inputs
+        const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
+        const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
+        const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
+        const tagArray = parseTags(tags);
+
+        if (isAdvancedSearch === 'true' || isAdvancedSearch === true) {
+            // Advanced Search
+            const orConditions = [];
+
+            if (keyword) {
+                const regex = new RegExp(keyword.replace(/[^a-zA-Z0-9 ]/g, ''), 'i');
+                orConditions.push({ title: regex }, { body: regex });
+            }
+
+            if (sanitizedTitle) {
+                orConditions.push({ title: new RegExp(sanitizedTitle, 'i') });
+            }
+
+            if (tagArray.length > 0) {
+                filter.$and.push({ tags: { $in: tagArray } });
+            }
+
+            if (sanitizedAuthor) {
+                const userModel = await user.findOne({
+                    name: new RegExp('^' + sanitizedAuthor + '$', 'i')
+                });
+
+                if (userModel) {
+                    filter.$and.push({ author: userModel.username });
+                }
+            }
+
+            if (orConditions.length > 0) {
+                filter.$and.push({ $or: orConditions });
+            }
+
+            data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
+            count = await post.countDocuments(filter);
+
+            // Fallback to regex if no results
+            if (data.length === 0 && keyword) {
+                const fallbackRegex = new RegExp(keyword, 'i');
+                const fallbackOr = [
+                    { title: fallbackRegex },
+                    { body: fallbackRegex }
+                ];
+
+                filter.$and = filter.$and.filter(c => !c.$text); // Remove text search
+                filter.$and.push({ $or: fallbackOr });
+
+                data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
+                count = await post.countDocuments(filter);
+            }
+
+        } else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
+            // Simple Search only
+            if (!keyword || keyword.length === 0 || keyword.length > 100) {
+                return res.status(400).json({ error: 'Invalid keyword for simple search' });
+            }
+
+            filter.$and.push({ $text: { $search: keyword.replace(/[^a-zA-Z0-9 ]/g, '') } });
+
+            data = await post.find(filter, { score: { $meta: 'textScore' } })
+                .sort({ score: { $meta: 'textScore' } })
+                .skip(skip)
+                .limit(searchLimit)
+                .exec();
+
+            count = await post.countDocuments(filter);
+        } else {
+            return res.status(400).json({ error: 'Missing or invalid isAdvanceSearch flag' });
+        }
+
+        const totalPages = Math.ceil(count / searchLimit);
+        const nextPage = parseInt(page) + 1;
+        const hasNextPage = nextPage <= totalPages;
         const previousPage = parseInt(page) - 1;
         const hasPreviousPage = previousPage >= 1;
 
-        res.render('search', {
+        return res.render('search', {
             data,
             locals,
-            searchTerm: searchTerm,
-            currentPage: page,
+            searchTerm: keyword,
+            currentPage: parseInt(page),
             nextPage: hasNextPage ? nextPage : null,
-            previousPage: hasPreviousPage ? hasPreviousPage : null,
-            totalPages: Math.ceil(count / searchLimit),
+            previousPage: hasPreviousPage ? previousPage : null,
+            totalPages,
             csrfToken: req.csrfToken()
         });
+
     } catch (error) {
         console.error('Search error:', error);
-        res.status(500).render('error', {
+        return res.status(500).render('error', {
             locals: {
-                title: 'Error'
+                title: 'Error',
+                config: res.locals.siteConfig
             },
-            error: 'Unable to perform search at this time',
-            config: res.locals.siteConfig
+            error: 'Unable to perform search at this time'
         });
     }
 });
@@ -436,6 +497,18 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
         }
     }
 
+});
+
+router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
+    const locals = {
+        title: "Advanced Search" + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
+        description: "Advanced Search page",
+        config: res.locals.siteConfig
+    }
+    res.render('advanced-search', {
+        locals,
+        csrfToken: req.csrfToken()
+    });
 });
 
 module.exports = router;

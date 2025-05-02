@@ -10,7 +10,7 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript } = require('../../utils/validations');
+const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
@@ -415,25 +415,6 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
   }
 
 });
-
-function parseTags(textTags) {
-  if (typeof textTags !== 'string') {
-    return [];
-  }
-
-  return textTags
-    .split(',')
-    .map(tag => tag.trim())
-    .map(tag =>
-      sanitizeHtml(tag, {
-        allowedTags: [],
-        allowedAttributes: {}
-      })
-    )
-    .map(tag => tag.replace(/[^a-zA-Z0-9-_]/g, ''))
-    .filter(tag => tag.length > 0);
-}
-
 
 async function savePostToDB(req, res) {
   try {
