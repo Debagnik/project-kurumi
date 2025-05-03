@@ -220,8 +220,46 @@ document.addEventListener('DOMContentLoaded', function () {
         const passwordMatch = document.getElementById('passwordMatch');
         const submitButton = document.getElementById('submitButton');
 
+        function isStrongPassword(password) {
+            const minLength = 8;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*()]/.test(password);
+            return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+        }
+
+        function getPasswordStrengthMessage(password) {
+            const checks = {
+                'at least 8 characters': password.length >= 8,
+                'uppercase letter': /[A-Z]/.test(password),
+                'lowercase letter': /[a-z]/.test(password),
+                'number': /[0-9]/.test(password),
+                'special character (!@#$%^&*())': /[!@#$%^&*()]/.test(password)
+            };
+            
+            const failed = Object.entries(checks)
+                .filter(([, passes]) => !passes)
+                .map(([requirement]) => requirement);
+            
+            return failed.length > 0 
+                ? `Password must contain ${failed.join(' and ')}` 
+                : 'Password is strong';
+        }
+
         function checkPasswordMatch() {
             const match = newPassword.value === confirmPassword.value;
+            const isStrong = isStrongPassword(newPassword.value);
+            
+            if (newPassword.value) {
+                const strengthMessage = getPasswordStrengthMessage(newPassword.value);
+                if (!isStrong) {
+                    passwordMatch.textContent = strengthMessage;
+                    passwordMatch.className = 'password-match-indicator no-match';
+                    submitButton.disabled = true;
+                    return;
+                }
+            }
             
             if (confirmPassword.value) {
                 passwordMatch.textContent = match ? 'Passwords match' : 'Passwords do not match';
@@ -231,23 +269,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 passwordMatch.className = 'password-match-indicator';
             }
             
-            submitButton.disabled = !match && confirmPassword.value;
+            submitButton.disabled = (!match && confirmPassword.value) || !isStrong;
         }
 
         newPassword?.addEventListener('input', checkPasswordMatch);
         confirmPassword?.addEventListener('input', checkPasswordMatch);
 
         passwordResetForm.addEventListener('submit', function(e) {
-            if (newPassword.value !== confirmPassword.value) {
+            if (!isStrongPassword(newPassword.value)) {
                 e.preventDefault();
-                passwordMatch.textContent = 'Passwords do not match';
+                passwordMatch.textContent = getPasswordStrengthMessage(newPassword.value);
                 passwordMatch.className = 'password-match-indicator no-match';
                 return false;
             }
-            
-            if (newPassword.value.length < 8) {
+
+            if (newPassword.value !== confirmPassword.value) {
                 e.preventDefault();
-                passwordMatch.textContent = 'Password must be at least 8 characters long';
+                passwordMatch.textContent = 'Passwords do not match';
                 passwordMatch.className = 'password-match-indicator no-match';
                 return false;
             }
