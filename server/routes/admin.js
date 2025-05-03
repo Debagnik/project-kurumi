@@ -18,6 +18,7 @@ const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericG
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
+const resettedPassword = 'Qm9jY2hpIHRoZSBSb2Nr';
 
 
 if (!jwtSecretKey) {
@@ -848,10 +849,26 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 
 });
 
+
 /**
- * PUT /
- * Webmaster - Edit users
-*/
+ * @route PUT /edit-user/:id
+ * @description Allows a webmaster to update a user's profile details, including privilege level and optionally resetting the user's password.
+ *              Only users with `WEBMASTER` privilege can perform this action.
+ *
+ * @middleware authToken - Verifies authentication and attaches `req.userId`.
+ * @middleware genericAdminRateLimiter - Applies rate limiting to prevent abuse.
+ *
+ * @param {string} req.params.id - The ID of the user to be edited.
+ * @param {string} req.body.name - The updated name of the user (must be non-empty and sanitized).
+ * @param {string} req.body.privilege - The new privilege level for the user (must be valid).
+ * @param {string} [req.body.adminTempPassword] - (Optional) A new temporary password to be set by admin; must be strong if provided.
+ *
+ * @returns {Redirect} 302 - Redirects to `/admin/webmaster` on success.
+ * @returns {Object} 400 - If required fields are missing, invalid, or contain disallowed characters.
+ * @returns {Object} 403 - If the requester is not authorized (not a webmaster).
+ * @returns {Object} 500 - On internal server error or database issues.
+ *
+ */
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
@@ -904,7 +921,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
         privilege: req.body.privilege,
         isPasswordReset: hasAdminResettedPassword,
         adminTempPassword: hashedTempPassword,
-        password: '',
+        password: resettedPassword,
         modifiedAt: Date.now()
       });
     } else {
@@ -931,6 +948,21 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
 
 });
 
+/**
+ * Checks if a password is strong based on defined criteria.
+ *
+ * A strong password must:
+ * - Be at least 8 characters long
+ * - Contain at least one uppercase letter
+ * - Contain at least one lowercase letter
+ * - Contain at least one number
+ * - Contain at least one special character from the set [!@#$%^&*()]
+ *
+ * @function isStrongPassword
+ * @param {string} password - The password string to validate.
+ * @returns {boolean} Returns `true` if the password meets all strength requirements, otherwise `false`.
+ *
+ */
 function isStrongPassword(password) {
   const minLength = 8;
   const hasUppercase = /[A-Z]/.test(password);
@@ -975,6 +1007,109 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
       'code': 500,
       'message': 'Internal Server Error'
     });
+  }
+});
+
+/**
+ * @route GET /admin/reset-password
+ * @description Renders the password reset page for users who were issued a temporary admin-generated password.
+ *              This route displays the form where users can input their temporary and new passwords.
+ *
+ * @middleware genericGetRequestRateLimiter - Applies rate limiting to avoid abuse of the reset page.
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ *
+ * @returns {HTML} 200 - Renders the 'forgot-password' EJS view with CSRF token and site configuration.
+ *
+ * @view admin/forgot-password.ejs - The view file that contains the password reset form.
+ *
+ * @locals
+ *   {string} title - The title of the page ("Forgot Password").
+ *   {string} description - A short description for SEO/meta purposes.
+ *   {Object} config - Site configuration object from `res.locals.siteConfig`.
+ *   {string} csrfToken - Token to protect against CSRF attacks.
+ *   {boolean} isWebMaster - Indicates whether the current user is a webmaster (false in this context).
+ *
+ */
+router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, res) => {
+  const locals = {
+    title: "Forgot Password",
+    description: "Password Reset Page",
+    config: res.locals.siteConfig
+  };
+
+  res.render('admin/forgot-password', {
+    locals,
+    layout: adminLayout,
+    csrfToken: req.csrfToken(),
+    isWebMaster: false
+  });
+});
+
+/**
+ * @route POST /admin/reset-password
+ * @description Allows a user with a temporary admin-generated password to securely reset their password.
+ *              This route is part of the admin interface and is rate-limited.
+ *
+ * @middleware genericAdminRateLimiter - Applies rate limiting to prevent brute-force attacks.
+ *
+ * @param {string} req.body.username - The username of the account attempting to reset its password.
+ * @param {string} req.body.tempPassword - The temporary password provided by the admin for reset.
+ * @param {string} req.body.newPassword - The user's desired new password.
+ * @param {string} req.body.confirmPassword - Confirmation of the new password.
+ *
+ * @returns {Object} 400 - If any required field is missing or if input validation fails.
+ * @returns {Object} 401 - If the provided temporary password is incorrect.
+ * @returns {Object} 403 - If password reuse is attempted or user is not authorized for reset.
+ * @returns {Object} 500 - On internal server errors.
+ * @returns {Redirect} 200 - On successful password reset, redirects to /admin.
+ *
+ * @throws Will return JSON error messages on validation failure or exceptions.
+ */
+router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
+  try {
+    const {username, tempPassword, newPassword, confirmPassword} = req.body;
+    if(!username || !tempPassword || !newPassword || !confirmPassword){
+      return res.status(400).json({'status': 400, 'message': 'one or more required feild missing' })
+    }
+    userModel = await user.findOne({username: username});
+    if(!userModel){
+      throw new Error('User Does\'t exist');
+    }
+    if(!userModel.isPasswordReset || !userModel.adminTempPassword || userModel.password !== resettedPassword){
+      throw new Error('User profile is not approved for reset by webmaster');
+    }
+
+    if(newPassword === tempPassword){
+      throw new Error('User can not reuse temporary Password as their new password');
+    }
+
+    if(!isStrongPassword(newPassword)){
+      throw new Error('Password is not strong');
+    }
+
+    if(newPassword !== confirmPassword){
+      throw new Error('new Password and confirm password do not match');
+    }
+
+    const isPasswordValid = await bcrypt.compare(tempPassword, userModel.adminTempPassword);
+    if (!isPasswordValid) {
+      console.error(`User: ${username} is trying to reset password with incorrect temp password`, username);
+    } else {
+      console.log(`User: ${username} has successfully validated temp password`);
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      userModel.password = hashedPassword;
+      userModel.isPasswordReset = false;
+      userModel.adminTempPassword = '';
+      await userModel.save();
+      return res.status(200).redirect('/admin');
+    }
+
+
+  } catch(error) {
+    console.error("Internal Server Error", error);
+    return res.status(500).json( {'status': 500, 'message': 'Something went wrong in server, Internal server Error' } );
   }
 });
 

@@ -211,4 +211,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize tag inputs when DOM is loaded
     initializeTagInputs();
+
+    // Password Reset Form Validation
+    const passwordResetForm = document.getElementById('passwordResetForm');
+    if (passwordResetForm) {
+        const newPassword = document.getElementById('newPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const passwordMatch = document.getElementById('passwordMatch');
+        const submitButton = document.getElementById('submitButton');
+
+        function checkPasswordMatch() {
+            const match = newPassword.value === confirmPassword.value;
+            
+            if (confirmPassword.value) {
+                passwordMatch.textContent = match ? 'Passwords match' : 'Passwords do not match';
+                passwordMatch.className = `password-match-indicator ${match ? 'match' : 'no-match'}`;
+            } else {
+                passwordMatch.textContent = '';
+                passwordMatch.className = 'password-match-indicator';
+            }
+            
+            submitButton.disabled = !match && confirmPassword.value;
+        }
+
+        newPassword?.addEventListener('input', checkPasswordMatch);
+        confirmPassword?.addEventListener('input', checkPasswordMatch);
+
+        passwordResetForm.addEventListener('submit', function(e) {
+            if (newPassword.value !== confirmPassword.value) {
+                e.preventDefault();
+                passwordMatch.textContent = 'Passwords do not match';
+                passwordMatch.className = 'password-match-indicator no-match';
+                return false;
+            }
+            
+            if (newPassword.value.length < 8) {
+                e.preventDefault();
+                passwordMatch.textContent = 'Password must be at least 8 characters long';
+                passwordMatch.className = 'password-match-indicator no-match';
+                return false;
+            }
+        });
+    }
 });
