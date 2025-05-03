@@ -41,11 +41,11 @@ const userSchema = new schema({
     isPasswordReset: {
         type: Boolean,
         default: false,
-        require: true
+        required: true
     },
     adminTempPassword: {
         type: String,
-        require: false
+        required: false
     }
 });
 

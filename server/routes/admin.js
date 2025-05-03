@@ -867,7 +867,6 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
  * @returns {Object} 400 - If required fields are missing, invalid, or contain disallowed characters.
  * @returns {Object} 403 - If the requester is not authorized (not a webmaster).
  * @returns {Object} 500 - On internal server error or database issues.
- *
  */
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
