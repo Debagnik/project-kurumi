@@ -265,6 +265,10 @@ router.post('/admin', authRateLimiter, async (req, res) => {
       });
     }
 
+    if(currentUser.isPasswordReset){
+      throw new Error('Login Disabled for this Username, Contact Webmaster');
+    }
+
     //password validity check
     const isPasswordValid = await bcrypt.compare(password, currentUser.password);
     if (!isPasswordValid) {
