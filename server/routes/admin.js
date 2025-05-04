@@ -117,7 +117,8 @@ router.get('/admin', async (req, res) => {
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('');
   }
 });
 
@@ -292,7 +293,8 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('/admin');
   }
 });
 
@@ -324,7 +326,8 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('dashboard');
   }
 });
 
@@ -336,7 +339,7 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
   try {
     await savePostToDB(req, res);
     req.flash('success', 'New Post Created')
-    return res.status(201).redirect('/dashboard');
+    return res.redirect('/dashboard');
   } catch (error) {
     console.error({ status: 500, message: 'Internal Server Error', reason: error.message });
     req.flash('error', error.message)
@@ -1073,7 +1076,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
         console.log('user reset successful');
         req.flash('success', 'User password successfully resetted');
         req.flash('info', `login is enabled for user: ${username}, please sign in`);
-        return res.status(200).redirect('/admin');
+        return res.redirect('/admin');
       } catch (error) {
         console.log('error while password reset', error);
         req.flash('error', 'Something went wrong while resetting password, Internal Server Error');
