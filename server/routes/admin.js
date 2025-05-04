@@ -784,7 +784,6 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
  */
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-
     const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
       console.error('User not found', req.params.id);
@@ -811,7 +810,8 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 
   } catch (error) {
     console.error(error);
-    req.flash('error', error.message);
+    req.flash('error', 'Something went wrong, Internal Server Error');
+    res.redirect(`/dashboard`);
   }
 });
 
