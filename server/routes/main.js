@@ -173,10 +173,7 @@ router.get('/post/:id', async (req, res) => {
                 csrfToken: req.csrfToken(),
                 isCaptchaEnabled,
                 commentsData: await getCommentsFromPostId(data._id),
-                currentUser: isCurrentUserAModOrAdmin,
-                success_msg: req.flash('success_msg'),
-                info: req.flash('info'),
-                error: req.flash('error')
+                currentUser: isCurrentUserAModOrAdmin
             });
         } else {
             res.redirect('/404');
@@ -448,7 +445,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         } else {
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
-        req.flash('success_msg', 'Comment submitted successfully');
+        req.flash('success', 'Comment submitted successfully');
         if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 6:', req.session);
         }

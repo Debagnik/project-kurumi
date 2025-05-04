@@ -44,6 +44,7 @@ const authToken = (req, res, next) => {
     next();
   } catch (error) {
     console.error('Invalid token', error);
+    req.flash('error', error.message);
     return res.redirect('/admin');
   }
 }
@@ -111,14 +112,13 @@ router.get('/admin', async (req, res) => {
     res.render('admin/index', {
       locals,
       layout: adminLayout,
-      errors: [],
-      errors_login: [],
       csrfToken: req.csrfToken(),
       isWebMaster: false
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('');
   }
 });
 
@@ -133,13 +133,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     //check for empty field
     if (!name || !username || !password || !confirm_password) {
       console.error(401, 'empty mandatory fields');
-      return res.status(401).render('admin/index', {
-        errors: [{ msg: 'Name, Username or Passwords are empty' }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      throw new Error('One or more mandatory fields are missing');
     }
 
     // check is username is of proper format defined in regex pattern
@@ -152,47 +146,24 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       } else {
         console.error(400, 'Invalid username format', username);
       }
-      return res.status(400).render('admin/index', {
-        errors: [{ msg: usernameErrorMessage }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      throw new Error(usernameErrorMessage);
     }
 
     // checking for existing user
     const existingUser = await user.findOne({ username })
     if (existingUser) {
       console.error(409, 'Username already exists');
-      return res.status(409).render('admin/index', {
-        errors: [{ msg: 'Username already exists!' }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(), isWebMaster: false
-      });
+      throw new Error('Username already Exists, try a new username');
     }
 
     //check password and confirm password match
     if (!(password === confirm_password)) {
       console.error('Password and confirm passwords do not match');
-      return res.render('admin/index', {
-        errors: [{ msg: 'Passwords and Confirm Password do not match!' }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      throw new Error('Passwords and Confirm Password do not match!');
     }
 
     if (!isStrongPassword(password)) {
-      return res.render('admin/index', {
-        errors: [{ msg: 'Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.' }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      throw new Error('Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
     }
 
     //registration logic
@@ -201,33 +172,26 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       try {
         const newUser = await user.create({ username, password: hashedPassword, name });
         console.log('User created', newUser, 201);
-        res.redirect('/admin/registration');
+        req.flash('success', `new user ${username} is created, try signing in`)
+        res.redirect('/admin');
       } catch (error) {
-        console.error(500, 'Internal Server Error');
-        return res.render('admin/index', {
-          errors: [{
-            msg: 'We are facing some difficulty. Please hang back while we resolve this issue.'
-          }],
-          errors_login: [],
-          csrfToken: req.csrfToken(),
-          isWebMaster: false,
-          config: res.locals.siteConfig
+        console.error({
+          status: 500,
+          message: 'Internal server error',
+          reason: error.message
         });
+        req.flash('error', error.message);
+        res.redirect('/admin');
       }
     } else {
-      return res.render('admin/index', {
-        errors: [{
-          msg: 'Registration not enabled, Contact with Site admin'
-        }],
-        errors_login: [],
-        config: res.locals.siteConfig,
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      console.warn(`Someone with username ${username} tryied registering when it is turned off`);
+      req.flash('info', 'Registration not enabled, Contact with Site admin, User not created, This incedent will be reported');
+      res.redirect('/admin');
     }
   } catch (error) {
-    console.error('error in post', error);
-    res.status(500).send('Internal Server Error');
+    console.error('errors during registration', error);
+    req.flash('error', error.message);
+    res.redirect('/admin');
   }
 });
 
@@ -241,79 +205,44 @@ router.post('/admin', authRateLimiter, async (req, res) => {
 
     //checks if the username or passwords are not empty
     if (!username || !password) {
-      return res.render('admin/index', {
-        errors_login: [{
-          msg: 'Username and Passwords are mandatory'
-        }],
-        config: res.locals.siteConfig,
-        errors: [],
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      throw new Error('Username and Passwords are mandatory');
     }
 
     //checks if the user exists
     const currentUser = await user.findOne({ username });
     if (!currentUser) {
-      console.error(401, 'invalid credentials for user: ', username);
-      return res.render('admin/index', {
-        errors_login: [{ msg: 'Invalid login credentials!' }],
-        config: res.locals.siteConfig,
-        errors: [],
-        csrfToken: req.csrfToken(),
-        isWebMaster: false
-      });
+      console.error('invalid Username for user: ', username);
+      throw new Error('Either username or password dont match, Invalid credentials');
     }
 
-    if(currentUser.isPasswordReset){
+    if (currentUser.isPasswordReset) {
+      console.error('Login Disabled for this Username:', username);
       throw new Error('Login Disabled for this Username, Contact Webmaster');
     }
 
     //password validity check
     const isPasswordValid = await bcrypt.compare(password, currentUser.password);
     if (!isPasswordValid) {
-      console.error(401, 'invalid credentials for user: ', username);
-      return res.render('admin/index', {
-        errors_login: [{ msg: 'Invalid login credentials!' }],
-        config: res.locals.siteConfig,
-        errors: [], csrfToken: req.csrfToken(), isWebMaster: false
-      });
+      console.error('invalid password for user: ', username);
+      throw new Error('Either username or password dont match, Invalid credentials');
     }
 
     //adds session
     const token = jwt.sign({ userId: currentUser._id }, jwtSecretKey);
     res.cookie('token', token, { httpOnly: true });
     console.log("Successful Log In", (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() !== "production") ? username : '');
+    req.flash('success', `Sign in successful, welcome ${currentUser.name}`);
     res.redirect('/dashboard');
   } catch (error) {
     //for any other errors
-    console.error(error);
-    return res.render('admin/index', {
-      errors_login: [{ msg: 'We are facing some difficulty. Please hang back while we resolve this issue.' }],
-      config: res.locals.siteConfig,
-      errors: [],
-      csrfToken: req.csrfToken(),
-      isWebMaster: false
+    console.error({
+      status: 500,
+      message: 'Internal Server Error',
+      Reason: error.message
     });
+    req.flash('error', error.message);
+    res.redirect('/admin');
   }
-});
-
-/**
- * GET
- * Admin - Registration success
- */
-router.get('/admin/registration', async (req, res) => {
-  const locals = {
-    title: 'Registration successful',
-    description: 'Registration successful',
-    config: res.locals.siteConfig
-  };
-  res.status(201).render('admin/registration', {
-    locals,
-    layout: adminLayout,
-    csrfToken: req.csrfToken(),
-    isWebMaster: false
-  });
 });
 
 /**
@@ -327,10 +256,10 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       description: 'Dashboard Panel',
       config: res.locals.siteConfig
     };
-
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
+      req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph`);
       return res.redirect('/admin');
     }
     let data;
@@ -345,10 +274,13 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
         data = await post.find().sort({ createdAt: -1 });
         break;
       default:
-        return res.status(403).json({
-          error: 'Invalid privilege level',
-          message: 'You do not have the required permissions'
+        console.error({
+          status: 403,
+          message: 'Invalid privilage level',
+          reason: 'User did not have adequate permission to view this page'
         });
+        req.flash('error', 'You do not have adequate permission to view this page, Contact Webmaster');
+        return res.redirect('/admin');
     }
 
     res.render('admin/dashboard', {
@@ -361,7 +293,8 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('/admin');
   }
 });
 
@@ -380,6 +313,7 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
+      req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph!`);
       return res.redirect('/admin');
     }
 
@@ -392,7 +326,8 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('Internal Server Error');
+    res.redirect('dashboard');
   }
 });
 
@@ -403,10 +338,12 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
 router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     await savePostToDB(req, res);
-    return res.status(200).redirect('/dashboard');
+    req.flash('success', 'New Post Created')
+    return res.redirect('/dashboard');
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ 'code': 500, 'message': 'Internal Server Error', 'stack': error });
+    console.error({ status: 500, message: 'Internal Server Error', reason: error.message });
+    req.flash('error', error.message)
+    res.redirect('/dashboard');
   }
 
 });
@@ -422,7 +359,9 @@ async function savePostToDB(req, res) {
     const currentSiteConfig = await siteConfig.findOne();
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
-      console.error('Site configuration not found');
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Site configuration not found');
+      }
       siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
     } else {
       siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
@@ -495,8 +434,9 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
 
   } catch (error) {
     console.log(error);
+    req.flash('error', 'Internal Server Error');
+    res.redirect('/dashboard');
   }
-
 });
 
 /**
@@ -508,22 +448,26 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
-      return res.redirect('/admin');
+      throw new Error(`No User Found for: ${req.userId}`);
     }
-
     const currentSiteConfig = await siteConfig.findOne();
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
-      console.error('Site configuration not found');
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Site configuration not found');
+      }
       siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
     } else {
       siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
     }
-
     const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail;
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
-      return res.status(400).send('Title, body, and description are required!');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Title, body, and description are missing while editing /post/', req.params.id);
+      }
+      req.flash('error', 'Title, body, and description are required!, Post is not updated');
+      return res.redirect(`/admin/edit-post/${req.params.id}`)
     }
 
     const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
@@ -531,9 +475,13 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
     const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
-      return res.status(400).send('Title, body, and description must not exceed their respective limits!');
-    }
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Title, body, and description must not exceed their respective limits while editing /post/', req.params.id);
+      }
+      req.flash('error', 'Title, body, and description must not exceed their respective limits!, Post is not updated');
+      return res.redirect(`/admin/edit-post/${req.params.id}`);
 
+    }
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
     const updatePostData = {
@@ -556,13 +504,17 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
       console.error('Failed to update post', req.params.id);
-      return res.status(500).send('Failed to update post');
+      req.flash('error', 'Something went wrong, Post not updated')
+      return res.redirect(`/admin/edit-post/${req.params.id}`);
     }
 
+    req.flash('success', `Successfully updated post with id ${req.params.id}`);
     res.redirect(`/dashboard/`);
 
   } catch (error) {
     console.log(error);
+    req.flash('error', 'Something Went Wrong');
+    res.redirect('/dashboard');
   }
 
 });
@@ -576,20 +528,25 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
+      req.flash('error', `User not found/User Logged out`);
       return res.redirect('/admin');
     }
 
     const postToDelete = await post.findById(req.params.id);
     if (!postToDelete) {
       console.error('Post not found', req.params.id);
-      return res.status(404).send('Post not found');
+      req.flash('error', `post not found`);
+      return res.redirect('/dashboard');
     }
 
-    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
     await post.deleteOne({ _id: req.params.id });
+    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
+    req.flash('success', `Post Successfully Deleted with Id ${req.params.id}`);
     res.redirect('/dashboard');
   } catch (error) {
     console.log(error);
+    req.flash(`error`, `Something went wrong`);
+    res.redirect('/dashboard');
   }
 });
 
@@ -599,6 +556,7 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
 */
 router.post('/logout', (req, res) => {
   res.clearCookie('token');
+  req.flash('success', `Sucessfully Logged out, Goodbye`);
   res.redirect('/admin');
 });
 
@@ -610,21 +568,14 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
-      return res.status(403).json({
-        locals: {
-          title: 'Access Denied',
-          description: 'Insufficient privileges',
-          config: res.locals.siteConfig
-        },
-        layout: adminLayout,
-        error: 'Only webmasters can access this page',
-        isWebMaster: false
-      });
+      req.flash('error', 'User not found');
+      res.redirect('/admin');
     }
 
     // Check if the user has the necessary privileges
     if (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      return res.status(403).redirect('/error')
+      req.flash('error', `you don't have sufficient permission/privilage to view this page`);
+      return res.redirect('/dashboard');
     }
 
     const locals = {
@@ -636,7 +587,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
     let config = await siteConfig.findOne();
     if (!config) {
       config = new siteConfig({
-        isRegistrationEnabled: false,
+        isRegistrationEnabled: true,
         siteName: 'Blog-Site',
         lastModifiedBy: 'System',
       });
@@ -656,7 +607,8 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
     });
   } catch (error) {
     console.error("Webmaster Page error", error);
-    res.status(500).send('Internal Server Error');
+    req.flash('error', 'Something went wrong, Internal server error');
+    res.redirect('/dashboard');
   }
 });
 
@@ -699,7 +651,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
-      return res.redirect('/admin');
+      throw new Error('User not found');
     }
 
     if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
@@ -709,16 +661,19 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       // Validate critical fields
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (req.body.siteAdminEmail && !emailRegex.test(req.body.siteAdminEmail)) {
-        return res.status(400).send('Invalid email format');
+        console.warn('webmaster tried putting invalid email');
+        throw new Error('Webmaster tried adding ill-formed email address');
       }
       const paginationLimit = parseInt(req.body.defaultPaginationLimit);
       if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
-        return res.status(400).send('Invalid pagination limit');
+        console.warn('Invalid pagination limit');
+        throw new Error('Webmaster tried updating invalid pagination limit')
       }
 
       const searchLimit = parseInt(req.body.searchLimit);
       if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
-        return res.status(400).send('Invalid search limit');
+        console.warn('Invalid search limit');
+        throw new Error('Webmaster tried updating invalid pagination limit')
       }
 
 
@@ -769,13 +724,18 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
         await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled), { new: true });
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
+      req.flash('success', `Site settings are sucessfully updated`);
       res.redirect('/admin/webmaster');
     } else {
-      res.status(403).send('Unauthorized');
+      console.error(`Unauthorised user tried to update site settings`);
+      req.flash('error', `you dont have sufficient privilage/permission to update global site settings`);
+      req.flash('info', `This incedent will be reported`);
+      res.redirect('/dashboard');
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).send('Internal Server Error');
+    req.flash('error', error.message);
+    res.redirect('/dashboard');
   }
 });
 
@@ -787,30 +747,36 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.error('Unauthorized user tried to delete different user', req.userId);
-      return res.status(403).send('Unauthorized');
+      console.warn('Unauthorized user tried to delete different user', req.userId);
+      throw new Error('Unauthorised, User not deleted');
     }
 
     const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
-      console.error('User not found', req.params.id);
-      return res.status(404).send('user not found');
+      console.warn('User not found', req.params.id);
+      throw new Error('Current user not found');
     }
 
     //prevent self deletion
     if (currentUser._id.toString() === userToDelete._id.toString()) {
-      return res.status(405).json({
-        error: 'Invalid Operation',
-        message: 'Self-deletion is not allowed for security reasons'
+      console.warn({
+        status: 403,
+        message: 'Invalid Operation',
+        reason: 'user tried to delete itself'
       });
+      req.flash('error', 'Did you just try to delete yourself');
+      req.flash('info', 'Suicide helpline number: 1800-1208-20050');
+      res.redirect(`/edit-user/${userToDelete._id}`)
     }
 
-    console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
     await user.deleteOne({ _id: req.params.id });
+    console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
+    req.flash('info', `User ${userToDelete.username} is deleted`);
     res.redirect('/admin/webmaster');
   } catch (error) {
-    console.log(error);
-    res.status(500).send('Internal Server Error');
+    console.error(error);
+    req.flash('error', error.message);
+    res.redirect('/admin/webmaster');
   }
 });
 
@@ -821,11 +787,10 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
  */
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-
     const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
       console.error('User not found', req.params.id);
-      return res.status(404).send('User not found');
+      throw new Error('User not found');
     }
 
     const locals = {
@@ -848,11 +813,10 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 
   } catch (error) {
     console.error(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('error', 'Something went wrong, Internal Server Error');
+    res.redirect(`/dashboard`);
   }
-
 });
-
 
 /**
  * @route PUT /edit-user/:id
@@ -876,12 +840,19 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.error('Unauthorized user tried to delete different user', req.userId);
-      return res.status(403).send('Unauthorized');
+      console.warn('Unauthorized user tried to delete different user', req.userId);
+      throw new Error('Unauthorized User cannot edit other users');
+    }
+
+    const updateUser = await user.findById(req.params.id);
+    if (!updateUser) {
+      console.warn('User To be updated not found');
+      throw new Error('User to be updated not found');
     }
 
     if (!req.body.name || !req.body.name.trim()) {
-      return res.status(400).send('Name is required');
+      console.warn('Name is a required field');
+      throw new Error('Name is a required field');
     }
 
     let hashedTempPassword = '';
@@ -890,15 +861,9 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       hasAdminResettedPassword = true;
       const tempPassword = req.body.adminTempPassword.trim();
       if (!isStrongPassword(tempPassword)) {
-        return res.render('admin/index', {
-          errors: [{ msg: 'Password is too weak. It should be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.' }],
-          errors_login: [],
-          config: res.locals.siteConfig,
-          csrfToken: req.csrfToken(),
-          isWebMaster: false
-        });
+        console.warn(`Webmaster User ${currentUser.username} tried resetting password of User ${updateUser.username} with a weak password`);
+        throw new Error('Password is not strong enough, Must contain at least 8 characters, must contain a mix of uppercase, lowercase, numeric and special characters');
       }
-
       hashedTempPassword = await bcrypt.hash(tempPassword, 10);
     }
 
@@ -908,47 +873,40 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     });
 
     if (sanitizedName !== req.body.name.trim()) {
-      return res.status(400).json({
-        error: 'validation error',
-        message: 'Invalid characters in name. Only alphabets and spaces are allowed.'
-      });
+      console.warn(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
+      req.flash('error', `you cannot add scripts on the user's name`);
+      req.flash('info', `This incedent will be reported`);
     }
 
-    if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(req.body.privilege))) {
-      return res.status(400).send('Invalid privilege level');
+    const privilageLevel = (!isNaN(parseInt(req.body.privilege)) || !req.body.privilege) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
+    if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
+      console.warn('Invalid Privilage level');
+      throw new Error('Invalid Privilage Level');
     }
 
-    if (hasAdminResettedPassword) {
-      await user.findByIdAndUpdate(req.params.id, {
-        name: req.body.name.trim(),
-        privilege: req.body.privilege,
-        isPasswordReset: hasAdminResettedPassword,
-        adminTempPassword: hashedTempPassword,
-        password: resettedPassword,
-        modifiedAt: Date.now()
-      });
-    } else {
-      await user.findByIdAndUpdate(req.params.id, {
-        name: req.body.name.trim(),
-        privilege: req.body.privilege,
-        isPasswordReset: hasAdminResettedPassword,
-        modifiedAt: Date.now()
-      });
-    }
+    updateUser.name = sanitizedName;
+    updateUser.privilege = privilageLevel;
+    updateUser.isPasswordReset = hasAdminResettedPassword;
+    updateUser.adminTempPassword = hashedTempPassword;
+    updateUser.password = !hasAdminResettedPassword ? updateUser.password : resettedPassword;
+    updateUser.modifiedAt = Date.now();
 
-    const updatedUser = await user.findById(req.params.id);
-    if (!updatedUser) {
-      console.error('Failed to update user', req.params.id);
-      return res.status(500).send('Failed to update user');
+    try {
+      await updateUser.save();
+      console.log('User Updated successfully');
+      req.flash('success', 'User Updated Successfully');
+      res.redirect('/admin/webmaster');
+    } catch (error) {
+      console.error('Issue occured while updating user info', error);
+      req.flash('error', 'Something went wrong while updating user, please try again');
+      return res.redirect(`/edit-user/${req.params.id}`)
     }
-
-    res.redirect(`/admin/webmaster`);
 
   } catch (error) {
     console.log(error);
-    res.status(500).send('Internal Server Error');
+    req.flash('error', error.message);
+    return res.redirect(`/edit-user/${req.params.id}`);
   }
-
 });
 
 /**
@@ -1036,18 +994,24 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
  *
  */
 router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, res) => {
-  const locals = {
-    title: "Forgot Password",
-    description: "Password Reset Page",
-    config: res.locals.siteConfig
-  };
+  try {
+    const locals = {
+      title: "Forgot Password",
+      description: "Password Reset Page",
+      config: res.locals.siteConfig
+    };
 
-  res.render('admin/forgot-password', {
-    locals,
-    layout: adminLayout,
-    csrfToken: req.csrfToken(),
-    isWebMaster: false
-  });
+    return res.render('admin/reset-password', {
+      locals,
+      layout: adminLayout,
+      csrfToken: req.csrfToken(),
+      isWebMaster: false
+    });
+  } catch(error){
+    console.log(error);
+    req.flash('error', 'Internal Server Error');
+    return res.redirect('/admin');
+  }
 });
 
 /**
@@ -1072,47 +1036,57 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
  */
 router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
   try {
-    const {username, tempPassword, newPassword, confirmPassword} = req.body;
-    if(!username || !tempPassword || !newPassword || !confirmPassword){
-      return res.status(400).json({'status': 400, 'message': 'one or more required feild missing' })
+    const { username, tempPassword, newPassword, confirmPassword } = req.body;
+    if (!username || !tempPassword || !newPassword || !confirmPassword) {
+      console.log({ 'status': 400, 'message': 'one or more required feild missing' })
+      throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
-    userModel = await user.findOne({username: username});
-    if(!userModel){
-      throw new Error('User Does\'t exist');
+    const userModel = await user.findOne({ username: username });
+    if (!userModel) {
+      throw new Error(`User doesn't exist`);
     }
-    if(!userModel.isPasswordReset || !userModel.adminTempPassword || userModel.password !== resettedPassword){
+    if (!userModel.isPasswordReset || !userModel.adminTempPassword || userModel.password !== resettedPassword) {
       throw new Error('User profile is not approved for reset by webmaster');
     }
 
-    if(newPassword === tempPassword){
+    if (newPassword === tempPassword) {
       throw new Error('User can not reuse temporary Password as their new password');
     }
 
-    if(!isStrongPassword(newPassword)){
+    if (!isStrongPassword(newPassword)) {
       throw new Error('Password is not strong');
     }
 
-    if(newPassword !== confirmPassword){
+    if (newPassword !== confirmPassword) {
       throw new Error('new Password and confirm password do not match');
     }
 
     const isPasswordValid = await bcrypt.compare(tempPassword, userModel.adminTempPassword);
     if (!isPasswordValid) {
       console.error(`User: ${username} is trying to reset password with incorrect temp password`, username);
+      throw new Error('Either the username or the Temp password combination might be incorrect');
     } else {
       console.log(`User: ${username} has successfully validated temp password`);
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       userModel.password = hashedPassword;
       userModel.isPasswordReset = false;
       userModel.adminTempPassword = '';
-      await userModel.save();
-      return res.status(200).redirect('/admin');
+      try {
+        await userModel.save();
+        console.log('user reset successful');
+        req.flash('success', 'User password successfully resetted');
+        req.flash('info', `login is enabled for user: ${username}, please sign in`);
+        return res.redirect('/admin');
+      } catch (error) {
+        console.log('error while password reset', error);
+        req.flash('error', 'Something went wrong while resetting password, Internal Server Error');
+        res.redirect('/admin/reset-password');
+      }
     }
-
-
-  } catch(error) {
+  } catch (error) {
     console.error("Internal Server Error", error);
-    return res.status(500).json( {'status': 500, 'message': 'Something went wrong in server, Internal server Error' } );
+    req.flash('error', error.message);
+    res.redirect('/admin/reset-password');
   }
 });
 
