@@ -464,7 +464,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
         console.error('Title, body, and description are missing while editing /post/', req.params.id);
       }
       req.flash('error', 'Title, body, and description are required!, Post is not updated');
-      res.redirect(`/admin/edit-post/${req.params.id}`)
+      return res.redirect(`/admin/edit-post/${req.params.id}`)
     }
 
     const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
@@ -543,7 +543,7 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
   } catch (error) {
     console.log(error);
     req.flash(`error`, `Something went wrong`);
-    res.redirect('/dashnoard');
+    res.redirect('/dashboard');
   }
 });
 
@@ -875,7 +875,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = isNaN(req.body.privilege) && !req.body.privilege ? parseInt(updateUser.privilege) : parseInt(req.body.privilege);
+    const privilageLevel = !isNaN(parseInt(req.body.privilege)) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
@@ -896,13 +896,13 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     } catch (error) {
       console.error('Issue occured while updating user info', error);
       req.flash('error', 'Something went wrong while updating user, please try again');
-      res.redirect(`/edit-user/${updateUser._id}`);
+      return res.redirect(`/edit-user/${req.params.id}`)
     }
 
   } catch (error) {
     console.log(error);
     req.flash('error', error.message);
-    res.redirect(`/edit-user/${updateUser._id}`);
+    return res.redirect(`/edit-user/${updateUser._id}`);
   }
 });
 
@@ -998,7 +998,7 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       config: res.locals.siteConfig
     };
 
-    res.render('admin/reset-password', {
+    return res.render('admin/reset-password', {
       locals,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
@@ -1006,8 +1006,8 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
     });
   } catch(error){
     console.log(error);
-    req.flash('Internal Server Error');
-    res.redirect('/admin');
+    req.flash('error', 'Internal Server Error');
+    return res.redirect('/admin');
   }
 });
 
@@ -1038,7 +1038,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('One or more fields are missing');
     }
-    userModel = await user.findOne({ username: username });
+    const userModel = await user.findOne({ username: username });
     if (!userModel) {
       throw new Error(`User Does't exist`);
     }
