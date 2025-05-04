@@ -1,0 +1,26 @@
+<% if (flash && flash.info_msg && Array.isArray(flash.info_msg) && flash.info_msg.length > 0) { %>
+    <% flash.info_msg.forEach(msg => { %>
+        <div class="flash-message flash-info">
+            <span><%= msg %></span>
+            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+    <% }); %>
+<% } %>
+
+<% if (flash && flash.error_msg && Array.isArray(flash.error_msg) && flash.error_msg.length > 0) { %>
+    <% flash.error_msg.forEach(msg => { %>
+        <div class="flash-message flash-error">
+            <span><%= msg %></span>
+            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+    <% }); %>
+<% } %>
+
+<% if (flash && flash.success_msg && Array.isArray(flash.success_msg) && flash.success_msg.length > 0) { %>
+    <% flash.success_msg.forEach(msg => { %>
+        <div class="flash-message flash-success">
+            <span><%= msg %></span>
+            <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+    <% }); %>
+<% } %>

@@ -102,6 +102,16 @@ app.use(session({
 // Connect flash for flash messages
 app.use(flash());
 
+// Flash messages middleware
+app.use((req, res, next) => {
+  res.locals.flash = {
+    success_msg: req.flash('success'),
+    error_msg: req.flash('error'),
+    info_msg: req.flash('info')
+  };
+  next();
+});
+
 //templating Engine
 app.use(expressLayout);
 app.set('layout', './layouts/main');

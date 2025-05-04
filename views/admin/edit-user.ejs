@@ -14,12 +14,11 @@
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="name">Name</label>
     <input type="text" id="name" name="name" value="<%= selectedUser.name %>" required placeholder="user name" required>
-
-    <% if (showDelete) { %>
         <label for="privilege">Privilege (1 -&gt; webmaster, 2 -&gt; Moderator, 3 -&gt; writer/editor): </label><br>
         <input type="number" id="privilege" name="privilege" value="<%= selectedUser.privilege %>" min="1" max="3"
             required>
         <br><br>
+    <% if (showDelete) { %>
         <label for="Reset password"><b>Reset Password (Leave blank if not needed)</b></label>
         <input type="password" placeholder="Reset Password" name="adminTempPassword" id="reset-password"
             autocomplete="new-password" minlength="8">
