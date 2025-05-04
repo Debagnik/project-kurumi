@@ -279,7 +279,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
           reason: 'User did not have adequate permission to view this page'
         });
         req.flash('error', 'You do not have adequate permission to view this page, Contact Webmaster');
-        return res.status(403).redirect('/admin');
+        return res.redirect('/admin');
     }
 
     res.render('admin/dashboard', {
@@ -1036,11 +1036,11 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
-      throw new Error('One or more fields are missing');
+      throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
     const userModel = await user.findOne({ username: username });
     if (!userModel) {
-      throw new Error(`User Does't exist`);
+      throw new Error(`User doesn't exist`);
     }
     if (!userModel.isPasswordReset || !userModel.adminTempPassword || userModel.password !== resettedPassword) {
       throw new Error('User profile is not approved for reset by webmaster');
