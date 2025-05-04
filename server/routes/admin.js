@@ -875,7 +875,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = !isNaN(parseInt(req.body.privilege)) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
+    const privilageLevel = (!isNaN(parseInt(req.body.privilege)) || !req.body.privilege) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
@@ -902,7 +902,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
   } catch (error) {
     console.log(error);
     req.flash('error', error.message);
-    return res.redirect(`/edit-user/${updateUser._id}`);
+    return res.redirect(`/edit-user/${req.params.id}`);
   }
 });
 
