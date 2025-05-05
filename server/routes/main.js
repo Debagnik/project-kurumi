@@ -96,7 +96,7 @@ router.get('', async (req, res) => {
             data,
             currentPage: page,
             nextPage: hasNextPage ? nextPage : null,
-            previousPage: hasPreviousPage ? hasPreviousPage : null,
+            previousPage: hasPreviousPage ? previousPage : null,
             csrfToken: req.csrfToken(),
             totalPages: Math.ceil(count / perPage)
         });
