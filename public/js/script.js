@@ -56,7 +56,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const commentBody = document.getElementById('commentBody');
     if (commentBody) {
         commentBody.addEventListener('input', function () {
-            document.getElementById('charCount').textContent = this.value.length;
+            const charCount = document.getElementById('charCount');
+            if (charCount) {
+                charCount.textContent = this.value.length;
+            }
         });
     }
 

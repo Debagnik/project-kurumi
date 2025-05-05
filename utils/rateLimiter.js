@@ -74,7 +74,7 @@ const genericAdminRateLimiter = createRateLimiter({
  */
 const genericOpenRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  max: 5,
+  max: 50,
   message: `Your Kita-aura is too high, It's blinding the Bocchi. Slow down please`,
 });
 

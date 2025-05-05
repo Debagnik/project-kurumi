@@ -766,7 +766,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
       });
       req.flash('error', 'Did you just try to delete yourself');
       req.flash('info', 'Suicide helpline number: 1800-1208-20050');
-      res.redirect(`/edit-user/${userToDelete._id}`)
+      return res.redirect(`/edit-user/${userToDelete._id}`);
     }
 
     await user.deleteOne({ _id: req.params.id });
@@ -1037,11 +1037,16 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
 router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
   try {
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
+    
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
-    const userModel = await user.findOne({ username: username });
+    if(typeof username !== 'string'){
+      throw new Error("Invalid username format");
+    }
+    const sanitizedUserName = sanitizeHtml(username);
+    const userModel = await user.findOne({ username: { $eq: sanitizedUserName } });
     if (!userModel) {
       throw new Error(`User doesn't exist`);
     }
@@ -1063,10 +1068,10 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
 
     const isPasswordValid = await bcrypt.compare(tempPassword, userModel.adminTempPassword);
     if (!isPasswordValid) {
-      console.error(`User: ${username} is trying to reset password with incorrect temp password`, username);
+      console.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
       throw new Error('Either the username or the Temp password combination might be incorrect');
     } else {
-      console.log(`User: ${username} has successfully validated temp password`);
+      console.log(`User: ${sanitizedUserName} has successfully validated temp password`);
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       userModel.password = hashedPassword;
       userModel.isPasswordReset = false;
@@ -1075,7 +1080,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
         await userModel.save();
         console.log('user reset successful');
         req.flash('success', 'User password successfully resetted');
-        req.flash('info', `login is enabled for user: ${username}, please sign in`);
+        req.flash('info', `login is enabled for user: ${sanitizedUserName}, please sign in`);
         return res.redirect('/admin');
       } catch (error) {
         console.log('error while password reset', error);

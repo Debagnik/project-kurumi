@@ -131,6 +131,13 @@ exports.isValidTrackingScript = (script) => {
   }
 };
 
+/**
+ * Parses a comma-separated string of tags, sanitizes each tag, 
+ * removes disallowed characters, limits their length, and filters out empty tags.
+ *
+ * @param {string} textTags - A comma-separated string of tags to parse.
+ * @returns {string[]} An array of sanitized, trimmed, and filtered tags.
+ */
 exports.parseTags = (textTags) => {
   if (typeof textTags !== 'string') {
     return [];
@@ -146,5 +153,6 @@ exports.parseTags = (textTags) => {
       })
     )
     .map(tag => tag.replace(/[^a-zA-Z0-9-_]/g, ''))
+    .map(tag => tag.substring(0, 30))
     .filter(tag => tag.length > 0);
 }
