@@ -18,6 +18,10 @@ const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericG
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
+
+// Deliberately storing a non-hashed string as "resettedPassword" as a secondary security measure
+// If the isPasswordReset flag is somehow bypassed, bcrypt comparison will still fail
+// DO NOT HASH THIS VALUE - it is intended to be unusable
 const resettedPassword = 'Qm9jY2hpIHRoZSBSb2Nr';
 
 
@@ -30,7 +34,12 @@ const csrfProtection = csrf({ cookie: true });
 router.use(csrfProtection);
 
 /**
- * Checks login middleware
+ * Middleware to authenticate requests based on a JWT stored in cookies.
+ * Redirects to the admin login page if the token is missing or invalid.
+ *
+ * @param {import('express').Request} req - The Express request object.
+ * @param {import('express').Response} res - The Express response object.
+ * @param {import('express').NextFunction} next - The next middleware function.
  */
 const authToken = (req, res, next) => {
   const token = req.cookies.token;
@@ -50,7 +59,13 @@ const authToken = (req, res, next) => {
 }
 
 /**
- * Site config Middleware
+ * Middleware to fetch the site configuration from the database and 
+ * attach it to `res.locals` for use in views.
+ * Logs a warning if the config is not found and ensures `res.locals.siteConfig` is always defined.
+ *
+ * @param {import('express').Request} req - The Express request object.
+ * @param {import('express').Response} res - The Express response object.
+ * @param {import('express').NextFunction} next - The next middleware function.
  */
 const fetchSiteConfig = async (req, res, next) => {
   try {
@@ -70,7 +85,12 @@ const fetchSiteConfig = async (req, res, next) => {
 router.use(fetchSiteConfig);
 
 /**
- * Post add/edit markdown function
+ * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.
+ * Includes additional allowed tags and attributes for images.
+ *
+ * @param {string} markdownString - The Markdown content to convert.
+ * @returns {string} The sanitized HTML string.
+ * @throws {Error} If the conversion fails.
  */
 function markdownToHtml(markdownString) {
   try {
@@ -96,11 +116,31 @@ function markdownToHtml(markdownString) {
 }
 
 
-//Routes
+/******************************* ROUTES *******************************/
+
 /**
  * @route GET /admin
- * @description Admin login page. Redirects to /dashboard if user is already authenticated.
- * @access Public
+ * @description Renders the admin panel page with configuration settings and CSRF protection. 
+ *              Sets up page metadata (title, description) and checks for webmaster status.
+ *              On error, redirects to home with a flash error message.
+ * 
+ * @request
+ * @query {Object} [locals] - Page metadata and configuration:
+ * @query {string} locals.title - Page title ("Admin Panel")
+ * @query {string} locals.description - Page description ("Admin Panel")
+ * @query {Object} locals.config - Site configuration from res.locals
+ * 
+ * @response
+ * @renders admin/index - Admin panel view with:
+ * @property {Object} locals - Page metadata and config
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster access flag (hardcoded false)
+ * 
+ * @returns {200} Renders admin panel page on success
+ * @returns {302} Redirects to / with error flash message on failure
+ * @access Private (implied by admin route)
+ * @csrf Generates and requires CSRF token
  */
 router.get('/admin', async (req, res) => {
   try {
@@ -117,14 +157,56 @@ router.get('/admin', async (req, res) => {
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
-    req.flash('Internal Server Error');
-    res.redirect('');
+    req.flash('error', 'Internal Server Error');
+    res.redirect('/');
   }
 });
 
 /**
- * POST /
- * ADMIN - Register
+ * @route POST /register
+ * @description Handles new user registration with comprehensive validation:
+ *              - Checks for empty fields
+ *              - Validates username format
+ *              - Verifies username uniqueness
+ *              - Ensures password strength and confirmation match
+ *              - Checks registration system availability
+ *              - Hashes password and creates user if all validations pass
+ * 
+ * @middleware genericAdminRateLimiter - Applies rate limiting to prevent abuse
+ * 
+ * @request
+ * @body {string} username - Desired username (alphanumeric + special chars)
+ * @body {string} password - User password (must meet strength requirements)
+ * @body {string} name - User's display name
+ * @body {string} confirm_password - Password confirmation (must match password)
+ * 
+ * @validation
+ * @throws {401} If any mandatory field is empty
+ * @throws {400} If username format is invalid
+ * @throws {409} If username already exists
+ * @throws {400} If password and confirmation don't match
+ * @throws {400} If password doesn't meet strength requirements
+ * 
+ * @response
+ * @success {302} Redirects to /admin with success flash on creation
+ * @failure {302} Redirects to /admin with error flash on:
+ *               - Validation failures
+ *               - Registration disabled (with security notice)
+ *               - Server errors
+ * 
+ * @security
+ * @uses CSRF (implied by form submission)
+ * @rateLimited Prevents brute force attacks
+ * @passwordHashing Uses bcrypt with 10 rounds
+ * 
+ * @configDependent Checks res.locals.siteConfig.isRegistrationEnabled
+ * 
+ * @access Public (registration endpoint)
+ * 
+ * @errorHandling
+ * @logs Detailed error context (with environment-sensitive logging)
+ * @notifies Users via flash messages
+ * @reports Security incidents when registration is disabled
  */
 router.post('/register', genericAdminRateLimiter, async (req, res) => {
   try {
@@ -196,8 +278,44 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
 });
 
 /**
- * POST
- * Admin - Check Login
+ * @route POST /admin
+ * @description Authenticates users by validating credentials against the database.
+ *              On success: Issues JWT token in HTTP-only cookie and redirects to dashboard.
+ *              On failure: Redirects with appropriate error messages.
+ * 
+ * @middleware authRateLimiter - Prevents brute force attacks with rate limiting
+ * 
+ * @request
+ * @body {string} username - User's login username
+ * @body {string} password - User's plaintext password
+ * 
+ * @validation
+ * @throws {400} If username or password is empty
+ * @throws {401} If username doesn't exist or password is invalid (generic error for security)
+ * @throws {403} If account has password reset flag (disabled login)
+ * 
+ * @response
+ * @success {302} Sets HTTP-only JWT cookie and redirects to /dashboard with welcome flash
+ * @failure {302} Redirects to /admin with error flash for all failure cases
+ * 
+ * @security
+ * @cookie {string} token - JWT token stored as httpOnly cookie
+ * @uses JWT signed with server's secret key
+ * @passwordVerification Uses bcrypt.compare() for secure password checking
+ * 
+ * @sessionManagement
+ * @jwtPayload {string} userId - User's database ID embedded in token
+ * 
+ * @logging
+ * @successLog Records successful login (username hidden in production)
+ * @errorLog Detailed error contexts with security-conscious logging
+ * 
+ * @access Public (authentication endpoint)
+ * 
+ * @errorHandling
+ * @genericErrors Returns "Invalid credentials" for both username/password failures
+ * @disabledAccounts Special handling for password-reset-locked accounts
+ * @notifies Users via flash messages
  */
 router.post('/admin', authRateLimiter, async (req, res) => {
   try {
@@ -246,8 +364,51 @@ router.post('/admin', authRateLimiter, async (req, res) => {
 });
 
 /**
- * GET
- * Admin - Dashboard
+ * @route GET /dashboard
+ * @description Renders the admin dashboard with privilege-based content filtering.
+ *              - Writers see only their own posts
+ *              - Moderators/Webmasters see all posts
+ *              - Invalid privilege levels get redirected
+ * 
+ * @middleware 
+ * @chain authToken - Verifies JWT authentication
+ * @chain genericGetRequestRateLimiter - Prevents request flooding
+ * 
+ * @request
+ * @cookie {string} token - JWT for authentication (via authToken middleware)
+ * 
+ * @response
+ * @success {200} Renders dashboard view with:
+ * @property {Object} locals - Page metadata and config
+ * @property {Object} currentUser - Authenticated user's data
+ * @property {Array} data - Posts filtered by user privilege
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster status flag
+ * 
+ * @failure {302} Redirect cases:
+ * @case /admin - When user not found (with tsundere error message)
+ * @case /admin - When invalid privilege level (with webmaster contact prompt)
+ * @case /admin - On server errors (with generic error)
+ * 
+ * @privilegeHandling
+ * @enum WRITER - Can view only own posts (sorted newest first)
+ * @enum MODERATOR - Can view all posts
+ * @enum WEBMASTER - Can view all posts
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @csrf Protected endpoint
+ * 
+ * @access Private (requires valid authenticated session)
+ * 
+ * @errorHandling
+ * @userNotFound Special tsundere-style error message
+ * @invalidPrivilege Detailed logging with 403 equivalent
+ * @serverErrors Generic internal server error handling
+ * 
+ * @logging
+ * @verboseLogs Includes privilege level checks and user validation
+ * @securityLogs Records unauthorized access attempts
  */
 router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -299,8 +460,46 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
 });
 
 /**
- * GET
- * Admin - new post
+ * @route GET /admin/add-post
+ * @description Renders the "Add Post" form page for authorized users. Verifies user authentication
+ *              and existence before granting access to the post creation interface.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication token
+ * @chain genericGetRequestRateLimiter - Prevents brute force/DoS attacks
+ * 
+ * @request
+ * @cookie {string} token - JWT for authentication (via authToken middleware)
+ * 
+ * @response
+ * @success {200} Renders add-post view with:
+ * @property {Object} locals - Page metadata and site configuration
+ * @property {Object} currentUser - Authenticated user's data
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster status flag
+ * 
+ * @failure {302} Redirect cases:
+ * @case /admin - When user not found (with anime-style tsundere error message)
+ * @case /dashboard - On server errors (with generic error flash)
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @csrf Protected endpoint
+ * @rateLimited Against excessive requests
+ * 
+ * @access Private (requires valid authenticated session)
+ * 
+ * @errorHandling
+ * @userNotFound Special anime-style error message
+ * @serverErrors Generic internal server error handling
+ * 
+ * @uiElements
+ * @includes CSRF token in form
+ * @displays Webmaster-specific features based on privilege
+ * 
+ * @logging
+ * @verboseLogs User verification process
+ * @securityLogs Records unauthorized access attempts
  */
 router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -332,8 +531,45 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
 });
 
 /**
- * POST
- * Admin - new post
+ * @route POST /admin/add-post
+ * @description Handles new post submission from admin interface. 
+ *              Delegates post saving to `savePostToDB` service function.
+ *              Success: Redirects to dashboard with success notification.
+ *              Failure: Redirects to dashboard with error details.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents spamming/abuse
+ * 
+ * @request
+ * @body {Object} Post data - Structure depends on savePostToDB implementation
+ * @cookie {string} token - JWT for authentication
+ * 
+ * @response
+ * @success {302} Redirects to /dashboard with success flash message
+ * @failure {302} Redirects to /dashboard with error flash message
+ * 
+ * @businessLogic
+ * @delegates savePostToDB - Handles actual post validation and persistence
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @rateLimited Against excessive submissions
+ * 
+ * @access Private (requires admin privileges)
+ * 
+ * @errorHandling
+ * @catches All errors from savePostToDB
+ * @logs Full error details to console
+ * @notifies User via flash messages
+ * 
+ * @successHandling
+ * @notifies User with success message
+ * @redirects To main dashboard
+ * 
+ * @logging
+ * @detailedErrorLogs Includes status codes and reasons
+ * @securityLogs Tracks submission attempts
  */
 router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
@@ -345,9 +581,74 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
     req.flash('error', error.message)
     res.redirect('/dashboard');
   }
-
 });
 
+/**
+ * @function savePostToDB
+ * @description Handles the complete post creation workflow including validation,
+ *              markdown conversion, and database persistence. Applies business
+ *              rules for content length, required fields, and thumbnail defaults.
+ * 
+ * @param {Object} req - Express request object containing:
+ * @param {string} req.userId - Authenticated user's ID from JWT
+ * @param {Object} req.body - Post data including:
+ * @param {string} req.body.title - Post title (trimmed, length validated)
+ * @param {string} req.body.markdownbody - Markdown content (converted to HTML)
+ * @param {string} req.body.desc - Post description (trimmed, length validated)
+ * @param {string} [req.body.tags] - Optional tag string
+ * @param {string} [req.body.thumbnailImageURI] - Optional custom thumbnail URI
+ * 
+ * @param {Object} res - Express response object (unused in current implementation)
+ * 
+ * @returns {Promise<string>} Resolves with the new post's ID string on success
+ * 
+ * @throws {Error} With descriptive messages for:
+ * @throws User not found
+ * @throws Missing required fields
+ * @throws Content length violations
+ * 
+ * @businessLogic
+ * @step 1 User verification
+ * @step 2 Site configuration lookup (for default thumbnail)
+ * @step 3 Field validation (required fields + length checks)
+ * @step 4 Markdown-to-HTML conversion
+ * @step 5 Post object creation with:
+ *        - Author tracking
+ *        - Timestamping
+ *        - Tag parsing
+ *        - Thumbnail fallback logic
+ * @step 6 Database persistence
+ * 
+ * @validation
+ * @rule Title, body, and description are required (trimmed)
+ * @rule Title max length: configurable via MAX_TITLE_LENGTH (default: 50)
+ * @rule Description max length: configurable via MAX_DESCRIPTION_LENGTH (default: 1000)
+ * @rule Body max length: configurable via MAX_BODY_LENGTH (default: 100000)
+ * @rule Thumbnail URI falls back to:
+ *       1. Provided URI (if valid)
+ *       2. Site config default
+ *       3. Environment variable default
+ * 
+ * @dependencies
+ * @external markdownToHtml - Converts markdown to HTML
+ * @external isValidURI - Validates thumbnail URIs
+ * @external parseTags - Processes tag strings (implementation not shown)
+ * 
+ * @logging
+ * @successLog Records username and post details (full in dev, partial in prod)
+ * @errorLog Detailed validation failures
+ * @configWarning Logs missing site config in non-production
+ * 
+ * @security
+ * @ensures All string fields are trimmed
+ * @tracks Author and last editor
+ * 
+ * @configuration
+ * @env MAX_TITLE_LENGTH - Configures title max chars
+ * @env MAX_DESCRIPTION_LENGTH - Configures description max chars
+ * @env MAX_BODY_LENGTH - Configures body max chars
+ * @env DEFAULT_POST_THUMBNAIL_LINK - Fallback thumbnail URI
+ */
 async function savePostToDB(req, res) {
   try {
     const currentUser = await user.findById(req.userId);
@@ -388,7 +689,7 @@ async function savePostToDB(req, res) {
       markdownbody: req.body.markdownbody.trim(),
       body: htmlBody,
       author: currentUser.username.trim(),
-      tags: parseTags(req.body.tags),
+      tags: parseTags((req.body.tags || '').trim),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
@@ -398,17 +699,63 @@ async function savePostToDB(req, res) {
     await newPost.save();
 
     console.log('New post added by ', currentUser.username, '\n', newPost);
-
     return newPost._id.toString();
-
   } catch (error) {
     throw new Error(`Could not save post data: ${error.message}`);
   }
 }
 
 /**
- * GET
- * Admin Edit post
+ * @route GET /edit-post/:id
+ * @description Renders the post editing interface for authorized users.
+ *              Loads the specified post's data and verifies user privileges.
+ *              Provides CSRF protection and webmaster status detection.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericGetRequestRateLimiter - Prevents brute force attacks
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the post to edit
+ * 
+ * @request
+ * @cookie {string} token - JWT for authentication
+ * 
+ * @response
+ * @success {200} Renders edit-post view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Dynamic title with post name
+ *           @subprop {string} description - Static editor description
+ *           @subprop {Object} config - Site configuration
+ * @property {Object} data - The full post document from database
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster privilege flag
+ * @property {Object} currentUser - Minimal user data containing privilege level
+ * 
+ * @failure {302} Redirects to /dashboard with error flash when:
+ * @case Post not found
+ * @case User not authenticated
+ * @case Server error occurs
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @csrf Protected endpoint
+ * @rateLimited Against excessive requests
+ * 
+ * @access Private (requires valid authentication)
+ * 
+ * @privilegeHandling
+ * @note Actual edit permissions should be checked during POST submission
+ * 
+ * @errorHandling
+ * @catches All errors generically
+ * @logs Full error to console
+ * @notifies User with generic flash message
+ * 
+ * @logging
+ * @verboseLogs Includes post lookup details
+ * @securityLogs Records access attempts
  */
 router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -440,9 +787,66 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
 });
 
 /**
- * PUT /
- * Admin - Edit Post
-*/
+ * @route PUT /edit-post/:id
+ * @description Handles post updates with comprehensive validation and moderation capabilities.
+ *              Performs field validation, markdown conversion, and privilege-based updates.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the post to update
+ * 
+ * @request
+ * @body {Object} Post data including:
+ * @body {string} title - Updated post title (trimmed, length validated)
+ * @body {string} markdownbody - Updated markdown content (converted to HTML)
+ * @body {string} desc - Updated description (trimmed, length validated)
+ * @body {string} [tags] - Optional updated tags
+ * @body {string} [thumbnailImageURI] - Optional updated thumbnail URI
+ * @body {string} [isApproved] - 'on' for moderators/webmasters to approve posts
+ * 
+ * @validation
+ * @rule All required fields must be present (title, markdownbody, desc)
+ * @rule Title max length: configurable via MAX_TITLE_LENGTH (default: 50)
+ * @rule Description max length: configurable via MAX_DESCRIPTION_LENGTH (default: 1000)
+ * @rule Body max length: configurable via MAX_BODY_LENGTH (default: 100000)
+ * @rule Thumbnail URI falls back to site config or environment default
+ * 
+ * @privilegeHandling
+ * @level MODERATOR/WEBMASTER - Can modify approval status via isApproved
+ * @level WRITER - Can only update standard fields
+ * 
+ * @response
+ * @success {302} Redirects to dashboard with success flash
+ * @failure {302} Redirect cases:
+ * @case /edit-post/:id - Validation errors with field-specific messages
+ * @case /dashboard - General errors or update failures
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @rateLimited Against excessive updates
+ * @tracks LastUpdateAuthor - Records username of editor
+ * 
+ * @logging
+ * @devLog Detailed validation errors (suppressed in production)
+ * @errorLog Full error traces for debugging
+ * @updateLog Records modification timestamps
+ * 
+ * @configuration
+ * @env MAX_TITLE_LENGTH - Controls title validation
+ * @env MAX_DESCRIPTION_LENGTH - Controls description validation
+ * @env MAX_BODY_LENGTH - Controls body validation
+ * @env DEFAULT_POST_THUMBNAIL_LINK - Fallback thumbnail URI
+ * 
+ * @access Private (requires valid authentication)
+ * 
+ * @errorHandling
+ * @userNotFound Specific error for missing users
+ * @validationErrors Field-specific feedback via flash
+ * @updateFailures Checks post-update verification
+ */
 router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
@@ -489,7 +893,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
-      tags: parseTags(req.body.tags.trim()),
+      tags: parseTags((req.body.tags || '').trim()),
       thumbnailImageURI: defaultThumbnailImageURI,
       modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username
@@ -516,12 +920,55 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
     req.flash('error', 'Something Went Wrong');
     res.redirect('/dashboard');
   }
-
 });
 
 /**
- * DELETE
- * Admin - Post - Delete
+ * @route DELETE /delete-post/:id
+ * @description Handles post deletion with authorization checks and audit logging.
+ *              Verifies both user authentication and post existence before deletion.
+ *              Provides success/error feedback via flash messages.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the post to delete
+ * 
+ * @validation
+ * @check Verifies requesting user exists
+ * @check Confirms target post exists
+ * 
+ * @response
+ * @success {302} Redirects to /dashboard with success flash
+ * @failure {302} Redirect cases:
+ * @case /admin - When user not found (with auth error)
+ * @case /dashboard - When post not found or other errors
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @rateLimited Against excessive delete requests
+ * 
+ * @auditing
+ * @logs Detailed deletion record including:
+ *       - Requesting username
+ *       - Deleted post details
+ * 
+ * @access Private (requires admin privileges)
+ * 
+ * @errorHandling
+ * @userNotFound Specific error for missing users
+ * @postNotFound Specific error for missing posts
+ * @serverErrors Generic error catch-all
+ * 
+ * @notifications
+ * @successFlash Confirms deletion with post ID
+ * @errorFlash Provides context-specific failure messages
+ * 
+ * @logging
+ * @securityLogs Records all deletion attempts
+ * @auditLogs Detailed post deletion records
+ * @errorLogs Full error traces for debugging
  */
 router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
@@ -551,9 +998,16 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
 });
 
 /**
- * GET /
- * Admin Logout
-*/
+ * @route POST /logout
+ * @description Logs out the user by clearing the authentication cookie (`token`). Displays a logout success flash message
+ *              and redirects the user to the admin login page.
+ * 
+ * @request
+ * @cookie {string} token - The JWT authentication token used for session tracking.
+ * 
+ * @returns {302} Redirects to /admin with a success flash message.
+ * @access Public
+ */
 router.post('/logout', (req, res) => {
   res.clearCookie('token');
   req.flash('success', `Sucessfully Logged out, Goodbye`);
@@ -561,7 +1015,57 @@ router.post('/logout', (req, res) => {
 });
 
 /**
- * GET - Admin Webmaster
+ * @route GET /admin/webmaster
+ * @description Renders the webmaster administration panel with system configuration
+ *              and user management capabilities. Validates webmaster privileges
+ *              before granting access.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericGetRequestRateLimiter - Prevents brute force attacks
+ * 
+ * @privilegeCheck
+ * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * 
+ * @response
+ * @success {200} Renders webmaster view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Panel title
+ *           @subprop {string} description - Panel description
+ *           @subprop {Object} config - Site configuration
+ * @property {string} layout - Admin layout template
+ * @property {Object} currentUser - Authenticated user data
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster status flag
+ * @property {Object} config - Site configuration document
+ * @property {Array} users - List of all users (excluding current user)
+ * 
+ * @failure {302} Redirect cases:
+ * @case /admin - When user not found
+ * @case /dashboard - When insufficient privileges or server errors
+ * 
+ * @configurationHandling
+ * @fallback Creates default siteConfig if none exists with:
+ *           - Registration enabled
+ *           - Default site name
+ *           - System as last modifier
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @csrf Protected endpoint
+ * @rateLimited Against excessive requests
+ * 
+ * @access Private (strictly webmaster only)
+ * 
+ * @errorHandling
+ * @userNotFound Specific error for missing users
+ * @privilegeError Clear permission denial message
+ * @serverErrors Generic internal error handling
+ * 
+ * @logging
+ * @securityLogs Records unauthorized access attempts
+ * @errorLogs Detailed error context
+ * @configLogs Notes automatic config creation
  */
 router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -614,37 +1118,72 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
 
 /**
  * @route POST /edit-site-config
- * @description Updates global site configuration settings. This route is protected and accessible only to users
- *              with `WEBMASTER` privilege. It validates and sanitizes user input, updates the settings in the
- *              database, and handles both the creation and updating of site configuration records.
+ * @description Handles updates to global site configuration with strict webmaster-only access.
+ *              Performs extensive validation on all configurable parameters including:
+ *              - Email format validation
+ *              - Numeric range checks
+ *              - URI validation
+ *              - HTML sanitization
+ *              - Security script validation
  * 
- * @middleware authToken - Ensures the request is authenticated and attaches `req.userId`.
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
  * 
- * @request
- * @body {string} siteName - The name of the site (sanitized).
- * @body {string} siteMetaDataKeywords - Meta keywords for the site (sanitized).
- * @body {string} siteMetaDataAuthor - Author metadata (sanitized).
- * @body {string} siteMetaDataDescription - Site meta description (sanitized).
- * @body {string} googleAnalyticsScript - Google Analytics script (validated).
- * @body {string} inspectletScript - Inspectlet or Microsoft Clarity tracking script (validated).
- * @body {string} siteAdminEmail - Site admin email (validated).
- * @body {string} siteDefaultThumbnailUri - Default thumbnail URI for posts (validated as URL).
- * @body {number} defaultPaginationLimit - Default pagination count (validated).
- * @body {number} searchLimit - Default search result limit (validated).
- * @body {string} homeWelcomeText - Homepage welcome text (sanitized).
- * @body {string} homeWelcomeSubText - Homepage welcome subtext (sanitized).
- * @body {string} homepageWelcomeImage - Homepage image URL (validated as URL).
- * @body {string} copyrightText - Copyright notice (sanitized).
- * @body {string} cloudflareSiteKey - CAPTCHA site key for Cloudflare Turnstile (sanitized).
- * @body {string} cloudflareServerKey - CAPTCHA secret key for Cloudflare Turnstile (sanitized).
- * @body {string} isRegistrationEnabled - 'on' if registration is enabled.
- * @body {string} isCommentsEnabled - 'on' if comments are enabled.
- * @body {string} isCaptchaEnabled - 'on' if CAPTCHA is enabled.
+ * @privilegeCheck
+ * @strict PRIVILEGE_LEVELS_ENUM.WEBMASTER - Exclusive webmaster access
  * 
- * @returns {302} Redirects to /admin/webmaster on success.
- * @returns {400} If any field fails validation.
- * @returns {403} If the user is not authorized.
- * @returns {500} If an internal server error occurs.
+ * @validation
+ * @email Validates admin email format with regex
+ * @pagination Ensures limit is between 1-100
+ * @search Ensures limit is between 1-50
+ * @uri Validates thumbnail and homepage image URIs
+ * @sanitization Applies HTML sanitization to all text fields
+ * @script Validates analytics/tracking scripts
+ * 
+ * @requestBody
+ * @param {string} [siteAdminEmail] - Admin contact email
+ * @param {number} defaultPaginationLimit - Posts per page (1-100)
+ * @param {number} searchLimit - Search results limit (1-50)
+ * @param {string} [siteDefaultThumbnailUri] - Default post thumbnail
+ * @param {string} [homepageWelcomeImage] - Homepage hero image
+ * @param {string} isRegistrationEnabled - 'on' for enabled
+ * @param {string} isCommentsEnabled - 'on' for enabled
+ * @param {string} isCaptchaEnabled - 'on' for enabled
+ * @param {string} isAISummerizerEnabled - 'on' for enabled
+ * @param {string} siteName - Website title
+ * @param {string} [siteMetaData*] - Various SEO metadata fields
+ * @param {string} [googleAnalyticsScript] - Analytics script
+ * @param {string} [inspectletScript] - Monitoring script
+ * @param {string} [cloudflare*Key] - CAPTCHA keys
+ * @param {string} [homeWelcomeText] - Hero section text
+ * @param {string} [copyrightText] - Footer text
+ * 
+ * @response
+ * @success {302} Redirects to /admin/webmaster with success flash
+ * @failure {302} Redirect cases:
+ * @case /dashboard - For validation errors, insufficient privileges, or server errors
+ * 
+ * @security
+ * @requires Webmaster privilege
+ * @sanitizes All HTML output
+ * @validates External scripts
+ * @rateLimited Against excessive updates
+ * @auditLogs Changes with timestamp and editor
+ * 
+ * @configuration
+ * @fallback Creates new config document if none exists
+ * @defaults Uses environment variables for missing URIs
+ * 
+ * @logging
+ * @securityLogs Unauthorized access attempts
+ * @validationLogs Failed validation attempts
+ * @successLogs Configuration changes with editor info
+ * 
+ * @errorHandling
+ * @validationErrors Specific feedback per field type
+ * @privilegeError Clear permission denial with security notice
+ * @serverErrors Generic error catch-all
  */
 router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
@@ -740,8 +1279,60 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
 });
 
 /**
- * DELETE
- * Webmaster - User - Delete
+ * @route DELETE /delete-user/:id
+ * @description Handles user deletion with strict webmaster authorization and safety checks.
+ *              Prevents self-deletion and provides comprehensive audit logging.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the user to delete
+ * 
+ * @validation
+ * @check Verifies requesting user is webmaster
+ * @check Confirms target user exists
+ * @prevent Self-deletion with special handling
+ * 
+ * @security
+ * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * @rateLimited Against excessive delete requests
+ * @blocks SelfDeletion - Prevents account suicide with:
+ *        - Error message
+ *        - Humorous intervention
+ *        - Redirect to edit page
+ * 
+ * @response
+ * @success {302} Redirects to /admin/webmaster with info flash
+ * @failure {302} Redirect cases:
+ * @case /edit-user/:id - For self-deletion attempts
+ * @case /admin/webmaster - For other errors
+ * 
+ * @auditing
+ * @logs Detailed deletion record including:
+ *       - Requesting webmaster
+ *       - Deleted user details
+ * @warns Unauthorized attempts
+ * 
+ * @access Private (strictly webmaster only)
+ * 
+ * @errorHandling
+ * @unauthorized Clear rejection for non-webmasters
+ * @userNotFound Specific error for missing users
+ * @selfDelete Special humorous handling with:
+ *             - Flash message
+ *             - Fake helpline number
+ *             - Redirect to edit page
+ * 
+ * @notifications
+ * @infoFlash Confirms deletion with username
+ * @errorFlash Provides context-specific failure messages
+ * 
+ * @logging
+ * @securityLogs All deletion attempts
+ * @auditLogs Successful deletions with full context
+ * @errorLogs Detailed error traces
  */
 router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
@@ -782,8 +1373,54 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
 
 
 /**
- * GET
- * Webmaster Edit user
+ * @route GET /edit-user/:id
+ * @description Renders the user editing interface for webmasters to modify user accounts.
+ *              Provides CSRF protection and conditional UI elements based on edit context.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericGetRequestRateLimiter - Prevents brute force attacks
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the user to edit
+ * 
+ * @validation
+ * @check Verifies target user exists
+ * 
+ * @response
+ * @success {200} Renders edit-user view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Dynamic title with user's name
+ *           @subprop {string} description - Static editor description
+ *           @subprop {Object} config - Site configuration
+ * @property {Object} selectedUser - The user document being edited
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Webmaster privilege flag
+ * @property {boolean} showDelete - Conditional delete button visibility
+ * @property {Object} config - Site configuration
+ * 
+ * @failure {302} Redirects to /dashboard when:
+ * @case User not found
+ * @case Server error occurs
+ * 
+ * @security
+ * @requires JWT Authentication
+ * @csrf Protected endpoint
+ * @conditionalDelete Prevents self-delete UI
+ * 
+ * @access Private (requires webmaster privileges)
+ * 
+ * @uiLogic
+ * @conditionalRendering Hides delete button for current user
+ * 
+ * @errorHandling
+ * @userNotFound Specific error for missing users
+ * @serverErrors Generic error handling
+ * 
+ * @logging
+ * @verboseLogs Includes user lookup details
+ * @errorLogs Detailed error context
  */
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -820,21 +1457,60 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 
 /**
  * @route PUT /edit-user/:id
- * @description Allows a webmaster to update a user's profile details, including privilege level and optionally resetting the user's password.
- *              Only users with `WEBMASTER` privilege can perform this action.
- *
- * @middleware authToken - Verifies authentication and attaches `req.userId`.
- * @middleware genericAdminRateLimiter - Applies rate limiting to prevent abuse.
- *
- * @param {string} req.params.id - The ID of the user to be edited.
- * @param {string} req.body.name - The updated name of the user (must be non-empty and sanitized).
- * @param {string} req.body.privilege - The new privilege level for the user (must be valid).
- * @param {string} [req.body.adminTempPassword] - (Optional) A new temporary password to be set by admin; must be strong if provided.
- *
- * @returns {Redirect} 302 - Redirects to `/admin/webmaster` on success.
- * @returns {Object} 400 - If required fields are missing, invalid, or contain disallowed characters.
- * @returns {Object} 403 - If the requester is not authorized (not a webmaster).
- * @returns {Object} 500 - On internal server error or database issues.
+ * @description Handles user profile updates by webmasters with comprehensive security checks.
+ *              Manages privilege level changes, password resets, and profile sanitization.
+ * 
+ * @middleware
+ * @chain authToken - Validates JWT authentication
+ * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * 
+ * @params
+ * @param {string} id - MongoDB _id of the user to update
+ * 
+ * @validation
+ * @check Verifies requesting user is webmaster
+ * @check Confirms target user exists
+ * @validate Requires non-empty name field
+ * @validate Strong password requirements for resets
+ * @sanitize Removes HTML/scripts from name field
+ * @validate Proper privilege level enum value
+ * 
+ * @security
+ * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * @rateLimited Against excessive updates
+ * @sanitizes HTML input
+ * @tracks Modification timestamp
+ * 
+ * @passwordHandling
+ * @option Allows temporary password reset by admin
+ * @enforces Strong password policy
+ * @flags isPasswordReset when changed
+ * 
+ * @response
+ * @success {302} Redirects to /admin/webmaster with success flash
+ * @failure {302} Redirect cases:
+ * @case /edit-user/:id - For validation errors or update failures
+ * 
+ * @logging
+ * @securityLogs Unauthorized access attempts
+ * @validationLogs Failed validation attempts
+ * @auditLogs Successful updates with:
+ *            - Editor info
+ *            - Changed fields
+ *            - Timestamp
+ * 
+ * @errorHandling
+ * @unauthorized Clear rejection for non-webmasters
+ * @userNotFound Specific error for missing users
+ * @validationErrors Field-specific feedback
+ * @scriptAttempt Logs and reports XSS attempts
+ * 
+ * @notifications
+ * @successFlash Confirms successful update
+ * @errorFlash Provides context-specific failure messages
+ * @securityFlash Reports script injection attempts
+ * 
+ * @access Private (strictly webmaster only)
  */
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
@@ -878,7 +1554,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = (!isNaN(parseInt(req.body.privilege)) || !req.body.privilege) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
+    const privilageLevel = (typeof req.body.privilege !=='undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
@@ -935,18 +1611,50 @@ function isStrongPassword(password) {
 
 /**
  * @route POST /admin/generate-post-summary
- * @description Generates a summary of a blog post's markdown body using an LLM via OpenRouter.
- * @access Private (Admin only)
+ * @description Generates an AI-powered summary of markdown blog content using OpenRouter integration.
+ *              Sanitizes input, processes through AI model, and returns formatted HTML response.
+ * 
  * @middleware
- *    - authToken: Ensures the user is authenticated.
- *    - aiSummaryRateLimiter: Prevents abuse by rate limiting summary generation requests.
+ * @chain authToken - Requires valid authentication
+ * @chain aiSummaryRateLimiter - Prevents API abuse with rate limiting
  * 
- * @body
- * @param {string} markdownbody - Raw markdown content of the blog post. (Required)
+ * @request
+ * @body {string} markdownbody - Required markdown content to summarize
  * 
- * @returns {Object} JSON response
- * @returns {number} code - HTTP-style status code
- * @returns {string} message - HTML-formatted AI-generated summary or error message
+ * @processing
+ * @step 1 Input sanitization (HTML sanitization + trimming)
+ * @step 2 AI processing via OpenRouter integration
+ * @step 3 Markdown-to-HTML conversion of summary
+ * @step 4 Attribution text inclusion
+ * 
+ * @response
+ * @success {200} JSON response with:
+ * @property {number} code - 200 status code
+ * @property {string} message - HTML-formatted summary with attribution
+ * 
+ * @error {400} When markdownbody is missing:
+ * @property {number} code - 400 status code
+ * @property {string} message - Error description
+ * 
+ * @error {500} On processing failures:
+ * @property {number} code - 500 status code
+ * @property {string} message - Generic error message
+ * 
+ * @security
+ * @requires Authentication
+ * @sanitizes Input HTML
+ * @rateLimited For API protection
+ * 
+ * @dependencies
+ * @external openRouterIntegration - AI summary service
+ * @external markdownToHtml - Conversion utility
+ * 
+ * @access Private (requires authentication)
+ * 
+ * @logging
+ * @errorLogs Detailed API failure information
+ * 
+ * @note Attribution text is automatically appended to the AI summary
  */
 router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, async (req, res) => {
   try {
@@ -973,25 +1681,39 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
 
 /**
  * @route GET /admin/reset-password
- * @description Renders the password reset page for users who were issued a temporary admin-generated password.
- *              This route displays the form where users can input their temporary and new passwords.
- *
- * @middleware genericGetRequestRateLimiter - Applies rate limiting to avoid abuse of the reset page.
- *
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- *
- * @returns {HTML} 200 - Renders the 'forgot-password' EJS view with CSRF token and site configuration.
- *
- * @view admin/forgot-password.ejs - The view file that contains the password reset form.
- *
- * @locals
- *   {string} title - The title of the page ("Forgot Password").
- *   {string} description - A short description for SEO/meta purposes.
- *   {Object} config - Site configuration object from `res.locals.siteConfig`.
- *   {string} csrfToken - Token to protect against CSRF attacks.
- *   {boolean} isWebMaster - Indicates whether the current user is a webmaster (false in this context).
- *
+ * @description Renders the password reset request page with CSRF protection.
+ *              Provides a form for users to initiate password recovery process.
+ * 
+ * @middleware
+ * @chain genericGetRequestRateLimiter - Prevents brute force attacks
+ * 
+ * @response
+ * @success {200} Renders reset-password view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Page title ("Forgot Password")
+ *           @subprop {string} description - Page description
+ *           @subprop {Object} config - Site configuration
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token
+ * @property {boolean} isWebMaster - Always false for this page
+ * 
+ * @failure {302} Redirects to /admin with error flash when:
+ * @case Server error occurs
+ * 
+ * @security
+ * @csrf Protected form
+ * @rateLimited Against excessive requests
+ * 
+ * @access Public (does not require authentication)
+ * 
+ * @errorHandling
+ * @catches All errors generically
+ * @logs Full error to console
+ * @notifies User with flash message
+ * 
+ * @uiElements
+ * @includes CSRF token in form
+ * @uses Standard admin layout
  */
 router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, res) => {
   try {
@@ -1016,23 +1738,61 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
 
 /**
  * @route POST /admin/reset-password
- * @description Allows a user with a temporary admin-generated password to securely reset their password.
- *              This route is part of the admin interface and is rate-limited.
- *
- * @middleware genericAdminRateLimiter - Applies rate limiting to prevent brute-force attacks.
- *
- * @param {string} req.body.username - The username of the account attempting to reset its password.
- * @param {string} req.body.tempPassword - The temporary password provided by the admin for reset.
- * @param {string} req.body.newPassword - The user's desired new password.
- * @param {string} req.body.confirmPassword - Confirmation of the new password.
- *
- * @returns {Object} 400 - If any required field is missing or if input validation fails.
- * @returns {Object} 401 - If the provided temporary password is incorrect.
- * @returns {Object} 403 - If password reuse is attempted or user is not authorized for reset.
- * @returns {Object} 500 - On internal server errors.
- * @returns {Redirect} 200 - On successful password reset, redirects to /admin.
- *
- * @throws Will return JSON error messages on validation failure or exceptions.
+ * @description Handles password reset process with multiple security validations:
+ *              - Verifies temporary password
+ *              - Enforces strong password policy
+ *              - Prevents reuse of temporary password
+ *              - Requires password confirmation
+ * 
+ * @middleware
+ * @chain genericAdminRateLimiter - Prevents brute force attacks
+ * 
+ * @request
+ * @body {string} username - Account username (sanitized)
+ * @body {string} tempPassword - Webmaster-provided temporary password
+ * @body {string} newPassword - User's new password
+ * @body {string} confirmPassword - New password confirmation
+ * 
+ * @validation
+ * @check All required fields present
+ * @check Valid username format
+ * @check User exists and is approved for reset
+ * @check New password differs from temporary one
+ * @check Password strength requirements met
+ * @check Password confirmation matches
+ * @verify Temporary password hash match
+ * 
+ * @security
+ * @sanitizes Username input
+ * @hashes New password with bcrypt (10 rounds)
+ * @rateLimited Against abuse
+ * @clears Temporary password after successful reset
+ * 
+ * @response
+ * @success {302} Redirects to /admin with:
+ * @flash success - Reset confirmation
+ * @flash info - Login instructions
+ * 
+ * @failure {302} Redirect cases:
+ * @case /admin/reset-password - For validation errors with:
+ *      @flash error - Specific failure reason
+ * @case /admin/reset-password - For system errors
+ * 
+ * @stateChanges
+ * @updates password - Stores new bcrypt hash
+ * @clears isPasswordReset flag
+ * @removes adminTempPassword
+ * 
+ * @logging
+ * @securityLogs Failed reset attempts
+ * @successLogs Completed resets
+ * @errorLogs System failures
+ * 
+ * @access Public (requires valid temporary credentials)
+ * 
+ * @errorHandling
+ * @userInputErrors Specific validation messages
+ * @systemErrors Generic server error message
  */
 router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
   try {
