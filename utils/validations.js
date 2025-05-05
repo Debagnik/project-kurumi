@@ -4,6 +4,8 @@
  * Utility functions and constants for validating URIs and user privileges in the system.
  */
 
+const sanitizeHtml = require('sanitize-html');
+
 // Regular expression patterns for tracking scripts issue #87
 const GA_REGEX = /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/;
 const INSPECTLET_REGEX = /window\.__insp\s*=\s*window\.__insp\s*\|\|\s*\[\];.*inspectlet\.js\?wid=\d+/s;
@@ -128,3 +130,29 @@ exports.isValidTrackingScript = (script) => {
     return dummyString;
   }
 };
+
+/**
+ * Parses a comma-separated string of tags, sanitizes each tag, 
+ * removes disallowed characters, limits their length, and filters out empty tags.
+ *
+ * @param {string} textTags - A comma-separated string of tags to parse.
+ * @returns {string[]} An array of sanitized, trimmed, and filtered tags.
+ */
+exports.parseTags = (textTags) => {
+  if (typeof textTags !== 'string') {
+    return [];
+  }
+
+  return textTags
+    .split(',')
+    .map(tag => tag.trim())
+    .map(tag =>
+      sanitizeHtml(tag, {
+        allowedTags: [],
+        allowedAttributes: {}
+      })
+    )
+    .map(tag => tag.replace(/[^a-zA-Z0-9-_]/g, ''))
+    .map(tag => tag.substring(0, 30))
+    .filter(tag => tag.length > 0);
+}

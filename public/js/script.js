@@ -55,8 +55,44 @@ document.addEventListener('DOMContentLoaded', function () {
     // Comment character count
     const commentBody = document.getElementById('commentBody');
     if (commentBody) {
-        commentBody.addEventListener('input', function() {
-            document.getElementById('charCount').textContent = this.value.length;
+        commentBody.addEventListener('input', function () {
+            const charCount = document.getElementById('charCount');
+            if (charCount) {
+                charCount.textContent = this.value.length;
+            }
+        });
+    }
+
+    //Post Content Body TAB Behavior #107
+    const textarea = document.getElementById('markdownbody');
+    if (textarea) {
+        textarea.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+
+                if (!e.shiftKey) {
+                    // Insert 4 spaces at cursor position
+                    const spaces = "    ";
+                    this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
+                    // Move cursor
+                    this.selectionStart = this.selectionEnd = start + spaces.length;
+                } else {
+                    const beforeCursor = this.value.substring(0, start);
+                    const afterCursor = this.value.substring(end);
+
+                    // Match the last group of 4+ spaces before cursor
+                    const match = beforeCursor.match(/( {4,})$/);
+                    if (match) {
+                        const spacesToRemove = match[0].length >= 4 ? 4 : 0;
+                        const newBefore = beforeCursor.slice(0, -spacesToRemove);
+                        this.value = newBefore + afterCursor;
+                        this.selectionStart = this.selectionEnd = start - spacesToRemove;
+                    }
+                }
+            }
         });
     }
 
@@ -65,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (generateButton) {
         const buttonText = generateButton.querySelector('.button-text');
         const spinner = generateButton.querySelector('.spinner');
-        
+
         function setLoading(isLoading) {
             if (isLoading) {
                 generateButton.disabled = true;
@@ -78,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        generateButton.addEventListener('click', async function() {
+        generateButton.addEventListener('click', async function () {
             console.log('Generate Summary clicked');
             setLoading(true);
 
@@ -101,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 const data = await response.json();
-                
+
                 if (data.code === 200) {
                     document.getElementById('desc').value = data.message;
                 } else {
@@ -112,6 +148,149 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error generating summary: ' + error.message);
             } finally {
                 setLoading(false);
+            }
+        });
+    }
+
+    // Function to handle tag input restrictions and formatting
+    function initializeTagInputs() {
+        // Find all tag input fields across different pages
+        const tagInputs = document.querySelectorAll('input[name="tags"]');
+        
+        tagInputs.forEach(input => {
+            // Function to format tags properly
+            function formatTags(value) {
+                // Convert to lowercase
+                let formatted = value.toLowerCase();
+                
+                // Only allow letters, numbers, hyphens, underscores, and commas
+                formatted = formatted.replace(/[^a-z0-9\-_,\s]/g, '');
+                
+                // Split by comma, trim whitespace, and filter out empty tags
+                let tags = formatted.split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                // Join back with ", " format
+                return tags.join(', ');
+            }
+
+            // Show error message for capital letters
+            function showError(input, message) {
+                // Remove any existing error message
+                const existingError = input.parentElement.querySelector('.tag-error');
+                if (existingError) {
+                    existingError.remove();
+                }
+
+                // Create and show new error message if there are capital letters
+                if (/[A-Z]/.test(input.value)) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'tag-error';
+                    errorDiv.style.color = 'var(--red)';
+                    errorDiv.style.fontSize = '0.8rem';
+                    errorDiv.style.marginTop = '0.25rem';
+                    errorDiv.textContent = message;
+                    input.parentElement.appendChild(errorDiv);
+                }
+            }
+
+            // Handle input events to show error for capital letters
+            input.addEventListener('input', function() {
+                showError(this, 'Please use lowercase letters only');
+            });
+
+            // Format tags when input loses focus
+            input.addEventListener('blur', function() {
+                this.value = formatTags(this.value);
+                // Remove error message after formatting
+                const errorDiv = this.parentElement.querySelector('.tag-error');
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            });
+        });
+    }
+
+    // Initialize tag inputs when DOM is loaded
+    initializeTagInputs();
+
+    // Password Reset Form Validation
+    const passwordResetForm = document.getElementById('passwordResetForm');
+    if (passwordResetForm) {
+        const newPassword = document.getElementById('newPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const passwordMatch = document.getElementById('passwordMatch');
+        const submitButton = document.getElementById('submitButton');
+
+        function isStrongPassword(password) {
+            const minLength = 8;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*()]/.test(password);
+            return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+        }
+
+        function getPasswordStrengthMessage(password) {
+            const checks = {
+                'at least 8 characters': password.length >= 8,
+                'uppercase letter': /[A-Z]/.test(password),
+                'lowercase letter': /[a-z]/.test(password),
+                'number': /[0-9]/.test(password),
+                'special character (!@#$%^&*())': /[!@#$%^&*()]/.test(password)
+            };
+            
+            const failed = Object.entries(checks)
+                .filter(([, passes]) => !passes)
+                .map(([requirement]) => requirement);
+            
+            return failed.length > 0 
+                ? `Password must contain ${failed.join(' and ')}` 
+                : 'Password is strong';
+        }
+
+        function checkPasswordMatch() {
+            const match = newPassword.value === confirmPassword.value;
+            const isStrong = isStrongPassword(newPassword.value);
+            
+            if (newPassword.value) {
+                const strengthMessage = getPasswordStrengthMessage(newPassword.value);
+                if (!isStrong) {
+                    passwordMatch.textContent = strengthMessage;
+                    passwordMatch.className = 'password-match-indicator no-match';
+                    submitButton.disabled = true;
+                    return;
+                }
+            }
+            
+            if (confirmPassword.value) {
+                passwordMatch.textContent = match ? 'Passwords match' : 'Passwords do not match';
+                passwordMatch.className = `password-match-indicator ${match ? 'match' : 'no-match'}`;
+            } else {
+                passwordMatch.textContent = '';
+                passwordMatch.className = 'password-match-indicator';
+            }
+            
+            submitButton.disabled = (!match && confirmPassword.value) || !isStrong;
+        }
+
+        newPassword?.addEventListener('input', checkPasswordMatch);
+        confirmPassword?.addEventListener('input', checkPasswordMatch);
+
+        passwordResetForm.addEventListener('submit', function(e) {
+            if (!isStrongPassword(newPassword.value)) {
+                e.preventDefault();
+                passwordMatch.textContent = getPasswordStrengthMessage(newPassword.value);
+                passwordMatch.className = 'password-match-indicator no-match';
+                return false;
+            }
+
+            if (newPassword.value !== confirmPassword.value) {
+                e.preventDefault();
+                passwordMatch.textContent = 'Passwords do not match';
+                passwordMatch.className = 'password-match-indicator no-match';
+                return false;
             }
         });
     }

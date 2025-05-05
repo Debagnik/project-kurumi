@@ -1,8 +1,10 @@
 <div class="searchBar">
     <div class="container">
-        <form action="/search" class="search__form" role="search" method="post">
+        <form action="/search" class="search__form" role="search" method="POST">
             <input type="search" aria-label="Search" id="searchInput" name="searchTerm" placeholder="Search the site"/>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="isAdvancedSearch" value=false>
+            <a href="/advanced-search" class="advanced-search-link">Advanced Search</a>
         </form>
         <div id="searchClose">&times;</div>
     </div>

@@ -1,0 +1,35 @@
+<main class="main">
+    <div class="container">
+        <h1>Advanced Search</h1>
+
+        <form action="/search" method="POST" class="advanced-search-form">
+            <div class="search-grid">
+                <div class="search-item">
+                    <label for="keyword">Search using keyword</label>
+                    <input type="text" id="keyword" name="searchTerm" placeholder="Enter keywords...">
+                </div>
+
+                <div class="search-item">
+                    <label for="title">Search using title</label>
+                    <input type="text" id="title" name="title" placeholder="Enter title...">
+                </div>
+
+                <div class="search-item">
+                    <label for="author">Search using author</label>
+                    <input type="text" id="author" name="author" placeholder="Enter author name...">
+                </div>
+
+                <div class="search-item">
+                    <label for="tags">Search using tags</label>
+                    <input type="text" id="tags" name="tags" placeholder="Enter comma-separated tags...">
+                </div>
+            </div>
+
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="isAdvancedSearch" value=true>
+            <div class="search-button-container">
+                <button type="submit" class="btn search-btn"> Search </button>
+            </div>
+        </form>
+    </div>
+</main>

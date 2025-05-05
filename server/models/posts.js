@@ -18,15 +18,15 @@ const postSchema = new schema({
         type: Date,
         default: Date.now
     },
-    desc:{
+    desc: {
         type: String
     },
-    author:{
+    author: {
         type: String,
         require: true
     },
     tags: {
-        type: String,
+        type: [String],
         required: true
     },
     thumbnailImageURI: {
@@ -41,7 +41,7 @@ const postSchema = new schema({
         type: String,
         required: true
     },
-    isApproved:{
+    isApproved: {
         type: Boolean,
         default: false,
         required: true
@@ -54,8 +54,21 @@ postSchema.index({
     body: 'text',
     tags: 'text',
     author: 'text',
+}, {
+    name: 'TextSearchIndex'
+});
+
+postSchema.index({
     isApproved: 1,
     createdAt: -1
-  });
+}, {
+    name: 'ApprovedDateIndex'
+});
+
+postSchema.index({
+    tags: 1
+}, {
+    name: 'TagsMultikeyIndex'
+});
 
 module.exports = mongoose.model('Posts', postSchema);

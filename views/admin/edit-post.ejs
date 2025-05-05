@@ -17,17 +17,24 @@
     <label for="body"><b>Content</b></label>
     <textarea name="markdownbody" id="markdownbody" cols="50" rows="10" required><%= data.markdownbody %></textarea>
     
-    <label for="desc">Short Description:</label>
-    <textarea id="desc" name="desc" required placeholder="Enter Short Description under 10-50 words"><%= data.desc %></textarea>
+    <label for="desc">Short Summary:</label>
+    <textarea id="desc" name="desc" required placeholder="Enter Short Summary/Description under 10-50 words"><%= data.desc %></textarea>
 
     <label for="tags">Tags (comma-separated):</label>
-    <input type="text" id="tags" name="tags" value="<%= data.tags %>" required placeholder="Post Tags (comma-separated)">
+    <input type="text" id="tags" name="tags" value="<%= data.tags.join(', ') %>" required placeholder="Post Tags (comma-separated)">
 
     <% if (currentUser.privilege !== 3) { %>
         <label for="isApproved">Approval Status:</label>
         <input type="checkbox" id="isApproved" name="isApproved"
             <%= data.isApproved ? 'checked' : '' %>>
         <br>
+    <% } %>
+
+    <% if (siteConfig.isAISummerizerEnabled) { %>
+        <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
+            <span class="button-text">Generate Summary (Beta)</span>
+            <span class="spinner"></span>
+        </button><p/>
     <% } %>
 
     <input type="submit" value="Update" class="btn">

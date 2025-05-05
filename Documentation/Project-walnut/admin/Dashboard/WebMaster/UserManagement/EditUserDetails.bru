@@ -15,7 +15,7 @@ params:query {
 }
 
 params:path {
-  userId: 680209335c40195dc94d3e31
+  userId: 680c5a73445148767a6e7879
 }
 
 headers {
@@ -38,8 +38,9 @@ headers {
 
 body:form-urlencoded {
   _csrf: {{csrf_token}}
-  name: Kingabed
+  name: Admin
   privilege: 2
+  adminTempPassword: Pa$$word1
 }
 
 docs {
@@ -63,6 +64,7 @@ docs {
   Request Body:
     - name: The new name for the user. It should be a string that does not contain any invalid characters. It is required.
     - privilege: The new privilege level for the user. It should be a valid interger [1 - 3 range] from `PRIVILEGE_LEVELS_ENUM` (e.g., 1 for `WEBMASTER`, 2 for `MODERATOR`, 3 for WRITER/`EDITOR`). It is required.
+    - adminTempPassword: Optional. When provided, resets the user's password to this temporary value. The user will be required to change this password on next login.
   
   Request Validation:
     - The `name` must not be empty or contain invalid characters (only alphabets and spaces allowed).

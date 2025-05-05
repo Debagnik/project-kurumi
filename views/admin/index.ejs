@@ -1,12 +1,4 @@
 <h3 class="author">Sign in</h3>
-<% if (errors_login && errors_login.length > 0) { %>
-    <% errors_login.forEach(function(error, index) { %>
-        <div class="alert" id="login-alert-<%= index %>">
-            <%= error.msg %>
-            <span class="closebtn" onclick="closeAlert('login-alert-<%= index %>')"></span>
-        </div>
-    <% }); %>
-<% } %>
 <form action="/admin" method="post" autocomplete="on">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="username"><b>Username</b></label>
@@ -15,19 +7,13 @@
     <label for="password"><b>Password</b></label>
     <input type="password" placeholder="Enter password" name="password" autocomplete="current-password" required minlength="8">
 
+    <a href="/admin/reset-password" class="forgot-password">Forgot password?</a>
+    
     <input type="submit" value="Login" class="btn">
 </form>
 
 <% if (locals.config.isRegistrationEnabled) { %>
     <h3>Register</h3>
-    <% if (errors && errors.length > 0) { %>
-        <% errors.forEach(function(error, index) { %>
-            <div class="alert" id="reg-alert-<%= index %>">
-                <%= error.msg %>
-                <span class="closebtn" onclick="closeAlert('reg-alert-<%= index %>')"></span>
-            </div>
-        <% }); %>
-    <% } %>
     <form action="/register" method="post" autocomplete="on">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <label for="name"><b>Name</b></label>
@@ -46,27 +32,3 @@
         <input type="submit" value="Register" class="btn">
     </form>
 <% } %>
-
-<script>
-    function closeAlert(alertId) {
-        var alert = document.getElementById(alertId);
-        if (alert) {
-            alert.style.opacity = '0';
-            setTimeout(function() {
-                alert.style.display = 'none';
-            }, 600);
-        }
-    }
-
-    // Automatically close alerts after 5 seconds
-    document.addEventListener('DOMContentLoaded', function() {
-        var alerts = document.getElementsByClassName('alert');
-        for (var i = 0; i < alerts.length; i++) {
-            (function(index) {
-                setTimeout(function() {
-                    closeAlert(alerts[index].id);
-                }, 5000);
-            })(i);
-        }
-    });
-</script>
