@@ -689,7 +689,7 @@ async function savePostToDB(req, res) {
       markdownbody: req.body.markdownbody.trim(),
       body: htmlBody,
       author: currentUser.username.trim(),
-      tags: parseTags((req.body.tags || '').trim),
+      tags: parseTags((req.body.tags || '').trim()),
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
