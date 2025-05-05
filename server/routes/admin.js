@@ -454,7 +454,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
     });
   } catch (error) {
     console.error(error);
-    req.flash('Internal Server Error');
+    req.flash('error', 'Internal Server Error');
     res.redirect('/admin');
   }
 });
@@ -525,8 +525,8 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
     });
   } catch (error) {
     console.error(error);
-    req.flash('Internal Server Error');
-    res.redirect('dashboard');
+    req.flash('error', 'Internal Server Error');
+    res.redirect('/dashboard');
   }
 });
 
