@@ -1135,6 +1135,9 @@ body {
 	font-family: 'JetBrains Mono', Consolas, Menlo, Monaco, "Courier New", monospace;
 }
 
+.edit-post-form textarea {
+	font-family: 'JetBrains Mono', Consolas, Menlo, Monaco, "Courier New", monospace;
+}
 
 table {
 	width: 100%;
