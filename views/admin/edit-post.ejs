@@ -6,36 +6,38 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     </form>
 </div>
-<form action="/edit-post/<%= data._id %>?_method=PUT" method="POST">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="title">Title</label>
-    <input type="text" id="title" name="title" value="<%= data.title %>" required placeholder="Post Title">
+<div class="edit-post-form">
+    <form action="/edit-post/<%= data._id %>?_method=PUT" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" value="<%= data.title %>" required placeholder="Post Title">
 
-    <label for="thumbnailImageURI">Thumbnail Image</label>
-    <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" value="<%= data.thumbnailImageURI %>" placeholder="Post Thumbnail Image URL">
-    
-    <label for="body"><b>Content</b></label>
-    <textarea name="markdownbody" id="markdownbody" cols="50" rows="10" required><%= data.markdownbody %></textarea>
-    
-    <label for="desc">Short Summary:</label>
-    <textarea id="desc" name="desc" required placeholder="Enter Short Summary/Description under 10-50 words"><%= data.desc %></textarea>
+        <label for="thumbnailImageURI">Thumbnail Image</label>
+        <input type="text" id="thumbnailImageURI" name="thumbnailImageURI" value="<%= data.thumbnailImageURI %>" placeholder="Post Thumbnail Image URL">
 
-    <label for="tags">Tags (comma-separated):</label>
-    <input type="text" id="tags" name="tags" value="<%= data.tags.join(', ') %>" required placeholder="Post Tags (comma-separated)">
+        <label for="body"><b>Content</b></label>
+        <textarea name="markdownbody" id="markdownbody" cols="50" rows="10" required><%= data.markdownbody %></textarea>
 
-    <% if (currentUser.privilege !== 3) { %>
-        <label for="isApproved">Approval Status:</label>
-        <input type="checkbox" id="isApproved" name="isApproved"
-            <%= data.isApproved ? 'checked' : '' %>>
-        <br>
-    <% } %>
+        <label for="desc">Short Summary:</label>
+        <textarea id="desc" name="desc" required placeholder="Enter Short Summary/Description under 10-50 words"><%= data.desc %></textarea>
 
-    <% if (siteConfig.isAISummerizerEnabled) { %>
-        <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
-            <span class="button-text">Generate Summary (Beta)</span>
-            <span class="spinner"></span>
-        </button><p/>
-    <% } %>
+        <label for="tags">Tags (comma-separated):</label>
+        <input type="text" id="tags" name="tags" value="<%= data.tags.join(', ') %>" required placeholder="Post Tags (comma-separated)">
 
-    <input type="submit" value="Update" class="btn">
-</form>
+        <% if (currentUser.privilege !== 3) { %>
+            <label for="isApproved">Approval Status:</label>
+            <input type="checkbox" id="isApproved" name="isApproved"
+                <%= data.isApproved ? 'checked' : '' %>>
+            <br>
+        <% } %>
+
+        <% if (siteConfig.isAISummerizerEnabled) { %>
+            <button type="button" id="generateSummaryBtn" class="btn btn-with-spinner">
+                <span class="button-text">Generate Summary (Beta)</span>
+                <span class="spinner"></span>
+            </button><p/>
+        <% } %>
+
+        <input type="submit" value="Update" class="btn">
+    </form>
+</div>
