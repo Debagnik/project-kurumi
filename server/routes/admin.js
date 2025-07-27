@@ -153,7 +153,8 @@ router.get('/admin', async (req, res) => {
       locals,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: false
+      isWebMaster: false,
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
@@ -417,7 +418,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       description: 'Dashboard Panel',
       config: res.locals.siteConfig
     };
-    const currentUser = await user.findById(req.userId);
+    const currentUser =await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
       req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph`);
@@ -450,7 +451,8 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       currentUser,
       data,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error(error);
@@ -521,7 +523,8 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
       layout: adminLayout,
       currentUser,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error(error);
@@ -776,7 +779,8 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      currentUser: { privilege: currentUser.privilege }
+      currentUser: { privilege: currentUser.privilege },
+      isUserLoggedIn: req.userId
     })
 
   } catch (error) {
@@ -1107,7 +1111,8 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
       config: config,
-      users
+      users,
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error("Webmaster Page error", error);
@@ -1445,7 +1450,8 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
       showDelete: currentUser.username !== selectedUser.username,
-      config: res.locals.siteConfig
+      config: res.locals.siteConfig,
+      isUserLoggedIn: req.userId
     })
 
   } catch (error) {
@@ -1727,7 +1733,8 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       locals,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: false
+      isWebMaster: false,
+      isUserLoggedIn: req.userId
     });
   } catch(error){
     console.log(error);
