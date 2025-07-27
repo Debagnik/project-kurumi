@@ -1864,7 +1864,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
 });
 
 /**
- * @route GET /admin/profile/:userId
+ * @route GET /admin/profile/:username
  * @description Renders the user profile edit page for a specific user.
  *              Fetches user data by `username` (from route parameter), injects CSRF token,
  *              privilege metadata, and site config to the EJS view.
@@ -1903,13 +1903,18 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
  * @includes CSRF token in form
  * @uses Standard admin layout (edit-my-profile view)
  */
-router.get('/admin/profile/:userId', authToken, genericGetRequestRateLimiter, async (req, res) => {
+router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findOne({ username: req.params.userId });
+    const currentUser = await user.findOne({ username: req.params.username });
     const locals = {
       title: "My Profile",
       description: "User Description",
       config: res.locals.siteConfig
+    }
+    if(req.userId !== currentUser.id){
+      req.flash('error', 'Unauthorized, This incedent will be reported');
+      console.warn('user with ', req.userId, ' tried to access user profile ', req.params.username);
+      return res.redirect('/dashboard');
     }
     res.render('admin/edit-my-profile', {
       locals,
@@ -1929,7 +1934,7 @@ router.get('/admin/profile/:userId', authToken, genericGetRequestRateLimiter, as
 });
 
 /**
- * @route POST /admin/edit-profile/:userId
+ * @route POST /admin/edit-profile/:username
  * @description Updates the profile of a specified user based on submitted form data.
  *              This includes sanitizing input fields, converting markdown to HTML for the description,
  *              validating portfolio link, and persisting updates to the database.
@@ -1943,7 +1948,7 @@ router.get('/admin/profile/:userId', authToken, genericGetRequestRateLimiter, as
  * @bodyParam {string} description - Markdown-formatted profile description
  * @bodyParam {string} portfolioLink - External link to user's portfolio
  * 
- * @param {string} req.params.userId - Username of the user to update
+ * @param {string} req.params.username - Username of the user to update
  * 
  * @response
  * @success {302} Redirects to /dashboard with:
@@ -1975,38 +1980,48 @@ router.get('/admin/profile/:userId', authToken, genericGetRequestRateLimiter, as
  * @uses Flash messages to provide user feedback
  * @redirects User back to dashboard regardless of outcome
  */
-router.post('/admin/edit-profile/:userId', authToken, genericAdminRateLimiter, async (req, res) => {
+router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findOne({ username: req.params.userId });
+    const currentUser = await user.findOne({ username: req.params.username });
+    if(!currentUser){
+      req.flash('error', 'User not found');
+      return res.redirect('/dashboard');
+    }
     const { name, description, portfolioLink } = req.body;
 
-    if (!name || typeof name !== 'string' || !description || typeof description !== 'string' || !portfolioLink || typeof portfolioLink !== 'string') {
-      req.flash('info', 'No changes applied to user profile');
-      console.warn("No changes applied to user profile");
-      res.redirect('/dashboard');
-    }
-    else {
-      const sanitizedName = sanitizeHtml(name);
-      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : process.env.DEFAULT_POST_THUMBNAIL_LINK;
-      const markdownDescription = markdownToHtml(description);
-      currentUser.name = sanitizedName;
-      currentUser.portfolioLink = sanitizedLink;
-      currentUser.description = markdownDescription;
+    if (req.userId === currentUser.id) {
+      if (!name || typeof name !== 'string' || !description || typeof description !== 'string' || !portfolioLink || typeof portfolioLink !== 'string') {
+        if(description.length > (parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000) || name.length > (parseInt(process.env.MAX_NAME_LENGTH || 50))){
+          throw new Error("Exceded Max Length")
+        }
+        req.flash('info', 'No changes applied to user profile');
+        console.warn("No changes applied to user profile");
+        return res.redirect('/dashboard');
+      }
+      else {
+        const sanitizedName = sanitizeHtml(name);
+        const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : '';
+        const markdownDescription = markdownToHtml(description);
+        currentUser.name = sanitizedName;
+        currentUser.portfolioLink = sanitizedLink;
+        currentUser.description = markdownDescription;
 
-      try {
-        await currentUser.save();
-        console.log('User Updated successfully');
-        req.flash('success', 'User Profile Updated Successfully');
-        res.redirect('/dashboard');
-      } catch (error) {
-        console.error(error);
-        req.flash('error', 'Failed to save the profile changes');
-        res.redirect('/dashboard');
+        try {
+          await currentUser.save();
+          console.log('User Updated successfully');
+          req.flash('success', 'User Profile Updated Successfully');
+          res.redirect('/dashboard');
+        } catch (error) {
+          console.error(error);
+          req.flash('error', 'Failed to save the profile changes');
+          return res.redirect('/dashboard');
+        }
       }
     }
   } catch (error) {
     console.error(error);
     req.flash('error', 'Internal Server Error');
+    return res.redirect('/dashboard');
   }
 });
 

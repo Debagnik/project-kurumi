@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const descriptionBody = document.getElementById('myprofile-description');
     if (descriptionBody) {
         descriptionBody.addEventListener('input', function () {
-            const charCount = document.getElementById('charCount');
+            const charCount = document.getElementById('profileCharCount');
             if (charCount) {
                 charCount.textContent = this.value.length;
             }
