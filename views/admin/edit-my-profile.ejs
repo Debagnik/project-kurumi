@@ -1,0 +1,29 @@
+<a href="/dashboard">&larr; Back</a>
+<h1>Bonjour, <%= currentUser && currentUser.name ? currentUser.name : 'User' %>
+</h1>
+
+<div class="add-post">
+    <div class="admin-title">
+        <h2>Edit My profile</h2>
+    </div>
+    <div class="edit-post-form">
+        <form action="/admin/edit-profile/<%= currentUser.username %>" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <label for="name">Change Name</label>
+            <input type="text" id="name" name="name" value="<%= currentUser.name %>" required placeholder="Your Name" />
+
+            <label for="description">Edit Description</label>
+            <textarea id="myprofile-description" name="description" cols="50" rows="10"
+                placeholder="Enter Short Summary/Description about yourself"><%= currentUser.description %></textarea>
+            <div class="char-count">
+                <span id="profileCharCount">0</span> Characters
+            </div>
+            <br>
+            <label for="portfolioLink">Associated Links</label>
+            <input type="text" id="portfolioLink" name="portfolioLink" value="<%= currentUser.portfolioLink %>" placeholder="Add any one social media/portfolio link associated with you" pattern="https?://.+" title="Please enter a valid URL starting with http:// or https://"/>
+
+            <input type="submit" value="Update Profile" class="btn">
+        </form>
+    </div>
+</div>
