@@ -1933,89 +1933,52 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
   }
 });
 
-/**
- * @route POST /admin/edit-profile/:username
- * @description Updates the profile of a specified user based on submitted form data.
- *              This includes sanitizing input fields, converting markdown to HTML for the description,
- *              validating portfolio link, and persisting updates to the database.
- * 
- * @middleware
- * @chain authToken - Ensures the request is authenticated via token and sets `req.userId`
- * @chain genericAdminRateLimiter - Applies rate limiting for admin-sensitive routes
- * 
- * @request
- * @bodyParam {string} name - New display name for the user
- * @bodyParam {string} description - Markdown-formatted profile description
- * @bodyParam {string} portfolioLink - External link to user's portfolio
- * 
- * @param {string} req.params.username - Username of the user to update
- * 
- * @response
- * @success {302} Redirects to /dashboard with:
- * @flash {success} When the profile was updated and saved successfully
- * 
- * @failure {302} Redirects to /dashboard with:
- * @flash {info} When required fields are missing or invalid (no changes applied)
- * @flash {error} When saving the user profile fails due to a database error
- * 
- * @security
- * @csrf Implicitly expected via form submission
- * @rateLimited Protects against abuse of profile edit endpoint
- * 
- * @access Private (requires authentication)
- * 
- * @validation
- * @checks That `name`, `description`, and `portfolioLink` are all valid strings
- * @sanitizes
- *   - `name` using `sanitizeHtml`
- *   - `portfolioLink` using a URI validator, falls back to default if invalid
- *   - `description` is converted from markdown to HTML via `markdownToHtml`
- * 
- * @errorHandling
- * @catches Errors during DB fetch or save
- * @logs Full errors to console
- * @notifies User with flash messages depending on outcome
- * 
- * @uiElements
- * @uses Flash messages to provide user feedback
- * @redirects User back to dashboard regardless of outcome
- */
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findOne({ username: req.params.username });
-    if(!currentUser){
+    if (!currentUser) {
       req.flash('error', 'User not found');
       return res.redirect('/dashboard');
     }
     const { name, description, portfolioLink } = req.body;
 
     if (req.userId === currentUser.id) {
-      if (!name || typeof name !== 'string' || !description || typeof description !== 'string' || !portfolioLink || typeof portfolioLink !== 'string') {
-        if(description.length > (parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000) || name.length > (parseInt(process.env.MAX_NAME_LENGTH || 50))){
-          throw new Error("Exceded Max Length")
-        }
+      // Check for required fields first
+      if (
+        !name || typeof name !== 'string' ||
+        !description || typeof description !== 'string' ||
+        !portfolioLink || typeof portfolioLink !== 'string'
+      ) {
         req.flash('info', 'No changes applied to user profile');
-        console.warn("No changes applied to user profile");
+        console.warn('No changes applied to user profile');
         return res.redirect('/dashboard');
       }
-      else {
-        const sanitizedName = sanitizeHtml(name);
-        const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : '';
-        const markdownDescription = markdownToHtml(description);
-        currentUser.name = sanitizedName;
-        currentUser.portfolioLink = sanitizedLink;
-        currentUser.description = markdownDescription;
 
-        try {
-          await currentUser.save();
-          console.log('User Updated successfully');
-          req.flash('success', 'User Profile Updated Successfully');
-          res.redirect('/dashboard');
-        } catch (error) {
-          console.error(error);
-          req.flash('error', 'Failed to save the profile changes');
-          return res.redirect('/dashboard');
-        }
+      // Then check length limits
+      if (
+        description.length > (parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 50000) ||
+        name.length > (parseInt(process.env.MAX_NAME_LENGTH) || 100)
+      ) {
+        req.flash('error', 'Field length exceeds maximum limit');
+        return res.redirect('/dashboard');
+      }
+
+      const sanitizedName = sanitizeHtml(name);
+      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : '';
+      const markdownDescription = markdownToHtml(description);
+      currentUser.name = sanitizedName;
+      currentUser.portfolioLink = sanitizedLink;
+      currentUser.description = markdownDescription;
+
+      try {
+        await currentUser.save();
+        console.log('User Updated successfully');
+        req.flash('success', 'User Profile Updated Successfully');
+        return res.redirect('/dashboard');
+      } catch (error) {
+        console.error(error);
+        req.flash('error', 'Failed to save the profile changes');
+        return res.redirect('/dashboard');
       }
     }
   } catch (error) {
