@@ -14,12 +14,12 @@
             </li>
             <% if (isUserLoggedIn) { %>
                 <li>
-                    <a href="/admin/user/<%= currentUser.username %>" target="_blank">My profile</a>
+                    <a href="/admin/profile/<%= currentUser.username %>" target=<%= isWebMaster ? "_self" : "_blank" %>>My profile</a>
                 </li>             
             <% } %>
             <% if (isWebMaster) { %>
                 <li>
-                    <a href="/admin/webmaster" target="_blank">Webmaster</a>
+                    <a href="/admin/webmaster">Webmaster</a>
                 </li>
                 <% } %>
         </ul>

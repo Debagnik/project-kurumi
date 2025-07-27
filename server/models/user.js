@@ -46,6 +46,14 @@ const userSchema = new schema({
     adminTempPassword: {
         type: String,
         required: false
+    },
+    description: {
+        type: String,
+        required: false
+    },
+    portfolioLink: {
+        type: String,
+        required: false
     }
 });
 

@@ -418,7 +418,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       description: 'Dashboard Panel',
       config: res.locals.siteConfig
     };
-    const currentUser =await user.findById(req.userId);
+    const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
       req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph`);
@@ -1449,6 +1449,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
+      currentUser,
       showDelete: currentUser.username !== selectedUser.username,
       config: res.locals.siteConfig,
       isUserLoggedIn: req.userId
@@ -1560,7 +1561,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = (typeof req.body.privilege !=='undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
+    const privilageLevel = (typeof req.body.privilege !== 'undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
@@ -1736,7 +1737,7 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       isWebMaster: false,
       isUserLoggedIn: req.userId
     });
-  } catch(error){
+  } catch (error) {
     console.log(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/admin');
@@ -1804,12 +1805,12 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
 router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
   try {
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
-    
+
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
-    if(typeof username !== 'string'){
+    if (typeof username !== 'string') {
       throw new Error("Invalid username format");
     }
     const sanitizedUserName = sanitizeHtml(username);
@@ -1859,6 +1860,153 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     console.error("Internal Server Error", error);
     req.flash('error', error.message);
     res.redirect('/admin/reset-password');
+  }
+});
+
+/**
+ * @route GET /admin/profile/:userId
+ * @description Renders the user profile edit page for a specific user.
+ *              Fetches user data by `username` (from route parameter), injects CSRF token,
+ *              privilege metadata, and site config to the EJS view.
+ * 
+ * @middleware
+ * @chain authToken - Validates authentication via token and sets `req.userId`
+ * @chain genericGetRequestRateLimiter - Prevents excessive profile page requests
+ * 
+ * @response
+ * @success {200} Renders edit-my-profile view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Page title ("My Profile")
+ *           @subprop {string} description - Page description
+ *           @subprop {Object} config - Site-wide configuration from middleware
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token for secure form submission
+ * @property {Object} currentUser - The user being viewed/edited (fetched by username)
+ * @property {boolean} isWebMaster - Whether the current user has `WEBMASTER` privileges
+ * @property {string} isUserLoggedIn - ID of the currently logged-in user (`req.userId`)
+ * 
+ * @failure {302} Redirects to /dashboard with error flash when:
+ * @case User not found or other server error occurs
+ * 
+ * @security
+ * @csrf Protected form
+ * @rateLimited Against excessive requests
+ * 
+ * @access Private (requires authentication)
+ * 
+ * @errorHandling
+ * @catches All errors generically
+ * @logs Full error to console
+ * @notifies User with flash message on failure
+ * 
+ * @uiElements
+ * @includes CSRF token in form
+ * @uses Standard admin layout (edit-my-profile view)
+ */
+router.get('/admin/profile/:userId', authToken, genericGetRequestRateLimiter, async (req, res) => {
+  try {
+    const currentUser = await user.findOne({ username: req.params.userId });
+    const locals = {
+      title: "My Profile",
+      description: "User Description",
+      config: res.locals.siteConfig
+    }
+    res.render('admin/edit-my-profile', {
+      locals,
+      layout: adminLayout,
+      csrfToken: req.csrfToken(),
+      isWebMaster: isWebMaster(currentUser),
+      currentUser,
+      isUserLoggedIn: req.userId
+    });
+
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Internal Server Error');
+    return res.redirect('/dashboard');
+
+  }
+});
+
+/**
+ * @route POST /admin/edit-profile/:userId
+ * @description Updates the profile of a specified user based on submitted form data.
+ *              This includes sanitizing input fields, converting markdown to HTML for the description,
+ *              validating portfolio link, and persisting updates to the database.
+ * 
+ * @middleware
+ * @chain authToken - Ensures the request is authenticated via token and sets `req.userId`
+ * @chain genericAdminRateLimiter - Applies rate limiting for admin-sensitive routes
+ * 
+ * @request
+ * @bodyParam {string} name - New display name for the user
+ * @bodyParam {string} description - Markdown-formatted profile description
+ * @bodyParam {string} portfolioLink - External link to user's portfolio
+ * 
+ * @param {string} req.params.userId - Username of the user to update
+ * 
+ * @response
+ * @success {302} Redirects to /dashboard with:
+ * @flash {success} When the profile was updated and saved successfully
+ * 
+ * @failure {302} Redirects to /dashboard with:
+ * @flash {info} When required fields are missing or invalid (no changes applied)
+ * @flash {error} When saving the user profile fails due to a database error
+ * 
+ * @security
+ * @csrf Implicitly expected via form submission
+ * @rateLimited Protects against abuse of profile edit endpoint
+ * 
+ * @access Private (requires authentication)
+ * 
+ * @validation
+ * @checks That `name`, `description`, and `portfolioLink` are all valid strings
+ * @sanitizes
+ *   - `name` using `sanitizeHtml`
+ *   - `portfolioLink` using a URI validator, falls back to default if invalid
+ *   - `description` is converted from markdown to HTML via `markdownToHtml`
+ * 
+ * @errorHandling
+ * @catches Errors during DB fetch or save
+ * @logs Full errors to console
+ * @notifies User with flash messages depending on outcome
+ * 
+ * @uiElements
+ * @uses Flash messages to provide user feedback
+ * @redirects User back to dashboard regardless of outcome
+ */
+router.post('/admin/edit-profile/:userId', authToken, genericAdminRateLimiter, async (req, res) => {
+  try {
+    const currentUser = await user.findOne({ username: req.params.userId });
+    const { name, description, portfolioLink } = req.body;
+
+    if (!name || typeof name !== 'string' || !description || typeof description !== 'string' || !portfolioLink || typeof portfolioLink !== 'string') {
+      req.flash('info', 'No changes applied to user profile');
+      console.warn("No changes applied to user profile");
+      res.redirect('/dashboard');
+    }
+    else {
+      const sanitizedName = sanitizeHtml(name);
+      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : process.env.DEFAULT_POST_THUMBNAIL_LINK;
+      const markdownDescription = markdownToHtml(description);
+      currentUser.name = sanitizedName;
+      currentUser.portfolioLink = sanitizedLink;
+      currentUser.description = markdownDescription;
+
+      try {
+        await currentUser.save();
+        console.log('User Updated successfully');
+        req.flash('success', 'User Profile Updated Successfully');
+        res.redirect('/dashboard');
+      } catch (error) {
+        console.error(error);
+        req.flash('error', 'Failed to save the profile changes');
+        res.redirect('/dashboard');
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Internal Server Error');
   }
 });
 
