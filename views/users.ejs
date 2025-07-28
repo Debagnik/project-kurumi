@@ -6,8 +6,12 @@
         <div class="date-section">
             <b>Last Modified On: </b>
             <span class="article-date">
-                <%= sanitizedUserDetails.lastUpdated.toLocaleDateString(undefined, { weekday: 'short' , year: 'numeric'
-                    , month: 'long' , day: 'numeric' , month: 'short' , day: 'numeric' }) %>
+                <%= sanitizedUserDetails.lastUpdated.toLocaleDateString(undefined, { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                }) %>
             </span>
         </div>
     </header>

@@ -205,7 +205,7 @@ const getUserFromCookieToken = async (req) => {
 
 const getCommentsFromPostId = async (postId) => {
     try {
-        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(process.env.MAX_COMMENTS_LIMIT);
+        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(parseInt(process.env.MAX_COMMENTS_LIMIT) || 2);
         return comments;
     } catch (error) {
         console.error('Comment Fetch error', postId, error.message);
@@ -522,6 +522,10 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
             throw new Error("Invalid Username");
         }
         const selectedUser = await user.findOne({username: sanitizedUsername});
+        if(!selectedUser){
+            req.flash('error', 'User does not exist');
+            return res.redirect('/');
+        }
 
         const sanitizedUserDetails = {
             name : selectedUser.name,
