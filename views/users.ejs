@@ -1,0 +1,46 @@
+<article>
+    <header>
+        <h1>
+            About <%= sanitizedUserDetails.name %>
+        </h1>
+        <div class="date-section">
+            <b>Last Modified On: </b>
+            <span class="article-date">
+                <%= sanitizedUserDetails.lastUpdated.toLocaleDateString(undefined, { weekday: 'short' , year: 'numeric'
+                    , month: 'long' , day: 'numeric' , month: 'short' , day: 'numeric' }) %>
+            </span>
+        </div>
+    </header>
+    <div class="article-content">
+        <%- sanitizedUserDetails.markdownDescriptionBody %>
+    </div>
+
+    <% if (sanitizedUserDetails.socialLink) { %>
+        <div style="margin-top: 0.5rem;">
+            <a href="<%= sanitizedUserDetails.socialLink %>" target="_blank" rel="noopener noreferrer">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="vertical-align: middle; width: 1.1em; height: 1.1em; margin-right: 4px;">
+                    <!-- Outer circle -->
+                    <circle cx="12" cy="12" r="10"></circle>
+
+                    <!-- Equator -->
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+
+                    <!-- Curved longitude -->
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 
+           15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+
+                    <!-- Added straight vertical longitude line -->
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                </svg>
+
+
+                <span style="vertical-align: middle;">
+                    <%= sanitizedUserDetails.socialLink %>
+                </span>
+            </a>
+        </div>
+        <% } %>
+
+</article>

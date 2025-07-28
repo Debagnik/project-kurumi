@@ -1935,12 +1935,16 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
 
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findOne({ username: req.params.username });
+    const sanitizedUsername = sanitizeHtml(req.params.username);
+    if(!sanitizedUsername){
+      throw new Error("Invalid param username");
+    }
+    const currentUser = await user.findOne({ username: sanitizedUsername });
     if (!currentUser) {
       req.flash('error', 'User not found');
       return res.redirect('/dashboard');
     }
-    const { name, description, portfolioLink } = req.body;
+    const { name, description, portfolioLink } = req.body; 
 
     if (req.userId === currentUser.id) {
       // Check for required fields first
