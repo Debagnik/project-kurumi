@@ -142,7 +142,7 @@ router.get('/contact', (req, res) => {
  * GET /
  * Posts :id
  */
-router.get('/post/:id', async (req, res) => {
+router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
         const currentUser = await getUserFromCookieToken(req);
 
