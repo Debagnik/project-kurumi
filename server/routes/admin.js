@@ -1914,12 +1914,16 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
 router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findOne({ username: req.params.username });
+    if (!currentUser) {
+      req.flash('error', 'User not found');
+      return res.redirect('/dashboard');
+    }
     const locals = {
       title: "My Profile",
       description: "User Description",
       config: res.locals.siteConfig
     }
-    if(req.userId !== currentUser.id){
+    if (req.userId !== currentUser.id) {
       req.flash('error', 'Unauthorized, This incedent will be reported');
       console.warn('user with ', req.userId, ' tried to access user profile ', req.params.username);
       return res.redirect('/dashboard');
@@ -1932,7 +1936,6 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
       currentUser,
       isUserLoggedIn: req.userId
     });
-
   } catch (error) {
     console.error(error);
     req.flash('error', 'Internal Server Error');
