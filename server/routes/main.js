@@ -8,6 +8,7 @@ const comment = require('../models/comments');
 const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
+const mongoose = require('mongoose');
 
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
