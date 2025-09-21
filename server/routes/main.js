@@ -37,7 +37,7 @@ const fetchSiteConfig = async (req, res, next) => {
     }
 }
 
-router.use(fetchSiteConfig);
+router.use(genericOpenRateLimiter, fetchSiteConfig);
 
 if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
