@@ -303,7 +303,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 count = await post.countDocuments(filter);
             }
 
-        } 
+        }
         // === Simple Search Logic ===
         else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
             if (!keyword || keyword.length === 0 || keyword.length > 100) {
@@ -319,7 +319,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 .exec();
 
             count = await post.countDocuments(filter);
-        } 
+        }
         // === Invalid Search Mode ===
         else {
             return res.status(400).json({ error: 'Missing or invalid isAdvancedSearch flag' });
@@ -365,6 +365,9 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  */
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+        throw new Error("Internal Server Error");
+    }
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
         console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
