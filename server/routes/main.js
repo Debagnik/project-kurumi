@@ -527,7 +527,7 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
  */
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
     try{
-        const sanitizedUsername = sanitizeHtml(req.params.username);
+        const sanitizedUsername = sanitizeHtml(req.params.username, { allowedTags: [], allowedAttributes: [] }).trim();
         if(!sanitizedUsername){
             throw new Error("Invalid Username");
         }
@@ -538,9 +538,12 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
         }
 
         const sanitizedUserDetails = {
-            name : selectedUser.name,
-            markdownDescriptionBody : selectedUser.description,
-            socialLink : selectedUser.portfolioLink,
+            name: selectedUser.name,
+            markdownDescriptionBody: sanitizeHtml(selectedUser.description || '', {
+                allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+                allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src','alt','title'] }
+            }),
+            socialLink: isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : '',
             lastUpdated: selectedUser.modifiedAt
         }
 
