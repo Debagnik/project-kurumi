@@ -233,7 +233,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // checking for existing user
-    const existingUser = await user.findOne({ username })
+    const existingUser = await user.findOne({username: {$eq: username}})
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
