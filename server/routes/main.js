@@ -66,7 +66,7 @@ router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimite
  * GET /
  * HOME
  */
-router.get('', async (req, res) => {
+router.get('', genericOpenRateLimiter, async (req, res) => {
 
     try {
         const locals = {
