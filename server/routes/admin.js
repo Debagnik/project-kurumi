@@ -912,7 +912,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       updatePostData.isApproved = req.body.isApproved === 'on'
     }
 
-    await post.findByIdAndUpdate(req.params.id, updatePostData);
+    await post.findByIdAndUpdate(req.params.id, { $set: updatePostData });
 
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
