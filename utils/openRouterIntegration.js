@@ -22,9 +22,10 @@ const systemPrompt = process.env.SYSTEM_PROMPT;
 const LLM = process.env.LLM_MODEL;
 const userPrompt = process.env.USER_PROMPT;
 const userPrompt2 = process.env.USER_PROMPT_2;
+const llmBaseUrl = process.env.LLM_BASE_URL;
 
 if (!openRouterApiSecretKey) {
-    throw new Error('OPENROUTER_API_KEY is not set in environment variables');
+    throw new Error('OPENAISDK_API_KEY is not set in environment variables');
 }
 
 if (!process.env.MAX_DESCRIPTION_LENGTH || isNaN(parseInt(process.env.MAX_DESCRIPTION_LENGTH))) {
@@ -43,10 +44,14 @@ if(!userPrompt || !userPrompt2){
     throw new Error('USER_PROMPT is not set in environment variables');
 }
 
+if(!llmBaseUrl){
+    throw new Error('LLM_BASE_URL is not set in environment Variables');
+}
+
 
 const openai = new OpenAI({
     apiKey: openRouterApiSecretKey,
-    baseURL: 'https://openrouter.ai/api/v1',
+    baseURL: llmBaseUrl,
 
 });
 

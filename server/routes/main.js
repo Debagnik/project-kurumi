@@ -8,6 +8,7 @@ const comment = require('../models/comments');
 const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
+const mongoose = require('mongoose');
 
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
@@ -66,7 +67,7 @@ router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimite
  * GET /
  * HOME
  */
-router.get('', async (req, res) => {
+router.get('', genericOpenRateLimiter, async (req, res) => {
 
     try {
         const locals = {
@@ -142,7 +143,7 @@ router.get('/contact', (req, res) => {
  * GET /
  * Posts :id
  */
-router.get('/post/:id', async (req, res) => {
+router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
         const currentUser = await getUserFromCookieToken(req);
 
@@ -303,7 +304,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 count = await post.countDocuments(filter);
             }
 
-        } 
+        }
         // === Simple Search Logic ===
         else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
             if (!keyword || keyword.length === 0 || keyword.length > 100) {
@@ -319,7 +320,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 .exec();
 
             count = await post.countDocuments(filter);
-        } 
+        }
         // === Invalid Search Mode ===
         else {
             return res.status(400).json({ error: 'Missing or invalid isAdvancedSearch flag' });
@@ -365,6 +366,10 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  */
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+        req.flash('error', 'Invalid post reference');
+        return res.status(404).redirect('/404');
+    }
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
         console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });

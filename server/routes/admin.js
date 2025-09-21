@@ -82,7 +82,7 @@ const fetchSiteConfig = async (req, res, next) => {
 };
 
 
-router.use(fetchSiteConfig);
+router.use(genericAdminRateLimiter, fetchSiteConfig);
 
 /**
  * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.
@@ -233,7 +233,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // checking for existing user
-    const existingUser = await user.findOne({ username })
+    const existingUser = await user.findOne({username: {$eq: username}})
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
@@ -326,9 +326,14 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     if (!username || !password) {
       throw new Error('Username and Passwords are mandatory');
     }
+    
+    //sanitize User Input username
+    if(typeof(username) !== 'string'){
+      throw Error('Chica, Its not this easy to dupe me, Try harder');
+    }
 
     //checks if the user exists
-    const currentUser = await user.findOne({ username });
+    const currentUser = await user.findOne({username: {$eq: username}});
     if (!currentUser) {
       console.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
@@ -907,8 +912,11 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       updatePostData.isApproved = req.body.isApproved === 'on'
     }
 
-    await post.findByIdAndUpdate(req.params.id, updatePostData);
-
+    await post.findByIdAndUpdate(
+      req.params.id,
+      { $set: updatePostData },
+      { runValidators: true }
+    );
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
       console.error('Failed to update post', req.params.id);
