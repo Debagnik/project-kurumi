@@ -912,8 +912,11 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       updatePostData.isApproved = req.body.isApproved === 'on'
     }
 
-    await post.findByIdAndUpdate(req.params.id, { $set: updatePostData });
-
+    await post.findByIdAndUpdate(
+      req.params.id,
+      { $set: updatePostData },
+      { runValidators: true }
+    );
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
       console.error('Failed to update post', req.params.id);
