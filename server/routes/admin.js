@@ -326,9 +326,14 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     if (!username || !password) {
       throw new Error('Username and Passwords are mandatory');
     }
+    
+    //sanitize User Input username
+    if(typeof(username) !== 'string'){
+      throw Error('Chica, Its not this easy to dupe me, Try harder');
+    }
 
     //checks if the user exists
-    const currentUser = await user.findOne({ username });
+    const currentUser = await user.findOne({username: {$eq: username}});
     if (!currentUser) {
       console.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
