@@ -38,7 +38,7 @@ const fetchSiteConfig = async (req, res, next) => {
     }
 }
 
-router.use(genericOpenRateLimiter, fetchSiteConfig);
+router.use(fetchSiteConfig);
 
 if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
@@ -367,7 +367,8 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     if (!mongoose.Types.ObjectId.isValid(postId)) {
-        throw new Error("Internal Server Error");
+        req.flash('error', 'Invalid post reference');
+        return res.status(404).redirect('/404');
     }
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
