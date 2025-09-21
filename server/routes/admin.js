@@ -82,7 +82,7 @@ const fetchSiteConfig = async (req, res, next) => {
 };
 
 
-router.use(fetchSiteConfig);
+router.use(genericAdminRateLimiter, fetchSiteConfig);
 
 /**
  * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.
