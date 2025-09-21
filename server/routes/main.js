@@ -366,6 +366,11 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  */
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
+    const paramId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(paramId) || postId !== paramId) {
+        req.flash('error', 'Invalid post reference');
+        return res.status(404).redirect('/404');
+    }
     if (!mongoose.Types.ObjectId.isValid(postId)) {
         req.flash('error', 'Invalid post reference');
         return res.status(404).redirect('/404');
