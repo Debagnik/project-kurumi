@@ -82,7 +82,7 @@ const fetchSiteConfig = async (req, res, next) => {
 };
 
 
-router.use(fetchSiteConfig);
+router.use(genericAdminRateLimiter, fetchSiteConfig);
 
 /**
  * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.
@@ -153,7 +153,8 @@ router.get('/admin', async (req, res) => {
       locals,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: false
+      isWebMaster: false,
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error("Admin Page error", error.message);
@@ -232,7 +233,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // checking for existing user
-    const existingUser = await user.findOne({ username })
+    const existingUser = await user.findOne({username: {$eq: username}})
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
@@ -325,9 +326,14 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     if (!username || !password) {
       throw new Error('Username and Passwords are mandatory');
     }
+    
+    //sanitize User Input username
+    if(typeof(username) !== 'string'){
+      throw Error('Chica, Its not this easy to dupe me, Try harder');
+    }
 
     //checks if the user exists
-    const currentUser = await user.findOne({ username });
+    const currentUser = await user.findOne({username: {$eq: username}});
     if (!currentUser) {
       console.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
@@ -450,7 +456,8 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       currentUser,
       data,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error(error);
@@ -521,7 +528,8 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
       layout: adminLayout,
       currentUser,
       csrfToken: req.csrfToken(),
-      isWebMaster: isWebMaster(currentUser)
+      isWebMaster: isWebMaster(currentUser),
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error(error);
@@ -776,7 +784,8 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      currentUser: { privilege: currentUser.privilege }
+      currentUser: { privilege: currentUser.privilege },
+      isUserLoggedIn: req.userId
     })
 
   } catch (error) {
@@ -903,8 +912,11 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       updatePostData.isApproved = req.body.isApproved === 'on'
     }
 
-    await post.findByIdAndUpdate(req.params.id, updatePostData);
-
+    await post.findByIdAndUpdate(
+      req.params.id,
+      { $set: updatePostData },
+      { runValidators: true }
+    );
     const updatedPost = await post.findById(req.params.id);
     if (!updatedPost) {
       console.error('Failed to update post', req.params.id);
@@ -1107,7 +1119,8 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
       config: config,
-      users
+      users,
+      isUserLoggedIn: req.userId
     });
   } catch (error) {
     console.error("Webmaster Page error", error);
@@ -1444,8 +1457,10 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
       layout: adminLayout,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
+      currentUser,
       showDelete: currentUser.username !== selectedUser.username,
-      config: res.locals.siteConfig
+      config: res.locals.siteConfig,
+      isUserLoggedIn: req.userId
     })
 
   } catch (error) {
@@ -1554,7 +1569,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = (typeof req.body.privilege !=='undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
+    const privilageLevel = (typeof req.body.privilege !== 'undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
     if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
@@ -1727,9 +1742,10 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       locals,
       layout: adminLayout,
       csrfToken: req.csrfToken(),
-      isWebMaster: false
+      isWebMaster: false,
+      isUserLoggedIn: req.userId
     });
-  } catch(error){
+  } catch (error) {
     console.log(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/admin');
@@ -1797,12 +1813,12 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
 router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) => {
   try {
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
-    
+
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
-    if(typeof username !== 'string'){
+    if (typeof username !== 'string') {
       throw new Error("Invalid username format");
     }
     const sanitizedUserName = sanitizeHtml(username);
@@ -1852,6 +1868,138 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     console.error("Internal Server Error", error);
     req.flash('error', error.message);
     res.redirect('/admin/reset-password');
+  }
+});
+
+/**
+ * @route GET /admin/profile/:username
+ * @description Renders the user profile edit page for a specific user.
+ *              Fetches user data by `username` (from route parameter), injects CSRF token,
+ *              privilege metadata, and site config to the EJS view.
+ * 
+ * @middleware
+ * @chain authToken - Validates authentication via token and sets `req.userId`
+ * @chain genericGetRequestRateLimiter - Prevents excessive profile page requests
+ * 
+ * @response
+ * @success {200} Renders edit-my-profile view with:
+ * @property {Object} locals - Page metadata including:
+ *           @subprop {string} title - Page title ("My Profile")
+ *           @subprop {string} description - Page description
+ *           @subprop {Object} config - Site-wide configuration from middleware
+ * @property {string} layout - Admin layout template
+ * @property {string} csrfToken - CSRF protection token for secure form submission
+ * @property {Object} currentUser - The user being viewed/edited (fetched by username)
+ * @property {boolean} isWebMaster - Whether the current user has `WEBMASTER` privileges
+ * @property {string} isUserLoggedIn - ID of the currently logged-in user (`req.userId`)
+ * 
+ * @failure {302} Redirects to /dashboard with error flash when:
+ * @case User not found or other server error occurs
+ * 
+ * @security
+ * @csrf Protected form
+ * @rateLimited Against excessive requests
+ * 
+ * @access Private (requires authentication)
+ * 
+ * @errorHandling
+ * @catches All errors generically
+ * @logs Full error to console
+ * @notifies User with flash message on failure
+ * 
+ * @uiElements
+ * @includes CSRF token in form
+ * @uses Standard admin layout (edit-my-profile view)
+ */
+router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, async (req, res) => {
+  try {
+    const currentUser = await user.findOne({ username: req.params.username });
+    if (!currentUser) {
+      req.flash('error', 'User not found');
+      return res.redirect('/dashboard');
+    }
+    const locals = {
+      title: "My Profile",
+      description: "User Description",
+      config: res.locals.siteConfig
+    }
+    if (req.userId !== currentUser.id) {
+      req.flash('error', 'Unauthorized, This incedent will be reported');
+      console.warn('user with ', req.userId, ' tried to access user profile ', req.params.username);
+      return res.redirect('/dashboard');
+    }
+    res.render('admin/edit-my-profile', {
+      locals,
+      layout: adminLayout,
+      csrfToken: req.csrfToken(),
+      isWebMaster: isWebMaster(currentUser),
+      currentUser,
+      isUserLoggedIn: req.userId
+    });
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Internal Server Error');
+    return res.redirect('/dashboard');
+
+  }
+});
+
+router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
+  try {
+    const sanitizedUsername = sanitizeHtml(req.params.username);
+    if(!sanitizedUsername){
+      throw new Error("Invalid param username");
+    }
+    const currentUser = await user.findOne({ username: sanitizedUsername });
+    if (!currentUser) {
+      req.flash('error', 'User not found');
+      return res.redirect('/dashboard');
+    }
+    const { name, description, portfolioLink } = req.body; 
+
+    if (req.userId === currentUser.id) {
+      // Check for required fields first
+      if (
+        !name || typeof name !== 'string' ||
+        !description || typeof description !== 'string' ||
+        !portfolioLink || typeof portfolioLink !== 'string'
+      ) {
+        req.flash('info', 'No changes applied to user profile');
+        console.warn('No changes applied to user profile');
+        return res.redirect('/dashboard');
+      }
+
+      // Then check length limits
+      if (
+        description.length > (parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 50000) ||
+        name.length > (parseInt(process.env.MAX_NAME_LENGTH) || 100)
+      ) {
+        req.flash('error', 'Field length exceeds maximum limit');
+        return res.redirect('/dashboard');
+      }
+
+      const sanitizedName = sanitizeHtml(name);
+      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : '';
+      const markdownDescription = markdownToHtml(description);
+      currentUser.name = sanitizedName;
+      currentUser.portfolioLink = sanitizedLink;
+      currentUser.description = markdownDescription;
+
+      try {
+        await currentUser.save();
+        console.log('User Updated successfully');
+        req.flash('success', 'User Profile Updated Successfully');
+        return res.redirect('/dashboard');
+      } catch (error) {
+        console.error(error);
+        req.flash('error', 'Failed to save the profile changes');
+        return res.redirect('/dashboard');
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Internal Server Error');
+    return res.redirect('/dashboard');
   }
 });
 

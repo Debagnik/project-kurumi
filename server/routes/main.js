@@ -8,11 +8,13 @@ const comment = require('../models/comments');
 const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
+const mongoose = require('mongoose');
+const utils = require('../../utils/validations.js');
 
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, parseTags } = require('../../utils/validations');
+
 /**
  * Site config Middleware
  */
@@ -66,7 +68,7 @@ router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimite
  * GET /
  * HOME
  */
-router.get('', async (req, res) => {
+router.get('', genericOpenRateLimiter, async (req, res) => {
 
     try {
         const locals = {
@@ -142,7 +144,7 @@ router.get('/contact', (req, res) => {
  * GET /
  * Posts :id
  */
-router.get('/post/:id', async (req, res) => {
+router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
         const currentUser = await getUserFromCookieToken(req);
 
@@ -159,13 +161,13 @@ router.get('/post/:id', async (req, res) => {
         }
         const postAuthor = await user.findOne({ username: data.author });
         if (!postAuthor) {
-            data.author = 'Anonymous'
+            data.authorName = 'Anonymous'
         } else {
-            data.author = postAuthor.name;
+            data.authorName = postAuthor.name;
         }
 
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
-        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
             res.render('posts', {
                 locals,
@@ -205,7 +207,7 @@ const getUserFromCookieToken = async (req) => {
 
 const getCommentsFromPostId = async (postId) => {
     try {
-        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 });
+        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(parseInt(process.env.MAX_COMMENTS_LIMIT) || 2);
         return comments;
     } catch (error) {
         console.error('Comment Fetch error', postId, error.message);
@@ -248,7 +250,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
-        const tagArray = parseTags(tags);
+        const tagArray = utils.parseTags(tags);
 
         let filter = { $and: [{ isApproved: true }] };
         let data = [];
@@ -303,7 +305,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 count = await post.countDocuments(filter);
             }
 
-        } 
+        }
         // === Simple Search Logic ===
         else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
             if (!keyword || keyword.length === 0 || keyword.length > 100) {
@@ -319,7 +321,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 .exec();
 
             count = await post.countDocuments(filter);
-        } 
+        }
         // === Invalid Search Mode ===
         else {
             return res.status(400).json({ error: 'Missing or invalid isAdvancedSearch flag' });
@@ -365,22 +367,25 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  */
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
+    const paramId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(paramId) || postId !== paramId) {
+        req.flash('error', 'Invalid post reference');
+        return res.status(404).redirect('/404');
+    }
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+        req.flash('error', 'Invalid post reference');
+        return res.status(404).redirect('/404');
+    }
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
         console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
         req.flash('error', 'Comments are disabled or Cloudflare keys are not set');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 1:', req.session);
-        }
         return res.status(403).redirect(`/post/${postId}`);
     }
 
     if (siteConfig.isCaptchaEnabled && (!siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey)) {
         console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
         req.flash('error', 'CAPTCHA config error, contact the webmaster.');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 2:', req.session);
-        }
         return res.status(403).redirect(`/post/${postId}`);
     }
 
@@ -392,9 +397,6 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         if (!isUserHuman) {
             console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': remoteIp });
             req.flash('error', 'CAPTCHA verification failed, please try again.');
-            if (process.env.NODE_ENV !== 'production') {
-                console.log('Session after flash 3:', req.session);
-            }
             return res.status(403).redirect(`/post/${postId}`);
         }
     }
@@ -402,17 +404,11 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
     if (!commenterName || !commentBody) {
         console.error(400, 'Invalid comment data');
         req.flash('error', 'Invalid comment data, please ensure all fields are filled out.');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 4:', req.session);
-        }
         return res.status(400).redirect(`/post/${postId}`);
     }
     if (commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
         console.error(400, 'Invalid comment data', 'Size mismatch');
         req.flash('error', 'Invalid comment data, please ensure comment length is between 1 and 500 characters and commenter name length is between 3 and 50 characters.');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 5:', req.session);
-        }
         return res.status(400).redirect(`/post/${postId}`);
     }
 
@@ -446,9 +442,6 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
         req.flash('success', 'Comment submitted successfully');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 6:', req.session);
-        }
         res.status(200).redirect(`/post/${postId}`);
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -458,9 +451,6 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
             console.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         }
         req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 7:', req.session);
-        }
         res.status(500).redirect(`/post/${postId}`);
     }
 
@@ -522,5 +512,59 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
         csrfToken: req.csrfToken()
     });
 });
+
+/**
+ * @route GET /users/:username
+ * @description Displays the public profile page of a user. The username is sanitized before querying the database.
+ *              Renders the profile page with selected user details and site configuration.
+ * 
+ * @middleware genericGetRequestRateLimiter - Limits excessive requests to this route.
+ * 
+ * @request
+ * @params {string} username - The username of the user whose profile is to be displayed.
+ * 
+ * @returns {200} Renders the user profile page with sanitized user details.
+ * @returns {302} Redirects to home with a flash message if an error occurs or user is not found.
+ */
+router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
+    try{
+        const sanitizedUsername = sanitizeHtml(req.params.username, { allowedTags: [], allowedAttributes: [] }).trim();
+        if(!sanitizedUsername){
+            throw new Error("Invalid Username");
+        }
+        const selectedUser = await user.findOne({username: sanitizedUsername});
+        if(!selectedUser){
+            req.flash('error', 'User does not exist');
+            return res.redirect('/');
+        }
+
+        const sanitizedUserDetails = {
+            name: selectedUser.name,
+            markdownDescriptionBody: sanitizeHtml(selectedUser.description || '', {
+                allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+                allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src','alt','title'] }
+            }),
+            socialLink: utils.isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : '',
+            lastUpdated: selectedUser.modifiedAt
+        }
+
+        const locals = {
+            title: 'About ' + selectedUser.name,
+            description: 'User profile page for ' + selectedUser.name,
+            config: res.locals.siteConfig,
+        }
+
+        res.render('users', {
+            locals,
+            sanitizedUserDetails,
+            csrfToken: req.csrfToken()
+        });
+    }catch(error){
+        req.flash('error', 'Internal server error');
+        console.error(error);
+        return res.redirect('/');
+    }
+});
+
 
 module.exports = router;

@@ -63,6 +63,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // My Profile Summary Counter
+    const descriptionBody = document.getElementById('myprofile-description');
+    if (descriptionBody) {
+        descriptionBody.addEventListener('input', function () {
+            const charCount = document.getElementById('profileCharCount');
+            if (charCount) {
+                charCount.textContent = this.value.length;
+            }
+        });
+    }
+
     //Post Content Body TAB Behavior #107
     const textarea = document.getElementById('markdownbody');
     if (textarea) {
