@@ -14,7 +14,7 @@ const utils = require('../../utils/validations.js');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
 const jwtSecretKey = process.env.JWT_SECRET;
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, parseTags } = require('../../utils/validations');
+
 /**
  * Site config Middleware
  */
@@ -167,7 +167,7 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
         }
 
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
-        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
             res.render('posts', {
                 locals,
@@ -250,7 +250,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
         const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
-        const tagArray = parseTags(tags);
+        const tagArray = utils.parseTags(tags);
 
         let filter = { $and: [{ isApproved: true }] };
         let data = [];
