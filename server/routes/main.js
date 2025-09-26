@@ -9,6 +9,7 @@ const csrf = require('csurf');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify.js');
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
+const utils = require('../../utils/validations.js');
 
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 
@@ -543,7 +544,7 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
                 allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
                 allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src','alt','title'] }
             }),
-            socialLink: isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : '',
+            socialLink: utils.isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : '',
             lastUpdated: selectedUser.modifiedAt
         }
 
