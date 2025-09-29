@@ -21,21 +21,21 @@ app.use(
           "'self'",
           "'unsafe-inline'",
           "https://www.googletagmanager.com",
-          "https://cdn.inspectlet.com",
+          "https://*.inspectlet.com",
           "https://challenges.cloudflare.com",
-          "https://www.clarity.ms",
+          "https://*.clarity.ms",
           "https://fonts.googleapis.com",
-          "https://static.cloudflareinsights.com"
+          "https://*.cloudflareinsights.com"
         ],
         scriptSrcElem: [
           "'self'",
           "'unsafe-inline'",
           "https://www.googletagmanager.com",
-          "https://cdn.inspectlet.com",
+          "https://*.inspectlet.com",
           "https://challenges.cloudflare.com",
-          "https://www.clarity.ms",
           "https://fonts.googleapis.com",
-          "https://static.cloudflareinsights.com"
+          "https://*.cloudflareinsights.com",
+          "https://*.clarity.ms"
         ],
         styleSrc: [
           "'self'",
@@ -53,7 +53,10 @@ app.use(
         ],
         connectSrc: [
           "'self'",
-          "https://www.google-analytics.com"
+          "https://www.google-analytics.com",
+          "https://*.clarity.ms",
+          "https://*.inspectlet.com",
+          "https://*.cloudflareinsights.com"
         ],
         imgSrc: ["'self'", "data:", "https:"],
         frameSrc: [
