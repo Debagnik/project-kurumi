@@ -65,7 +65,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
       MAX_TITLE_LENGTH=100 
       MAX_DESCRIPTION_LENGTH=10000
       MAX_BODY_LENGTH=100000
-      DUMMY_STRING=Error Message: The Tracking URL is not valid check with Web Master
+      TRACKING_SCRIPT_ERROR_MSG=<!--Invalid Tracking script, check with Developer--> #Required
 
       ## Enviroment variable Required if LLM Based Blog Summary generator is enabled.
       OPENROUTER_API_KEY=<Your OpenRouter API Key> #Optional OpenAI or OpenRouter Secret Key for AI Integration
