@@ -24,7 +24,6 @@ app.use(
           "https://*.inspectlet.com",
           "https://challenges.cloudflare.com",
           "https://*.clarity.ms",
-          "https://fonts.googleapis.com",
           "https://*.cloudflareinsights.com"
         ],
         scriptSrcElem: [
@@ -56,7 +55,9 @@ app.use(
           "https://www.google-analytics.com",
           "https://*.clarity.ms",
           "https://*.inspectlet.com",
-          "https://*.cloudflareinsights.com"
+          "https://*.cloudflareinsights.com",
+          "wss://*.clarity.ms",
+          "wss://*.inspectlet.com"
         ],
         imgSrc: ["'self'", "data:", "https:"],
         frameSrc: [
