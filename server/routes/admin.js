@@ -14,7 +14,7 @@ const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript, p
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
-
+const {CONSTANTS} = require('../../utils/constants');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -858,7 +858,7 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
  */
 router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(req.userId);
+    const currentUser = await user.findById(sanitizeHtml(String(req.userId).trim(), CONSTANTS.SANITIZE_FILTER));
     if (!currentUser) {
       console.error('User not found', req.userId);
       throw new Error(`No User Found for: ${req.userId}`);
@@ -984,14 +984,14 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
  */
 router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(req.userId);
+    const currentUser = await user.findById(sanitizeHtml(String(req.userId).trim(), CONSTANTS.SANITIZE_FILTER));
     if (!currentUser) {
       console.error('User not found', req.userId);
       req.flash('error', `User not found/User Logged out`);
       return res.redirect('/admin');
     }
 
-    const postToDelete = await post.findById(req.params.id);
+    const postToDelete = await post.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
     if (!postToDelete) {
       console.error('Post not found', req.params.id);
       req.flash('error', `post not found`);
@@ -1085,7 +1085,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
     if (!currentUser) {
       console.error('User not found', req.userId);
       req.flash('error', 'User not found');
-      res.redirect('/admin');
+      return res.redirect('/admin');
     }
 
     // Check if the user has the necessary privileges
@@ -1120,7 +1120,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       isWebMaster: isWebMaster(currentUser),
       config: config,
       users,
-      isUserLoggedIn: req.userId
+      isUserLoggedIn: Boolean(req.userId)
     });
   } catch (error) {
     console.error("Webmaster Page error", error);
@@ -1248,24 +1248,24 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
         isRegistrationEnabled: registrationEnable,
         isCommentsEnabled: commentsEnabled,
         isCaptchaEnabled: captchaEnabled,
-        siteName: sanitizeHtml(req.body.siteName),
-        siteMetaDataKeywords: sanitizeHtml(req.body.siteMetaDataKeywords),
-        siteMetaDataAuthor: sanitizeHtml(req.body.siteMetaDataAuthor),
-        siteMetaDataDescription: sanitizeHtml(req.body.siteMetaDataDescription),
+        siteName: sanitizeHtml(String(req.body.siteName), CONSTANTS.SANITIZE_FILTER),
+        siteMetaDataKeywords: sanitizeHtml(String(req.body.siteMetaDataKeywords), CONSTANTS.SANITIZE_FILTER),
+        siteMetaDataAuthor: sanitizeHtml(String(req.body.siteMetaDataAuthor), CONSTANTS.SANITIZE_FILTER),
+        siteMetaDataDescription: sanitizeHtml(String(req.body.siteMetaDataDescription), CONSTANTS.SANITIZE_FILTER),
         googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
-        siteAdminEmail: sanitizeHtml(req.body.siteAdminEmail),
+        siteAdminEmail: sanitizeHtml(String(req.body.siteAdminEmail), CONSTANTS.SANITIZE_FILTER),
         siteDefaultThumbnailUri: validUrl,
         defaultPaginationLimit: req.body.defaultPaginationLimit,
         lastModifiedDate: Date.now(),
         lastModifiedBy: currentUser.username,
         inspectletScript: isValidTrackingScript(req.body.inspectletScript),
-        homeWelcomeText: sanitizeHtml(req.body.homeWelcomeText),
-        homeWelcomeSubText: sanitizeHtml(req.body.homeWelcomeSubText),
+        homeWelcomeText: sanitizeHtml(String(req.body.homeWelcomeText), CONSTANTS.SANITIZE_FILTER),
+        homeWelcomeSubText: sanitizeHtml(String(req.body.homeWelcomeSubText), CONSTANTS.SANITIZE_FILTER),
         homepageWelcomeImage: validHomePageImageUri,
-        copyrightText: sanitizeHtml(req.body.copyrightText),
+        copyrightText: sanitizeHtml(String(req.body.copyrightText), CONSTANTS.SANITIZE_FILTER),
         searchLimit: searchLimit,
-        cloudflareSiteKey: sanitizeHtml(req.body.cloudflareSiteKey),
-        cloudflareServerKey: sanitizeHtml(req.body.cloudflareServerKey),
+        cloudflareSiteKey: sanitizeHtml(String(req.body.cloudflareSiteKey), CONSTANTS.SANITIZE_FILTER),
+        cloudflareServerKey: sanitizeHtml(String(req.body.cloudflareServerKey), CONSTANTS.SANITIZE_FILTER),
         isAISummerizerEnabled: aISummerizerEnabled
       });
 
@@ -1349,13 +1349,13 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
  */
 router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(req.userId);
+    const currentUser = await user.findById(sanitizeHtml(String(req.userId)).trim(), CONSTANTS.SANITIZE_FILTER);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
     }
 
-    const userToDelete = await user.findById(req.params.id);
+    const userToDelete = await user.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
     if (!userToDelete) {
       console.warn('User not found', req.params.id);
       throw new Error('Current user not found');
@@ -1529,13 +1529,13 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
  */
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(req.userId);
+    const currentUser = await user.findById(sanitizeHtml(String(req.userId.trim()), CONSTANTS.SANITIZE_FILTER));
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
     }
 
-    const updateUser = await user.findById(req.params.id);
+    const updateUser = await user.findById(sanitizeHtml(String(req.params.id).trim()), CONSTANTS.SANITIZE_FILTER);
     if (!updateUser) {
       console.warn('User To be updated not found');
       throw new Error('User to be updated not found');
@@ -1546,7 +1546,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       throw new Error('Name is a required field');
     }
 
-    let hashedTempPassword = '';
+    let hashedTempPassword = CONSTANTS.EMPTY_STRING;
     let hasAdminResettedPassword = false;
     if (req.body.adminTempPassword) {
       hasAdminResettedPassword = true;
@@ -1558,10 +1558,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       hashedTempPassword = await bcrypt.hash(tempPassword, 10);
     }
 
-    const sanitizedName = sanitizeHtml(req.body.name.trim(), {
-      allowedTags: [],
-      allowedAttributes: {}
-    });
+    const sanitizedName = sanitizeHtml(String(req.body.name).trim(), CONSTANTS.SANITIZE_FILTER);
 
     if (sanitizedName !== req.body.name.trim()) {
       console.warn(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
@@ -1616,11 +1613,11 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
  *
  */
 function isStrongPassword(password) {
-  const minLength = 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasLowercase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()]/.test(password);
+  const minLength = parseInt(CONSTANTS.PASSWORD_MIN_LENGTH);
+  const hasUppercase = CONSTANTS.HAS_UPPERCASE_REGEX.test(password);
+  const hasLowercase = CONSTANTS.HAS_LOWERCASE_REGEX.test(password);
+  const hasNumber = CONSTANTS.HAS_NUMBERS_REGEX.test(password);
+  const hasSpecialChar = CONSTANTS.HAS_SPECIAL_CHAR_REGEX.test(password);
   return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
 }
 
@@ -1818,10 +1815,12 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
       console.log({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
-    if (typeof username !== 'string') {
+
+    const sanitizedUserName = sanitizeHtml(String(username).trim(), CONSTANTS.SANITIZE_FILTER);  
+    if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       throw new Error("Invalid username format");
     }
-    const sanitizedUserName = sanitizeHtml(username);
+    
     const userModel = await user.findOne({ username: { $eq: sanitizedUserName } });
     if (!userModel) {
       throw new Error(`User doesn't exist`);
@@ -1867,7 +1866,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
   } catch (error) {
     console.error("Internal Server Error", error);
     req.flash('error', error.message);
-    res.redirect('/admin/reset-password');
+    return res.redirect('/admin/reset-password');
   }
 });
 
@@ -1978,12 +1977,15 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
         return res.redirect('/dashboard');
       }
 
-      const sanitizedName = sanitizeHtml(name);
-      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : '';
-      const markdownDescription = markdownToHtml(description);
+      const sanitizedName = sanitizeHtml(String(name).trim(), CONSTANTS.SANITIZE_FILTER);
+      const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : CONSTANTS.EMPTY_STRING;
+      const sanitizedDesc = sanitizeHtml(description, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt', 'title']}});
+      const HTMLDescription = markdownToHtml(description);
       currentUser.name = sanitizedName;
-      currentUser.portfolioLink = sanitizedLink;
-      currentUser.description = markdownDescription;
+      currentUser.portfolioLink = sanitizedLink ? sanitizedLink : (currentUser.portfolioLink || CONSTANTS.EMPTY_STRING);
+      currentUser.description = sanitizedDesc;
+      currentUser.htmlDesc = HTMLDescription;
 
       try {
         await currentUser.save();
@@ -1995,6 +1997,10 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
         req.flash('error', 'Failed to save the profile changes');
         return res.redirect('/dashboard');
       }
+    } else {
+      req.flash("error", `Hmph! Don’t get ahead of yourself — you’re not allowed to edit someone else’s profile, got it?!`);
+      console.error({code: 400, status: 'Unauthorized', message:'User ${req.userId} attempted to edit profile of ${sanitizedUsername}'});
+      return res.redirect('/dashboard');
     }
   } catch (error) {
     console.error(error);

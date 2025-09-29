@@ -5,11 +5,7 @@
  */
 
 const sanitizeHtml = require('sanitize-html');
-
-// Regular expression patterns for tracking scripts issue #87
-const GA_REGEX = /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/;
-const INSPECTLET_REGEX = /window\.__insp\s*=\s*window\.__insp\s*\|\|\s*\[\];.*inspectlet\.js\?wid=\d+/s;
-const CLARITY_REGEX = /<script[^>]*>\s*\(function\([^)]*\)\{[\s\S]*?["']https:\/\/www\.clarity\.ms\/tag\/["']\s*\+\s*[a-zA-Z0-9]+[\s\S]*?\}\)\([^)]*\);\s*<\/script>/s;
+const {CONSTANTS} = require('./constants')
 
 /**
  * Enum for privilege levels used to determine user roles.
@@ -96,38 +92,38 @@ exports.isWebMaster = (currentUser) => {
  * console.log(result); // Valid script or fallback dummy string
  */
 exports.isValidTrackingScript = (script) => {
-  let dummyString = process.env.DUMMY_STRING;
-  if(!dummyString){
-    dummyString = 'Error on script validation'
+  let errorString = process.env.TRACKING_SCRIPT_ERROR_MSG;
+  if(!errorString){
+    errorString = 'Error on script validation'
     console.warn('Environment Variable DUMMY_STRING that is the default error message for when tracking script fails is not set, please report to Webmaster');
   }
 
   // Basic validation
   if (typeof script !== 'string' || script.length > 5000) {
-    return dummyString;
+    return errorString;
   }
 
   try {
     // Google Analytics validation: must match regex and contain 'gtag('config')'
-    if (GA_REGEX.test(script) && script.includes("gtag('config'")) {
+    if (CONSTANTS.GA_REGEX.test(script) && script.includes("gtag('config'")) {
       return script;
     }
 
     // Inspectlet validation
-    if (INSPECTLET_REGEX.test(script)) {
+    if (CONSTANTS.INSPECTLET_REGEX.test(script)) {
       return script;
     }
 
     // Microsoft Clarity validation
-    if (CLARITY_REGEX.test(script)) {
+    if (CONSTANTS.CLARITY_REGEX.test(script)) {
       return script;
     }
 
     // None matched
-    return dummyString;
+    return errorString;
   } catch (error) {
     console.error('Error validating tracking script:', error);
-    return dummyString;
+    return errorString;
   }
 };
 
