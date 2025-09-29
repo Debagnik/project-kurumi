@@ -1943,6 +1943,54 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
   }
 });
 
+/**
+ * @route POST /admin/edit-profile/:username
+ * @description Handles editing of the authenticated user’s own profile data.
+ *              Validates and sanitizes incoming form fields (`name`, `description`, `portfolioLink`),
+ *              updates the database if valid, and flashes appropriate success or error messages.
+ * 
+ * @middleware
+ * @chain authToken - Ensures the request is from an authenticated user, sets `req.userId`
+ * @chain genericAdminRateLimiter - Throttles excessive profile edit requests
+ * 
+ * @request
+ * @param {string} :username - Username of the profile being edited (from route param)
+ * @body {string} name - User’s display name (max length enforced by `MAX_NAME_LENGTH`)
+ * @body {string} description - Markdown-compatible profile description
+ * @body {string} portfolioLink - Optional portfolio URL, validated before saving
+ * 
+ * @processing
+ * @step 1 - Sanitizes `:username` route param; rejects if invalid or missing.
+ * @step 2 - Fetches user by username from DB; if not found, redirects with error.
+ * @step 3 - Verifies logged-in user matches target user; otherwise blocks editing.
+ * @step 4 - Validates presence and length of incoming fields.
+ * @step 5 - Sanitizes name and description, converts description to HTML.
+ * @step 6 - Updates and saves user document in MongoDB.
+ * 
+ * @response
+ * @success {302} Redirects to `/dashboard` with flash message:
+ *           - 'User Profile Updated Successfully' on success.
+ * @failure {302} Redirects to `/dashboard` with flash message:
+ *           - 'User not found' if user missing
+ *           - 'No changes applied to user profile' if no valid fields
+ *           - 'Field length exceeds maximum limit' if too long
+ *           - 'Failed to save the profile changes' on DB error
+ *           - Tsundere-style unauthorized message if editing another user’s profile
+ *           - 'Internal Server Error' for uncaught exceptions
+ * 
+ * @security
+ * @access Private — must be logged in and only edits own profile
+ * @rateLimited By `genericAdminRateLimiter`
+ * @sanitization All fields sanitized with `sanitizeHtml` and custom filters
+ * 
+ * @errorHandling
+ * @logs Errors to console
+ * @notifies User via flash messages
+ * 
+ * @notes
+ * This route does not render a view directly; it performs updates then redirects.
+ * It enforces “own-profile-only” edits and prevents privilege escalation.
+ */
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const sanitizedUsername = sanitizeHtml(req.params.username);
