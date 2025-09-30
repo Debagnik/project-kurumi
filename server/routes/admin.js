@@ -1362,7 +1362,12 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
       throw new Error('Unauthorised, User not deleted');
     }
 
-    const userToDelete = await user.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
+    const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
+    if(!isUserIdValid){
+      console.error({code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid`});
+      throw new Error('User ID is invalid');
+    }
+    const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
       console.warn('User not found', req.params.id);
       throw new Error('Current user not found');
