@@ -2054,7 +2054,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       }
     } else {
       req.flash("error", `Hmph! Don’t get ahead of yourself — you’re not allowed to edit someone else’s profile, got it?!`);
-      console.error({code: 400, status: 'Unauthorized', message:'User ${req.userId} attempted to edit profile of ${sanitizedUsername}'});
+      console.error({code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}`});
       return res.redirect('/dashboard');
     }
   } catch (error) {
