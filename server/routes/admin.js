@@ -1912,11 +1912,10 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
  */
 router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-
     const sanitizedUserName = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-    if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)){
+    if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       req.flash("error", "Invalid username");
-      log.error(`Invalid username ${req.params.username}`);
+      console.error(`Invalid username ${req.params.username}`);
       return res.redirect('/dashboard');
     }
     const currentUser = await user.findOne({ username: sanitizedUserName });
