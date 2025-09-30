@@ -998,7 +998,7 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
       return res.redirect('/dashboard');
     }
 
-    const postToDelete = await post.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
+    const postToDelete = await post.findById(req.params.id);
     if (!postToDelete) {
       console.error('Post not found', req.params.id);
       req.flash('error', `post not found`);
@@ -1444,7 +1444,13 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
  */
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-    const selectedUser = await user.findOne({ _id: sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER) });
+    const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
+    if(!isUserIdValid){
+      console.error("Invalid username");
+      throw new Error("User id to be edited is invalid");
+    }
+
+    const selectedUser = await user.findOne({ _id: req.params.id});
     if (!selectedUser) {
       console.error('User not found', req.params.id);
       throw new Error('User not found');
@@ -1542,7 +1548,14 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       throw new Error('Unauthorized User cannot edit other users');
     }
 
-    const updateUser = await user.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
+    const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
+
+    if(!isUserIdValid){
+      console.error("Invalid userID");
+      throw new Error('User ID is not valid');
+    }
+
+    const updateUser = await user.findById(req.params.id);
     if (!updateUser) {
       console.warn('User To be updated not found');
       throw new Error('User to be updated not found');
@@ -2007,8 +2020,8 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-    if(!sanitizedUsername){
-      throw new Error("Invalid param username");
+    if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+      throw new Error("Invalid username");
     }
     const currentUser = await user.findOne({ username: sanitizedUsername });
     if (!currentUser) {
