@@ -2000,7 +2000,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
  */
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const sanitizedUsername = sanitizeHtml(req.params.username);
+    const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
     if(!sanitizedUsername){
       throw new Error("Invalid param username");
     }
