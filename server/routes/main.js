@@ -208,8 +208,8 @@ const getUserFromCookieToken = async (req) => {
 
 const getCommentsFromPostId = async (postId) => {
     try {
-        const rawLimit = parseInt(process.env.MAX_COMMENTS_LIMIT, CONSTANTS.DEFAULT_COMMENT_LIMIT);
-        const limit = Number.isFinite(rawLimit) ? Math.max(CONSTANTS.CLAMP_COMMENT_MIN, Math.min(rawLimit, CONSTANTS.CLAMP_COMMENT_MAX)) : DEFAULT_COMMENT_LIMIT;
+        const rawLimit = parseInt(process.env.MAX_COMMENTS_LIMIT, 10);
+        const limit = Number.isFinite(rawLimit) ? Math.max(CONSTANTS.CLAMP_COMMENT_MIN, Math.min(rawLimit, CONSTANTS.CLAMP_COMMENT_MAX)) : CONSTANTS.DEFAULT_COMMENT_LIMIT;
 
         const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(limit);
         return comments;
@@ -533,7 +533,7 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
     try{
         const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-        if(CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+        if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
             throw new Error("Invalid Username");
         }
         const selectedUser = await user.findOne({username: sanitizedUsername});

@@ -73,7 +73,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
       USER_PROMPT=Summarize the following blog written in Markdown (Absolutely limit your response to #Required if AI Integration is enabled from webmaster.
       USER_PROMPT_2=characters) do not add character/word count in the response. #Required if AI Integration is enabled from webmaster.
       LLM_MODEL=<The Model name supported by OpenRouter, e.g., "anthropic/claude-3-opus"> #Required if AI Integration is enabled from webmaster.
-      LLM_BASE_URL=https://openrouter.ai/api/v1 #Required, leave url if AI is disabled
+      LLM_BASE_URL=https://openrouter.ai/api/v1 #Required, leave this url if AI is disabled
      ```
 5. **Start the application:**
    ```bash

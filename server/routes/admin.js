@@ -220,7 +220,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // check is username is of proper format defined in regex pattern
-    const usernameRegex = /^[a-zA-Z0-9\-\_\.\+\@]+$/;
+    const usernameRegex = CONSTANTS.USERNAME_REGEX;
     const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
@@ -858,7 +858,7 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
  */
 router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(sanitizeHtml(String(req.userId).trim(), CONSTANTS.SANITIZE_FILTER));
+    const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
       throw new Error(`No User Found for: ${req.userId}`);
@@ -902,7 +902,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       body: htmlBody,
       markdownbody: req.body.markdownbody.trim(),
       desc: req.body.desc.trim(),
-      tags: parseTags((req.body.tags || '').trim()),
+      tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
       thumbnailImageURI: defaultThumbnailImageURI,
       modifiedAt: Date.now(),
       lastUpdateAuthor: currentUser.username
@@ -1211,7 +1211,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       let globalSiteConfig = await siteConfig.findOne();
 
       // Validate critical fields
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const emailRegex = CONSTANTS.EMAIL_REGEX;
       if (req.body.siteAdminEmail && !emailRegex.test(req.body.siteAdminEmail)) {
         console.warn('webmaster tried putting invalid email');
         throw new Error('Webmaster tried adding ill-formed email address');
@@ -1349,7 +1349,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
  */
 router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(sanitizeHtml(String(req.userId)).trim(), CONSTANTS.SANITIZE_FILTER);
+    const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
@@ -1437,7 +1437,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
  */
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-    const selectedUser = await user.findOne({ _id: req.params.id });
+    const selectedUser = await user.findOne({ _id: sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER) });
     if (!selectedUser) {
       console.error('User not found', req.params.id);
       throw new Error('User not found');
@@ -1529,7 +1529,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
  */
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(sanitizeHtml(String(req.userId.trim()), CONSTANTS.SANITIZE_FILTER));
+    const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
@@ -1912,7 +1912,14 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
  */
 router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findOne({ username: req.params.username });
+
+    const sanitizedUserName = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
+    if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)){
+      req.flash("error", "Invalid username");
+      log.error(`Invalid username ${req.params.username}`);
+      return res.redirect('/dashboard');
+    }
+    const currentUser = await user.findOne({ username: sanitizedUserName });
     if (!currentUser) {
       req.flash('error', 'User not found');
       return res.redirect('/dashboard');
@@ -1924,7 +1931,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     }
     if (req.userId !== currentUser.id) {
       req.flash('error', 'Unauthorized, This incedent will be reported');
-      console.warn('user with ', req.userId, ' tried to access user profile ', req.params.username);
+      console.warn('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
       return res.redirect('/dashboard');
     }
     res.render('admin/edit-my-profile', {
