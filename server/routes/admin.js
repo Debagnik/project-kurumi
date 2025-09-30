@@ -1535,7 +1535,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       throw new Error('Unauthorized User cannot edit other users');
     }
 
-    const updateUser = await user.findById(sanitizeHtml(String(req.params.id).trim()), CONSTANTS.SANITIZE_FILTER);
+    const updateUser = await user.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
     if (!updateUser) {
       console.warn('User To be updated not found');
       throw new Error('User to be updated not found');

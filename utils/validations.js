@@ -85,17 +85,17 @@ exports.isWebMaster = (currentUser) => {
  *
  * @param {string} script - The script content to validate.
  * @returns {string} - Returns the original script if it's valid. Otherwise, returns a dummy
- *                     placeholder string defined in the `DUMMY_STRING` environment variable.
+ *                     placeholder string defined in the `TRACKING_SCRIPT_ERROR_MSG` environment variable.
  *
  * @example
  * const result = isValidTrackingScript(req.body.googleAnalyticsScript);
- * console.log(result); // Valid script or fallback dummy string
+ * console.log(result); // Valid script or fallback TRACKING_SCRIPT_ERROR_MSG
  */
 exports.isValidTrackingScript = (script) => {
   let errorString = process.env.TRACKING_SCRIPT_ERROR_MSG;
   if(!errorString){
     errorString = 'Error on script validation'
-    console.warn('Environment Variable DUMMY_STRING that is the default error message for when tracking script fails is not set, please report to Webmaster');
+    console.warn('Environment Variable TRACKING_SCRIPT_ERROR_MSG that is the default error message for when tracking script fails is not set, please report to Webmaster');
   }
 
   // Basic validation
@@ -148,7 +148,7 @@ exports.parseTags = (textTags) => {
         allowedAttributes: {}
       })
     )
-    .map(tag => tag.replace(/[^a-zA-Z0-9-_]/g, ''))
+    .map(tag => tag.replace(CONSTANTS.TAGS_REGEX, CONSTANTS.EMPTY_STRING))
     .map(tag => tag.substring(0, 30))
     .filter(tag => tag.length > 0);
 }

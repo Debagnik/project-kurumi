@@ -15,7 +15,8 @@ const CONSTANTS = Object.freeze({
   DEFAULT_COMMENT_LIMIT: 10,
   CLAMP_COMMENT_MIN: 1,
   CLAMP_COMMENT_MAX: 50,
-  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+  TAGS_REGEX: /[^a-zA-Z0-9-_]/g
 });
 
 module.exports = { CONSTANTS };
