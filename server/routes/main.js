@@ -12,6 +12,7 @@ const mongoose = require('mongoose');
 const utils = require('../../utils/validations.js');
 
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
+const { CONSTANTS } = require('../../utils/constants.js');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
@@ -207,7 +208,10 @@ const getUserFromCookieToken = async (req) => {
 
 const getCommentsFromPostId = async (postId) => {
     try {
-        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(parseInt(process.env.MAX_COMMENTS_LIMIT) || 2);
+        const rawLimit = parseInt(process.env.MAX_COMMENTS_LIMIT, 10);
+        const limit = Number.isFinite(rawLimit) ? Math.max(CONSTANTS.CLAMP_COMMENT_MIN, Math.min(rawLimit, CONSTANTS.CLAMP_COMMENT_MAX)) : CONSTANTS.DEFAULT_COMMENT_LIMIT;
+
+        const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(limit);
         return comments;
     } catch (error) {
         console.error('Comment Fetch error', postId, error.message);
@@ -528,8 +532,8 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
  */
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
     try{
-        const sanitizedUsername = sanitizeHtml(req.params.username, { allowedTags: [], allowedAttributes: [] }).trim();
-        if(!sanitizedUsername){
+        const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
+        if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
             throw new Error("Invalid Username");
         }
         const selectedUser = await user.findOne({username: sanitizedUsername});
@@ -538,19 +542,17 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
             return res.redirect('/');
         }
 
+        const sanitizedName = sanitizeHtml(String(selectedUser.name).trim(), CONSTANTS.SANITIZE_FILTER)
         const sanitizedUserDetails = {
-            name: selectedUser.name,
-            markdownDescriptionBody: sanitizeHtml(selectedUser.description || '', {
-                allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
-                allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src','alt','title'] }
-            }),
-            socialLink: utils.isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : '',
+            name: sanitizedName,
+            markdownDescriptionBody: selectedUser.htmlDesc ? selectedUser.htmlDesc : CONSTANTS.EMPTY_STRING,
+            socialLink: utils.isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : CONSTANTS.EMPTY_STRING,
             lastUpdated: selectedUser.modifiedAt
         }
 
         const locals = {
-            title: 'About ' + selectedUser.name,
-            description: 'User profile page for ' + selectedUser.name,
+            title: 'About ' + sanitizedName,
+            description: 'User profile page for ' + sanitizedName,
             config: res.locals.siteConfig,
         }
 
