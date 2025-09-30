@@ -5,8 +5,8 @@ const CONSTANTS = Object.freeze({
   HAS_UPPERCASE_REGEX: /[A-Z]/,
   HAS_LOWERCASE_REGEX: /[a-z]/,
   HAS_NUMBERS_REGEX: /[0-9]/,
-  HAS_SPECIAL_CHAR_REGEX: /[!@#$%^&*()]/,
-  SANITIZE_FILTER: { allowedTags: [], allowedAttributes: {} },
+  HAS_SPECIAL_CHAR_REGEX: /[ !"#$%&'()*+,-./:;<=>?@\[\\\]^_`{|}~]/,
+  SANITIZE_FILTER: { allowedTags: [], allowedAttributes: {} }, //strict sanitization filter, strips all types of tages from input
   GA_REGEX: /<script.*src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-[A-Z0-9]+".*<\/script>/,
   INSPECTLET_REGEX: /window\.__insp\s*=\s*window\.__insp\s*\|\|\s*\[\];.*inspectlet\.js\?wid=\d+/s,
   CLARITY_REGEX: /<script[^>]*>\s*\(function\([^)]*\)\{[\s\S]*?["']https:\/\/www\.clarity\.ms\/tag\/["']\s*\+\s*[a-zA-Z0-9]+[\s\S]*?\}\)\([^)]*\);\s*<\/script>/s,
@@ -15,7 +15,7 @@ const CONSTANTS = Object.freeze({
   DEFAULT_COMMENT_LIMIT: 10,
   CLAMP_COMMENT_MIN: 1,
   CLAMP_COMMENT_MAX: 50,
-  EMAIL_REGEX: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+  EMAIL_REGEX: /^[a-zA-Z0-9][a-zA-Z0-9._%+-]*[a-zA-Z0-9]@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/,
   TAGS_REGEX: /[^a-zA-Z0-9-_]/g
 });
 

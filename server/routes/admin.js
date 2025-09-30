@@ -984,11 +984,18 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
  */
 router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
-    const currentUser = await user.findById(sanitizeHtml(String(req.userId).trim(), CONSTANTS.SANITIZE_FILTER));
+    const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
       req.flash('error', `User not found/User Logged out`);
       return res.redirect('/admin');
+    }
+
+    const isReqUserIDValid = mongoose.Types.ObjectId.isValid(req.params.id);
+    if(!isReqUserIDValid){
+      console.error({code: 404, Status: `Not found`, message: `postID: ${req.params.id} is not valid`});
+      req.flash("error", "ID Not valid");
+      return res.redirect('/dashboard');
     }
 
     const postToDelete = await post.findById(sanitizeHtml(String(req.params.id).trim(), CONSTANTS.SANITIZE_FILTER));
