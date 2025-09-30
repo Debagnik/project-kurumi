@@ -542,16 +542,17 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
             return res.redirect('/');
         }
 
+        const sanitizedName = sanitizeHtml(String(selectedUser.name).trim(), CONSTANTS.SANITIZE_FILTER)
         const sanitizedUserDetails = {
-            name: selectedUser.name,
+            name: sanitizedName,
             markdownDescriptionBody: selectedUser.htmlDesc ? selectedUser.htmlDesc : CONSTANTS.EMPTY_STRING,
             socialLink: utils.isValidURI(selectedUser.portfolioLink) ? selectedUser.portfolioLink : CONSTANTS.EMPTY_STRING,
             lastUpdated: selectedUser.modifiedAt
         }
 
         const locals = {
-            title: 'About ' + selectedUser.name,
-            description: 'User profile page for ' + selectedUser.name,
+            title: 'About ' + sanitizedName,
+            description: 'User profile page for ' + sanitizedName,
             config: res.locals.siteConfig,
         }
 
