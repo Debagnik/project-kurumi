@@ -51,6 +51,10 @@ const userSchema = new schema({
         type: String,
         required: false
     },
+    htmlDesc: {
+        type: String,
+        required: false
+    },
     portfolioLink: {
         type: String,
         required: false

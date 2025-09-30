@@ -1,6 +1,6 @@
 {
-  "name": "blog-site",
-  "version": "1.0.0",
+  "name": "project-kurumi",
+  "version": "2.2.4",
   "description": "a simple blogging site made with NodeJs, Express and MongoDB",
   "main": "index.js",
   "scripts": {
