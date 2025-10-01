@@ -1,0 +1,106 @@
+meta {
+  name: AIPostBodySummarizer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{url}}/admin/generate-post-summary
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0
+  Accept: */*
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Origin: http://localhost:5000
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Sec-Fetch-Dest: empty
+  Sec-Fetch-Mode: cors
+  Sec-Fetch-Site: same-origin
+  Priority: u=0
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  markdownbody: This is a test body. for documentation this is a must have markdownbody AI attribut is also there
+}
+
+docs {
+  **POST /admin/generate-post-summary**
+  
+  ## Description
+  Generates an AI-powered summary of markdown blog content using OpenRouter integration.  
+  - Sanitizes input  
+  - Processes through AI model  
+  - Converts summary to HTML  
+  - Appends attribution text  
+  
+  **Note:** Unlike other admin APIs, this endpoint returns a **JSON response** instead of rendering HTML directly. The client handles rendering the returned HTML content.
+  
+  ---
+  
+  ## Middleware
+  - **authToken** → Requires valid authentication  
+  - **aiSummaryRateLimiter** → Prevents excessive requests to the summary API
+  
+  ---
+  
+  ## Request Body
+  
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `markdownbody` | string | Required markdown content to summarize. |
+  | `_csrf` | string | Required CSRF token for request validation. |
+  ---
+  
+  ## Processing Steps
+  1. Input sanitization (HTML sanitization + trimming)  
+  2. AI processing via OpenRouter integration  
+  3. Markdown-to-HTML conversion of AI-generated summary  
+  4. Automatic inclusion of attribution text  
+  
+  ---
+  
+  ## Responses
+  
+  | Status Code | Description |
+  |-------------|-------------|
+  | **200 OK** | JSON response containing the HTML-formatted summary with attribution: <br> `{ "code": 200, "message": "<HTML summary with attribution>" }` |
+  | **400 Bad Request** | Missing `markdownbody` field: <br> `{ "code": 400, "message": "Blog Body is a must for generating summary" }` |
+  | **500 Internal Server Error** | On AI processing or server failure: <br> `{ "code": 500, "message": "Internal Server Error" }` |
+  
+  ---
+  
+  ## Security
+  - Requires authentication  
+  - Sanitizes all input HTML  
+  - Rate-limited to prevent abuse
+  
+  ---
+  
+  ## Dependencies
+  - **openRouterIntegration** → AI summary service  
+  - **markdownToHtml** → Converts markdown summary to HTML
+  
+  ---
+  
+  ## Access
+  - Private — requires authentication
+  
+  ---
+  
+  ## Logging
+  - Detailed logs for API failures
+  
+  ---
+  
+  ## Notes
+  - This is the **only admin API in production** that returns JSON instead of direct HTML.  
+  - The client is responsible for rendering the summary returned in the JSON response.
+  
+}

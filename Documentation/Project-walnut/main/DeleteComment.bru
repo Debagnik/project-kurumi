@@ -1,7 +1,7 @@
 meta {
   name: DeleteComment
   type: http
-  seq: 8
+  seq: 10
 }
 
 post {
@@ -48,7 +48,7 @@ docs {
   
   Middleware Used:
   * csrfProtection – Validates CSRF token to prevent CSRF attacks.
-  * isAuthenticated – Ensures the user is logged in and has admin or mod privilages.
+  * isAuthenticated – Ensures the user is logged in and has admin or mod privileges.
   
   Route Params:
   * commentId (string, required): The MongoDB ID of the comment to delete.
