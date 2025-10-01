@@ -15,8 +15,6 @@ headers {
   Accept: */*
   Accept-Language: en-US,en;q=0.5
   Accept-Encoding: gzip, deflate, br, zstd
-  Content-Type: application/json
-  CSRF-Token: 2kzUcRMQ-km8EvUaiMoyLNdPOR274R1wiRs8
   Origin: http://localhost:5000
   DNT: 1
   Sec-GPC: 1
@@ -27,20 +25,9 @@ headers {
   Priority: u=0
 }
 
-body:json {
-  '{
-    "title": "Cylinders",
-    "thumbnailImageURI": "https://animetv-jp.net/wp-content/uploads/2024/10/GavBFBuaAAEFAOM-scaled-e1730154786467-1068x601.jpeg",
-    "markdownbody":"I have been learning Japanese since this year\'s
-}
-
 body:form-urlencoded {
   _csrf: {{csrf_token}}
   markdownbody: This is a test body. for documentation this is a must have markdownbody AI attribut is also there
-}
-
-body:multipart-form {
-  _crsf: {{csrf_to
 }
 
 docs {
