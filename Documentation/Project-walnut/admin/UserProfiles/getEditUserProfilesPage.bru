@@ -1,0 +1,109 @@
+meta {
+  name: getEditUserProfilesPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{url}}/admin/profile/:username
+  body: none
+  auth: inherit
+}
+
+params:path {
+  username: kingabed
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+docs {
+  **GET /admin/profile/:username**
+  
+  ## Description
+  Renders the **user profile edit page** for a specific user in the admin panel.  
+  Validates authentication, sanitizes the `username`, and ensures that the logged-in user  
+  is only allowed to edit their own profile. Injects CSRF token, privilege metadata,  
+  and site configuration into the rendered view.
+  
+  ---
+  
+  ## Middleware
+  - **authToken** → Validates authentication and sets `req.userId`.  
+  - **genericGetRequestRateLimiter** → Prevents excessive profile edit page requests.  
+  
+  ---
+  
+  ## Parameters
+  - **:username** (Path Param) → The username of the user whose profile is being edited.  
+  
+  ---
+  
+  ## Validation
+  - Username is sanitized using strict filters.  
+  - Username must match `CONSTANTS.USERNAME_REGEX`.  
+  - Logged-in user (`req.userId`) must match the requested profile user ID.  
+  
+  ---
+  
+  ## Access
+  - **Private** → Requires authentication via `authToken`.  
+  - Restricted: users can only edit their own profile.  
+  
+  ---
+  
+  ## Behavior
+  1. Extracts and sanitizes `username` from path parameter.  
+  2. Validates `username` against regex rules.  
+  3. Looks up user by username in the database.  
+  4. If user not found → redirect to dashboard with error.  
+  5. Ensures logged-in user is the same as the requested profile user.  
+     - If mismatch → unauthorized, flash error, redirect to dashboard.  
+  6. If valid → renders **admin/edit-my-profile** view with:  
+     - Page metadata (`locals`)  
+     - CSRF token  
+     - Admin layout  
+     - Current user details  
+     - WebMaster privilege flag  
+     - Logged-in user ID  
+  
+  ---
+  
+  ## Template Rendered
+  - **admin/edit-my-profile** (with `adminLayout`)  
+  
+  ---
+  
+  ## Responses
+  
+  | Status Code | Description |
+  |-------------|-------------|
+  | **200 OK**  | Renders the edit profile page (`admin/edit-my-profile`) with metadata, CSRF token, and current user details. |
+  | **302 Found** | Redirects to `/dashboard` with flash error when username is invalid, user not found, or user is unauthorized. |
+  | **403 Forbidden** | CSRF validation failure when submitting forms. |
+  | **429 Too Many Requests** | Triggered if rate limiter is exceeded. |
+  | **500 Internal Server Error** | Unexpected server error → logged internally, user redirected to `/dashboard`. |
+  
+  ---
+  
+  ## Security
+  - **CSRF Protected** → CSRF token injected into forms.  
+  - **Rate Limited** → Prevents excessive requests.  
+  - **Authentication Required** → via `authToken`.  
+  
+  ---
+  
+}

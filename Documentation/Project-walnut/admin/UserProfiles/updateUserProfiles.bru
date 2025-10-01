@@ -1,0 +1,115 @@
+meta {
+  name: updateUserProfiles
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{url}}/admin/edit-profile/:username
+  body: formUrlEncoded
+  auth: inherit
+}
+
+params:path {
+  username: kingabed
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  Accept-Encoding: gzip, deflate, br, zstd
+  Content-Type: application/x-www-form-urlencoded
+  Origin: null
+  DNT: 1
+  Sec-GPC: 1
+  Connection: keep-alive
+  Upgrade-Insecure-Requests: 1
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Priority: u=0, i
+}
+
+body:form-urlencoded {
+  _csrf: {{csrf_token}}
+  name: Debagnik
+  description: <p>I am Kingabed, I am the webmaster of this site connect with me </p>
+  portfolioLink: https://debagnik.in
+}
+
+docs {
+  **POST /admin/edit-profile/:username**
+  
+  ## Description
+  Handles editing of the authenticated user’s own profile data.  
+  Sanitizes and validates incoming form fields (`name`, `description`, `portfolioLink`),  
+  updates the database if valid, and flashes appropriate success or error messages.  
+  This route enforces "own-profile-only" edits to prevent privilege escalation.
+  
+  ---
+  
+  ## Middleware
+  - **authToken** → Ensures request is authenticated and sets `req.userId`.  
+  - **genericAdminRateLimiter** → Throttles excessive profile edit requests.
+  
+  ---
+  
+  ## Parameters
+  - **:username** (Path Param) → Username of the profile being edited.
+  
+  ---
+  
+  ## Request Body
+  - **name** (string) → User’s display name (max length enforced).  
+  - **description** (string) → Markdown-compatible profile description.  
+  - **portfolioLink** (string) → Optional portfolio URL, validated before saving.
+  
+  ---
+  
+  ## Validation & Processing
+  1. Sanitizes `:username` parameter and rejects if invalid.  
+  2. Fetches user by username from DB; redirects with error if not found.  
+  3. Verifies logged-in user matches target user; otherwise blocks editing.  
+  4. Validates presence and length of incoming fields.  
+  5. Sanitizes `name` and `description`; converts description to HTML.  
+  6. Updates and saves user document in MongoDB.
+  
+  ---
+  
+  ## Access
+  - **Private** → Must be logged in.  
+  - Restricted → Can only edit own profile.
+  
+  ---
+  
+  ## Responses
+  
+  | Status Code | Description |
+  |-------------|-------------|
+  | **302 Found** | Redirects to `/dashboard` with flash message: success on profile update. |
+  | **302 Found** | Redirects to `/dashboard` with flash message for failure cases: user not found, no changes applied, field length exceeded, failed DB save, unauthorized edit attempt, internal server error. |
+  | **429 Too Many Requests** | Triggered if rate limiter is exceeded. |
+  
+  ---
+  
+  ## Security
+  - **CSRF Protected** → CSRF token must be provided in form submission.  
+  - **Rate Limited** → Prevents abuse of profile edit endpoint.  
+  - **Authentication Required** → Only logged-in users with matching `req.userId`.  
+  
+  ---
+  
+  ## Error Handling
+  - Errors are logged to console.  
+  - Users are notified via flash messages and redirected to `/dashboard`.  
+  
+  ---
+  
+  ## Notes
+  - This route does not render a view directly; it performs updates then redirects.  
+  - Strictly enforces “own-profile-only” edits.  
+  - Sanitization applied to all fields using `sanitizeHtml` and custom filters.
+  
+}

@@ -1,0 +1,82 @@
+meta {
+  name: getUserProfile
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{url}}/users/:username
+  body: none
+  auth: inherit
+}
+
+params:path {
+  username: kingabed
+}
+
+docs {
+  **GET /users/:username**
+  
+  ## Description
+  Displays the **public profile page** of a specific user.  
+  The username is sanitized and validated before querying the database.  
+  The rendered profile page includes the user’s sanitized details (name, description, and portfolio link),  
+  along with site configuration and CSRF protection.  
+  
+  ---
+  
+  ## Middleware
+  - **genericGetRequestRateLimiter** → Prevents excessive requests to the user profile page.  
+  
+  ---
+  
+  ## Parameters
+  - **:username** (Path Param) → The username of the user whose profile is being requested.  
+  
+  ---
+  
+  ## Validation
+  - Username is sanitized using strict filters to prevent XSS.  
+  - Username must match `CONSTANTS.USERNAME_REGEX`.  
+  - User’s name and description fields are sanitized before rendering.  
+  - Portfolio link is validated to ensure proper URL format.  
+  
+  ---
+  
+  ## Access
+  - **Public** → Anyone can access a user profile page.  
+  - **CSRF Protected** → Form submissions secured via CSRF token.  
+  
+  ---
+  
+  ## Behavior
+  1. Extracts `username` from the request path.  
+  2. Sanitizes and validates the username against regex rules.  
+  3. Queries the database for a matching user.  
+  4. If found, sanitizes user data:  
+     - Display name  
+     - Description (HTML-safe)  
+     - Portfolio link (if valid)  
+     - Last updated timestamp  
+  5. Prepares `locals` metadata (title, description, site config).  
+  6. Injects CSRF token into the rendered page.  
+  7. Renders the **users.ejs** template with the sanitized data.  
+  
+  ---
+  
+  ## Template Rendered
+  - **users.ejs**  
+  
+  ---
+  
+  ## Responses
+  
+  | Status Code | Description |
+  |-------------|-------------|
+  | **200 OK**  | Renders the `users.ejs` template with metadata (`locals`), `sanitizedUserDetails`, and `csrfToken`. |
+  | **302 Found** | Redirects to home page with flash message if username is invalid, user not found, or internal error occurs. |
+  | **403 Forbidden** | Returned if CSRF validation fails on form submission. |
+  | **429 Too Many Requests** | Triggered by `genericGetRequestRateLimiter` when rate limits are exceeded. |
+  | **500 Internal Server Error** | Logged internally if unexpected exceptions occur; user is redirected to home. |
+  
+}

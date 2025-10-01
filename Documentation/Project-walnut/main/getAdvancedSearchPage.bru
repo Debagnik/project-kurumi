@@ -1,0 +1,66 @@
+meta {
+  name: getAdvancedSearchPage
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{url}}/advanced-search
+  body: none
+  auth: inherit
+}
+
+docs {
+  **GET /advanced-search**
+  
+  ## Description
+  Renders the **Advanced Search** page of the blogging platform.  
+  Provides users with an interface to perform searches by keyword, title, author, and tags.  
+  Includes CSRF token injection for secure form submission and site configuration metadata.  
+  
+  ---
+  
+  ## Middleware
+  - **genericGetRequestRateLimiter** → Protects this route from excessive requests.  
+  
+  ---
+  
+  ## Parameters
+  - **None** (filters are submitted later via the rendered form).  
+  
+  ---
+  
+  ## Access
+  - **Public** → No authentication required.  
+  - **CSRF Protected** → Form submissions secured via CSRF token.  
+  
+  ---
+  
+  ## Behavior
+  1. Loads `res.locals.siteConfig`.  
+  2. Builds `locals` object with:  
+     - `title`: `"Advanced Search - [Site Name]"` (defaults to `"Project Walnut"`).  
+     - `description`: `"Advanced Search page"`.  
+     - `config`: Site-wide config.  
+  3. Injects a CSRF token for form protection.  
+  4. Renders the **advanced-search.ejs** template.  
+  
+  ---
+  
+  ## Template Rendered
+  - **advanced-search.ejs**  
+  
+  ---
+  
+  ## Responses
+  
+  | Status Code | Description |
+  |-------------|-------------|
+  | **200 OK**  | Renders the `advanced-search.ejs` HTML page with metadata (`locals`) and `csrfToken`. |
+  | **403 Forbidden** | Returned if CSRF validation fails. |
+  | **429 Too Many Requests** | Triggered by `genericGetRequestRateLimiter` when rate limits are exceeded. |
+  | **500 Internal Server Error** | Possible fallback if rendering or site config retrieval fails. |
+  
+  ---
+  
+}

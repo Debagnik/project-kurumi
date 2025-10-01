@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const csrf = require('csurf');
 const sanitizeHtml = require('sanitize-html');
 const marked = require('marked');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 const post = require('../models/posts');
