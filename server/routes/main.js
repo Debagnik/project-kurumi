@@ -17,7 +17,36 @@ const { CONSTANTS } = require('../../utils/constants.js');
 const jwtSecretKey = process.env.JWT_SECRET;
 
 /**
- * Site config Middleware
+ * @middleware fetchSiteConfig
+ * @description Retrieves the global site configuration from the database and attaches it to
+ *              `res.locals.siteConfig` for use in downstream route handlers and views.
+ *              Ensures that templates always have access to config values, even if empty.
+ * 
+ * @operation
+ * @fetch Queries `siteConfig` collection for the latest configuration
+ * @inject Attaches configuration object to `res.locals.siteConfig`
+ * 
+ * @response
+ * @success {next()} Proceeds to the next middleware/route handler with:
+ * @property {Object} res.locals.siteConfig - The site-wide configuration object
+ *           @case Empty object `{}` if no config found
+ * 
+ * @failure {500} Renders `error` view when database access fails
+ * @property {string} title - "Configuration Error"
+ * @property {string} description - "Unable to load site configuration"
+ * 
+ * @logging
+ * @warn Logs warning if no config is present in DB
+ * @error Logs critical errors if DB query fails
+ * 
+ * @errorHandling
+ * @dbFailure Gracefully handles database fetch issues
+ * @userFeedback Provides descriptive error page to users on fatal config errors
+ * 
+ * @security
+ * @note Does not expose sensitive config fields unless intentionally stored in DB
+ * 
+ * @access Public (middleware runs for all users)
  */
 const fetchSiteConfig = async (req, res, next) => {
     try {
@@ -40,8 +69,43 @@ const fetchSiteConfig = async (req, res, next) => {
     }
 }
 
+//Use Middleware.
 router.use(fetchSiteConfig);
 
+/**
+ * @config JWT Secret Validation
+ * @description Ensures that the application has a valid JWT secret key defined
+ *              in the environment variables before starting. Prevents insecure
+ *              operation without proper signing credentials.
+ * 
+ * @check
+ * @condition Exits the process if `process.env.JWT_SECRET` is undefined or empty
+ * @log Logs a descriptive error message before terminating
+ * 
+ * @security
+ * @requires JWT secret to be present for token signing/verification
+ * @failsafe Prevents server startup without required secret
+ * 
+ * @exit
+ * @code 1 - Graceful shutdown when secret is missing
+ * 
+ * ---
+ * 
+ * @middleware CSRF Protection
+ * @description Applies CSRF protection middleware globally to all routes
+ *              under this router, using cookie-based token storage.
+ * 
+ * @implementation
+ * @uses csurf - CSRF protection middleware
+ * @option {boolean} cookie=true - Stores CSRF tokens in cookies
+ * 
+ * @security
+ * @protects Against Cross-Site Request Forgery attacks on state-changing routes
+ * @enforces Valid CSRF token on POST, PUT, DELETE, etc.
+ * 
+ * @scope Router-wide
+ * @applied router.use(csrfProtection)
+ */
 if (!jwtSecretKey) {
     console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
     // You might want to exit the process gracefully
@@ -53,8 +117,42 @@ const csrfProtection = csrf({ cookie: true });
 router.use(csrfProtection);
 
 //Routes
+
+
 /**
- * GET /api/test/getCsrfToken
+ * @route GET /api/test/getCsrfToken
+ * @description Provides a CSRF token for testing or development purposes.
+ *              Token is only returned when the app is running in a development
+ *              environment (`development` or `dev-local`).
+ * 
+ * @middleware
+ * @chain csrfProtection - Enforces CSRF middleware to generate and validate tokens
+ * @chain genericGetRequestRateLimiter - Protects endpoint from excessive requests
+ * 
+ * @environment
+ * @allow Development only:
+ *         - NODE_ENV=development
+ *         - NODE_ENV=dev-local
+ * @deny All other environments (returns Forbidden)
+ * 
+ * @response
+ * @success {200} JSON payload containing:
+ *           @property {string} csrfToken - The generated CSRF token
+ * @failure {403} JSON response with:
+ *           @property {string} message - "Forbidden"
+ * 
+ * @security
+ * @protects Ensures CSRF tokens are not exposed in production
+ * @rateLimited Prevents abuse of token-fetching in development
+ * 
+ * @access Restricted (development/local only)
+ * 
+ * @errorHandling
+ * @forbidden Explicit rejection outside of allowed environments
+ * 
+ * @useCase
+ * @example Development clients can call this endpoint to fetch a CSRF token
+ *          for testing POST/PUT/DELETE requests in local environments.
  */
 router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimiter, (req, res) => {
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev-local') {
@@ -66,8 +164,53 @@ router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimite
 });
 
 /**
- * GET /
- * HOME
+ * @route GET /
+ * @description Renders the home page of the application, displaying a paginated
+ *              list of approved blog posts in descending order of creation date.
+ * 
+ * @middleware
+ * @chain genericOpenRateLimiter - Applies rate limiting to protect the public-facing home page
+ * 
+ * @locals
+ * @param {string} title - The site name from `res.locals.siteConfig` (default: "Project Walnut")
+ * @param {string} description - The site metadata description from config
+ * @param {Object} config - Complete site configuration object available in locals
+ * 
+ * @pagination
+ * @param {number} perPage - Number of posts per page (from site config, default: 1)
+ * @param {number} page - Current page number (from query param `?page=`, default: 1)
+ * @computed
+ *   - nextPage {number|null} - Next page number, if available
+ *   - previousPage {number|null} - Previous page number, if available
+ *   - totalPages {number} - Total number of pages based on approved post count
+ * 
+ * @database
+ * @collection posts
+ * @query
+ *   - Filters only `{ isApproved: true }`
+ *   - Sorts results by `createdAt: -1` (most recent first)
+ *   - Applies pagination via `.skip()` and `.limit()`
+ * 
+ * @response
+ * @success {200} Renders the `index` view with:
+ *   - locals (title, description, config)
+ *   - data (paginated posts)
+ *   - currentPage, nextPage, previousPage
+ *   - csrfToken for form submissions
+ *   - totalPages for navigation
+ * @failure {500} Logs error to console if DB query/render fails
+ * 
+ * @security
+ * @rateLimited Prevents excessive requests to the home page
+ * @csrfToken Included in rendered template to protect POST requests from CSRF
+ * 
+ * @logging
+ * Logs "DB Posts Data fetched" to console when posts are successfully retrieved.
+ * Logs error details to console on query/render failure.
+ * 
+ * @useCase
+ * Visitors accessing the root URL `/` can browse through approved blog posts
+ * with pagination support, starting from the most recent content.
  */
 router.get('', genericOpenRateLimiter, async (req, res) => {
 
@@ -110,8 +253,31 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
 });
 
 /**
- * GET /about
- * About
+ * @route GET /about
+ * @description Renders the "About Us" page with site configuration and metadata.
+ *              Provides page title, description, CSRF token, and config to the template.
+ * 
+ * @locals
+ * @param {string} title - "About Us Section - <siteName>" (defaults to "Project Walnut" if missing)
+ * @param {string} description - Static description: "A blogging site created with Node, express and MongoDB"
+ * @param {Object} config - Site-wide configuration from `res.locals.siteConfig`
+ * 
+ * @response
+ * @success {200} Renders the `about` EJS template with:
+ *   - locals (title, description, config)
+ *   - csrfToken for secure form submissions
+ * 
+ * @security
+ * @csrfToken Included in rendered template to protect any interactive form on the page
+ * 
+ * @access Public (no authentication required)
+ * 
+ * @logging
+ * None explicitly (no DB calls or console logs here)
+ * 
+ * @useCase
+ * Provides visitors with an informational "About Us" section, highlighting
+ * the purpose of the site and its underlying stack.
  */
 router.get('/about', (req, res) => {
     const locals = {
@@ -126,8 +292,30 @@ router.get('/about', (req, res) => {
 });
 
 /**
- * GET /contact
- * Contact
+ * @route GET /contact
+ * @description Renders the "Contact Us" page with site configuration and metadata.
+ *              Supplies the template with page title, description, configuration, and CSRF protection.
+ * 
+ * @locals
+ * @param {string} title - "Contacts us - <siteName>" (defaults to "Project Walnut" if missing)
+ * @param {string} description - Static description: "A blogging site created with Node, express and MongoDB"
+ * @param {Object} config - Site-wide configuration from `res.locals.siteConfig`
+ * 
+ * @response
+ * @success {200} Renders the `contact` EJS template with:
+ *   - locals (title, description, config)
+ *   - csrfToken for secure form submissions
+ * 
+ * @security
+ * @csrfToken Included in rendered template to protect any form on the page
+ * 
+ * @access Public (no authentication required)
+ * 
+ * @logging
+ * None explicitly (no DB calls or console logs here)
+ * 
+ * @useCase
+ * Provides a contact form/page to allow visitors to reach out to the site owners/admins.
  */
 router.get('/contact', (req, res) => {
     const locals = {
@@ -142,8 +330,57 @@ router.get('/contact', (req, res) => {
 });
 
 /**
- * GET /
- * Posts :id
+ * @route GET /post/:id
+ * @description Fetches and renders a single blog post by its MongoDB `_id`. 
+ *              Enriches the post with author details, site config, captcha settings, 
+ *              and associated comments before rendering.
+ * 
+ * @middleware
+ * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
+ * 
+ * @params
+ * @param {string} id - MongoDB `_id` of the post to retrieve
+ * 
+ * @process
+ * @step Extracts post ID from `req.params.id`
+ * @step Fetches post data by `_id` from the database
+ * @step Retrieves author details; defaults to "Anonymous" if missing
+ * @step Constructs locals for title, description, keywords, and site config
+ * @step Checks if captcha is enabled in `siteConfig`
+ * @step Determines if the current user is Admin/Moderator
+ * @step Fetches comments for the given post ID
+ * 
+ * @conditions
+ * @check Post existence - throws error if not found
+ * @check Post visibility - allowed if `data.isApproved` or current user is logged in
+ * @check Redirects - non-approved post without logged-in user redirects to `/404`
+ * 
+ * @visibilityRules
+ * @rule Approved posts → Publicly visible
+ * @rule Unapproved posts → Only visible if:
+ *       - Current user is logged in
+ *       - OR Current user has elevated privileges (Admin/Moderator)
+ * 
+ * @response
+ * @success {200} Renders the `posts` EJS template with:
+ *   - locals (title, description, keywords, config)
+ *   - data (post content + authorName)
+ *   - csrfToken for secure interactions
+ *   - isCaptchaEnabled flag
+ *   - commentsData (fetched from `getCommentsFromPostId`)
+ *   - currentUser (boolean for moderator/admin)
+ * @failure {404} Redirects to `/404` on:
+ *   - Missing post
+ *   - Fetch errors
+ * 
+ * @security
+ * @csrfToken Injected into template for form security
+ * @rateLimited Prevents abuse via `genericOpenRateLimiter`
+ * 
+ * @logging
+ * @errorLogs Logs post fetch errors and missing posts
+ * 
+ * @access Public (restricted for unapproved posts)
  */
 router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
@@ -188,6 +425,43 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     }
 });
 
+/**
+ * @function getUserFromCookieToken
+ * @description Retrieves the currently logged-in user from the request's cookies 
+ *              by decoding and validating the JWT token stored in `req.cookies.token`.
+ * 
+ * @async
+ * 
+ * @params
+ * @param {Object} req - Express request object
+ * @param {Object} req.cookies - Cookie object containing `token`
+ * 
+ * @process
+ * @step Extracts JWT token from `req.cookies.token`
+ * @step Attempts to verify token using `jwtSecretKey`
+ * @step Extracts `userId` from decoded token payload if valid
+ * @step Queries database for user record via `user.findById(userId)`
+ * 
+ * @conditions
+ * @check If token is missing → Skips lookup and returns `null`
+ * @check If token is invalid/expired → Logs error and returns `null`
+ * @check If user not found → Returns `null`
+ * 
+ * @response
+ * @returns {Object|null} Current user document from database, or `null` if:
+ *   - No token present
+ *   - Token invalid/expired
+ *   - User does not exist
+ * 
+ * @security
+ * @jwtValidation Ensures token authenticity using `jwtSecretKey`
+ * @errorHandling Logs invalid token attempts without crashing server
+ * 
+ * @logging
+ * @errorLogs Invalid or expired token verification failures
+ * 
+ * @access Private (utility function, not an exposed route)
+ */
 const getUserFromCookieToken = async (req) => {
     let currentUser = null;
     const token = req.cookies.token;
@@ -206,6 +480,41 @@ const getUserFromCookieToken = async (req) => {
     return currentUser;
 }
 
+/**
+ * @function getCommentsFromPostId
+ * @description Fetches comments associated with a specific post ID from the database.
+ *              Limits the number of returned comments according to environment settings
+ *              and applies descending timestamp sorting.
+ * 
+ * @async
+ * 
+ * @params
+ * @param {string} postId - MongoDB `_id` of the post for which to fetch comments
+ * 
+ * @process
+ * @step Reads `MAX_COMMENTS_LIMIT` from environment variables
+ * @step Clamps the limit between `CONSTANTS.CLAMP_COMMENT_MIN` and `CONSTANTS.CLAMP_COMMENT_MAX`
+ * @step Uses default `CONSTANTS.DEFAULT_COMMENT_LIMIT` if `MAX_COMMENTS_LIMIT` is missing or invalid
+ * @step Queries `comment` collection for `postId`
+ * @step Sorts results by `commentTimestamp` in descending order
+ * @step Applies the computed `limit` to the query
+ * 
+ * @response
+ * @returns {Array} List of comment documents for the specified post.
+ *                  Returns an empty array if no comments are found or if an error occurs.
+ * 
+ * @conditions
+ * @check Invalid or missing `MAX_COMMENTS_LIMIT` → Uses default comment limit
+ * @check Database query failure → Logs error and returns empty array
+ * 
+ * @security
+ * @readOnly Fetch operation only, no modifications
+ * 
+ * @logging
+ * @errorLogs Includes post ID and error message on DB fetch failure
+ * 
+ * @access Private (utility function, intended for internal route helpers)
+ */
 const getCommentsFromPostId = async (postId) => {
     try {
         const rawLimit = parseInt(process.env.MAX_COMMENTS_LIMIT, 10);
@@ -221,9 +530,72 @@ const getCommentsFromPostId = async (postId) => {
 
 /**
  * @route POST /search
- * @description Handles simple and advanced blog post search. Supports keyword, title, author, and tags.
- *              Falls back to regex search in advanced mode if no results are found.
- * @access Public
+ * @description Handles blog post searches, supporting both simple and advanced search modes.
+ *              Allows searching by keyword, title, author, and tags. In advanced mode, falls back
+ *              to regex search if no results are found. Paginates results and sanitizes all input.
+ * 
+ * @middleware
+ * @chain genericOpenRateLimiter - Prevents abuse by limiting excessive search requests
+ * 
+ * @params
+ * @param {string} searchTerm - Keyword to search across title/body
+ * @param {string} title - Optional title filter
+ * @param {string} author - Optional author name filter
+ * @param {string} tags - Optional comma-separated tags filter
+ * @param {boolean|string} isAdvancedSearch - Indicates advanced search mode (`true` or `false`)
+ * @param {boolean|string} isNextPage - Used for pagination ('yes' = next, 'no' = previous)
+ * @param {number|string} page - Page number for pagination
+ * 
+ * @process
+ * @step Sanitizes all input using `sanitizeHtml`
+ * @step Computes pagination limits and skip values
+ * @step Constructs MongoDB filter conditions depending on search mode
+ * @step Advanced search:
+ *        - Keyword regex search in title/body
+ *        - Title-specific regex search
+ *        - Tag inclusion
+ *        - Author name resolution to username
+ *        - Fallback regex search if no results found
+ * @step Simple search:
+ *        - Performs text search on title/body using `$text`
+ *        - Rejects invalid or empty keywords
+ * @step Queries database for posts and counts total matching documents
+ * @step Computes totalPages, nextPage, previousPage flags
+ * @step Renders `search` EJS template with data, locals, pagination, and CSRF token
+ * 
+ * @conditions
+ * @check Valid search mode (`isAdvancedSearch` must be boolean or string)
+ * @check Keyword length must be within 1–100 characters for simple search
+ * @check Pagination values corrected to valid integers
+ * 
+ * @response
+ * @success {200} Renders `search` template with:
+ *   - data: list of posts matching filters
+ *   - locals: title, description, config
+ *   - searchTerm, title, author, tags
+ *   - pagination info: currentPage, nextPage, previousPage, totalPages
+ *   - csrfToken for secure forms
+ *   - isAdvancedSearch flag
+ * @failure {400} Returns JSON errors for invalid keyword or search mode
+ * @failure {500} Renders error page with site config and error message
+ * 
+ * @security
+ * @csrfToken Included for protection in any form interactions
+ * @rateLimited Prevents abusive search traffic
+ * @sanitize All user inputs are sanitized to prevent XSS
+ * 
+ * @logging
+ * @errorLogs Logs search execution errors along with stack traces
+ * 
+ * @access Public (anyone can search posts)
+ * 
+ * @pagination
+ * @pageSize Controlled by `res.locals.siteConfig.searchLimit`
+ * @pageValidation Ensures page number is >= 1
+ * @nextPreviousFlags Calculated for UI navigation
+ * 
+ * @visibilityRules
+ * @rule Only approved posts (`isApproved: true`) are returned to public users
  */
 router.post('/search', genericOpenRateLimiter, async (req, res) => {
     try {
@@ -365,9 +737,56 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
 });
 
 /**
- * POST
- * /posts/post-comments
- * Add comments to a post
+ * @route POST /post/:id/post-comments
+ * @description Adds a new comment to a specific blog post. 
+ *              Performs full validation, CAPTCHA verification (if enabled), and post existence/approval checks.
+ *              Sanitizes all inputs to prevent XSS. Supports flash messages and redirects for user feedback.
+ * 
+ * @middleware
+ * @chain commentsRateLimiter - Protects against comment spam and abuse
+ * 
+ * @params
+ * @param {string} id - MongoDB `_id` of the post (route parameter)
+ * @param {string} postId - Post ID submitted in request body (must match route parameter)
+ * @param {string} commenterName - Name of the user submitting the comment
+ * @param {string} commentBody - The actual comment text
+ * @param {string} cf-turnstile-response - Optional Cloudflare CAPTCHA token for verification
+ * 
+ * @validation
+ * @check postId must be a valid MongoDB ObjectId
+ * @check commenterName must be between 3 and 50 characters
+ * @check commentBody must be between 1 and 500 characters
+ * @check post must exist and be approved
+ * @check CAPTCHA token valid if siteConfig.isCaptchaEnabled
+ * @sanitize All input fields using `sanitizeHtml`
+ * 
+ * @process
+ * @step Verifies route and body post IDs match
+ * @step Checks site config for comments enabled
+ * @step Performs CAPTCHA verification via `verifyCloudflareTurnstileToken` if enabled
+ * @step Sanitizes commenterName and commentBody
+ * @step Creates and saves a new comment document in MongoDB
+ * @step Logs success or failure based on environment (production/development)
+ * @step Sends flash messages and redirects user back to the post page
+ * 
+ * @response
+ * @success {200} Redirects back to `/post/:id` with success flash message
+ * @failure {400} Redirects with flash if input validation fails (comment length or name issues)
+ * @failure {403} Redirects if comments are disabled, CAPTCHA fails, or post is unapproved
+ * @failure {404} Redirects to `/404` if post ID is invalid or post does not exist
+ * @failure {500} Redirects with flash message if saving comment fails (internal server error)
+ * 
+ * @security
+ * @csrfToken Used via site forms for CSRF protection
+ * @rateLimited Prevents excessive comment submissions
+ * @sanitize All user-provided input is sanitized to mitigate XSS
+ * @captcha Optional human verification via Cloudflare Turnstile
+ * 
+ * @logging
+ * @logs Comment submission attempts, errors, and environment-specific details
+ * @logs both success and failure events
+ * 
+ * @access Public (anyone can comment if comments are enabled)
  */
 router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
@@ -461,9 +880,49 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
 });
 
 /**
- * POST
- * /posts/post-comments/:commentId
- * Delete a comment from a post if the User is Authorized (Only Admin or Moderator)
+ * @route POST /post/delete-comment/:commentId
+ * @description Deletes a comment from a post if the requesting user has sufficient privileges.
+ *              Only users with ADMIN or MODERATOR privilege levels are authorized to delete comments.
+ *              Validates comment existence, checks user authorization, logs all operations, and provides
+ *              flash feedback with redirection.
+ * 
+ * @middleware
+ * @chain genericAdminRateLimiter - Prevents excessive comment deletion attempts
+ * 
+ * @params
+ * @param {string} commentId - MongoDB `_id` of the comment to delete (route parameter)
+ * 
+ * @validation
+ * @check commentId must correspond to an existing comment
+ * @check currentUser must have ADMIN or MODERATOR privilege
+ * 
+ * @process
+ * @step Fetches comment by ID from MongoDB
+ * @step Validates user privileges using `getUserFromCookieToken`
+ * @step Deletes the comment from the database if authorized
+ * @step Logs success or failure, including user information and environment-specific details
+ * @step Sets flash messages for user feedback
+ * @step Redirects to the original post page or `/404` on failure
+ * 
+ * @response
+ * @success {200} Redirects back to `/post/:postId` with flash message on successful deletion
+ * @failure {403} Redirects to `/admin` if the user is unauthorized
+ * @failure {404} Redirects to `/404` if comment does not exist
+ * @failure {500} Redirects back to the post page with flash message if deletion fails due to server error
+ * 
+ * @security
+ * @access Restricted to users with ADMIN or MODERATOR privileges
+ * @rateLimited Prevents abuse via repeated deletion requests
+ * @csrfToken Must be submitted via site forms
+ * 
+ * @logging
+ * @logs all deletion attempts including:
+ *       - Comment ID
+ *       - User performing the action
+ *       - Status (success/failure)
+ *       - Errors with full details in development environment
+ * 
+ * @access Private (Admin or Moderator only)
  */
 router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
     const { commentId } = req.params;
@@ -505,6 +964,29 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
 
 });
 
+/**
+ * @route GET /advanced-search
+ * @description Renders the Advanced Search page for the blogging site.
+ *              Provides an interface for performing keyword, title, author, and tag-based searches
+ *              with advanced filtering options. Injects site configuration and CSRF token for secure form submission.
+ * 
+ * @middleware
+ * @chain genericGetRequestRateLimiter - Prevents excessive requests to the search page
+ * 
+ * @response
+ * @success {200} Renders `advanced-search` EJS view with:
+ *           @property {Object} locals - Page metadata including:
+ *                   @subprop {string} title - Page title ("Advanced Search - [Site Name]")
+ *                   @subprop {string} description - Page description
+ *                   @subprop {Object} config - Site-wide configuration
+ *           @property {string} csrfToken - CSRF protection token for secure form submission
+ * 
+ * @security
+ * @csrf Protected form
+ * @rateLimited Against excessive requests
+ * 
+ * @access Public
+ */
 router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
     const locals = {
         title: "Advanced Search" + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
@@ -519,16 +1001,46 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
 
 /**
  * @route GET /users/:username
- * @description Displays the public profile page of a user. The username is sanitized before querying the database.
- *              Renders the profile page with selected user details and site configuration.
+ * @description Displays the public profile page of a specific user. 
+ *              The username from the URL parameter is sanitized and validated before querying the database.
+ *              Renders the profile page with selected user details, including sanitized name, portfolio link, 
+ *              and HTML-formatted description. Site configuration and CSRF token are injected for secure page rendering.
  * 
- * @middleware genericGetRequestRateLimiter - Limits excessive requests to this route.
+ * @middleware
+ * @chain genericGetRequestRateLimiter - Prevents excessive requests to the user profile page.
  * 
  * @request
  * @params {string} username - The username of the user whose profile is to be displayed.
  * 
- * @returns {200} Renders the user profile page with sanitized user details.
- * @returns {302} Redirects to home with a flash message if an error occurs or user is not found.
+ * @validation
+ * @check Username is sanitized using a strict filter to prevent XSS.
+ * @validate Username matches the allowed regex pattern defined in CONSTANTS.USERNAME_REGEX.
+ * @sanitize User's name and description fields before rendering.
+ * @sanitize Validates the portfolio link to ensure proper URL format.
+ * 
+ * @response
+ * @success {200} Renders `users` EJS view with:
+ *           @property {Object} locals - Page metadata including:
+ *                   @subprop {string} title - Page title ("About [Username]")
+ *                   @subprop {string} description - Description of the page
+ *                   @subprop {Object} config - Site-wide configuration
+ *           @property {Object} sanitizedUserDetails - User-specific information:
+ *                   @subprop {string} name - Sanitized display name
+ *                   @subprop {string} markdownDescriptionBody - HTML description of user
+ *                   @subprop {string} socialLink - Validated portfolio link
+ *                   @subprop {Date} lastUpdated - Last profile update timestamp
+ *           @property {string} csrfToken - CSRF protection token for secure form submission
+ * 
+ * @failure {302} Redirects to home page with flash message when:
+ *           @case Username is invalid or fails regex validation
+ *           @case User does not exist in the database
+ *           @case Any internal server error occurs
+ * 
+ * @security
+ * @csrf Protected form (CSRF token injected)
+ * @rateLimited Against excessive profile page requests
+ * 
+ * @access Public
  */
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
     try{
