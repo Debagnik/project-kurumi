@@ -11,7 +11,7 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { PRIVILEGE_LEVELS_ENUM, isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
+const { isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
 
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
@@ -373,7 +373,7 @@ router.post('/admin', authRateLimiter, async (req, res) => {
 /**
  * @route GET /dashboard
  * @description Renders the admin dashboard with privilege-based content filtering.
- *              - Writers see only their own posts
+ *              - Editors see only their own posts
  *              - Moderators/Webmasters see all posts
  *              - Invalid privilege levels get redirected
  * 
@@ -398,7 +398,7 @@ router.post('/admin', authRateLimiter, async (req, res) => {
  * @case /admin - On server errors (with generic error)
  * 
  * @privilegeHandling
- * @enum WRITER - Can view only own posts (sorted newest first)
+ * @enum EDITOR - Can view only own posts (sorted newest first)
  * @enum MODERATOR - Can view all posts
  * @enum WEBMASTER - Can view all posts
  * 
@@ -432,13 +432,13 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
     }
     let data;
     switch (currentUser.privilege) {
-      case PRIVILEGE_LEVELS_ENUM.WRITER:
+      case CONSTANTS.PRIVILEGE_LEVELS_ENUM.EDITOR:
         data = await post.find({ author: currentUser.username }).sort({ createdAt: -1 });
         break;
-      case PRIVILEGE_LEVELS_ENUM.MODERATOR:
+      case CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR:
         data = await post.find().sort({ createdAt: -1 });
         break;
-      case PRIVILEGE_LEVELS_ENUM.WEBMASTER:
+      case CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER:
         data = await post.find().sort({ createdAt: -1 });
         break;
       default:
@@ -826,7 +826,7 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
  * 
  * @privilegeHandling
  * @level MODERATOR/WEBMASTER - Can modify approval status via isApproved
- * @level WRITER - Can only update standard fields
+ * @level EDITOR - Can only update standard fields
  * 
  * @response
  * @success {302} Redirects to dashboard with success flash
@@ -909,7 +909,7 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
       lastUpdateAuthor: currentUser.username
     }
 
-    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       updatePostData.isApproved = req.body.isApproved === 'on'
     }
 
@@ -1045,7 +1045,7 @@ router.post('/logout', (req, res) => {
  * @chain genericGetRequestRateLimiter - Prevents brute force attacks
  * 
  * @privilegeCheck
- * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * @requires CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
  * 
  * @response
  * @success {200} Renders webmaster view with:
@@ -1097,7 +1097,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
     }
 
     // Check if the user has the necessary privileges
-    if (currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       req.flash('error', `you don't have sufficient permission/privilage to view this page`);
       return res.redirect('/dashboard');
     }
@@ -1152,7 +1152,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
  * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
  * 
  * @privilegeCheck
- * @strict PRIVILEGE_LEVELS_ENUM.WEBMASTER - Exclusive webmaster access
+ * @strict CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER - Exclusive webmaster access
  * 
  * @validation
  * @email Validates admin email format with regex
@@ -1214,7 +1214,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       throw new Error('User not found');
     }
 
-    if (currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       // Update site settings in the database
       let globalSiteConfig = await siteConfig.findOne();
 
@@ -1317,7 +1317,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
  * @prevent Self-deletion with special handling
  * 
  * @security
- * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * @requires CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
  * @rateLimited Against excessive delete requests
  * @blocks SelfDeletion - Prevents account suicide with:
  *        - Error message
@@ -1358,7 +1358,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
 router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
-    if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
     }
@@ -1510,7 +1510,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
  * @validate Proper privilege level enum value
  * 
  * @security
- * @requires PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
+ * @requires CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER - Strict webmaster-only access
  * @rateLimited Against excessive updates
  * @sanitizes HTML input
  * @tracks Modification timestamp
@@ -1549,7 +1549,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
-    if (!currentUser || currentUser.privilege !== PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.warn('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
     }
@@ -1593,7 +1593,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     }
 
     const privilageLevel = (typeof req.body.privilege !== 'undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
-    if (!Object.values(PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
+    if (!Object.values(CONSTANTS.PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
       console.warn('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
     }

@@ -405,7 +405,7 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
         }
 
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
-        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === utils.PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
             res.render('posts', {
                 locals,
@@ -911,7 +911,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
  * @failure {500} Redirects back to the post page with flash message if deletion fails due to server error
  * 
  * @security
- * @access Restricted to users with ADMIN or MODERATOR privileges
+ * @access Restricted to users with WEBMASTER or MODERATOR privileges
  * @rateLimited Prevents abuse via repeated deletion requests
  * @csrfToken Must be submitted via site forms
  * 
@@ -935,7 +935,7 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
         }
         // check if user is authorized to delete the comment
         const currentUser = await getUserFromCookieToken(req);
-        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.ADMIN || currentUser.privilegeLevel === PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (!isCurrentUserAModOrAdmin) {
             console.error({ "status": "403", "message": "Unauthorized to delete comment" });
             return res.status(403).redirect('/admin');

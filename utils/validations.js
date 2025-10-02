@@ -7,20 +7,6 @@
 const sanitizeHtml = require('sanitize-html');
 const {CONSTANTS} = require('./constants')
 
-/**
- * Enum for privilege levels used to determine user roles.
- * @readonly
- * @enum {number}
- * @property {number} WEBMASTER - Full administrative privileges (level 1)
- * @property {number} MODERATOR - Moderation privileges (level 2)
- * @property {number} WRITER - Can write and submit content (level 3)
- */
-const PRIVILEGE_LEVELS_ENUM = {
-  WEBMASTER : 1,
-  MODERATOR : 2,
-  WRITER: 3
-}
-exports.PRIVILEGE_LEVELS_ENUM = PRIVILEGE_LEVELS_ENUM;
 
 /**
  * Validates a given URI string to ensure it's well-formed and safe.
@@ -69,7 +55,7 @@ exports.isWebMaster = (currentUser) => {
   if (!currentUser) {
     return false;
   }
-  return typeof currentUser.privilege === 'number' && currentUser.privilege === PRIVILEGE_LEVELS_ENUM.WEBMASTER;
+  return typeof currentUser.privilege === 'number' && currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER;
 };
 
 /**
