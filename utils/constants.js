@@ -16,7 +16,20 @@ const CONSTANTS = Object.freeze({
   CLAMP_COMMENT_MIN: 1,
   CLAMP_COMMENT_MAX: 50,
   EMAIL_REGEX: /^[a-zA-Z0-9][a-zA-Z0-9._%+-]*[a-zA-Z0-9]@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/,
-  TAGS_REGEX: /[^a-zA-Z0-9-_]/g
+  TAGS_REGEX: /[^a-zA-Z0-9-_]/g,
+  /**
+  * Enum for privilege levels used to determine user roles.
+  * @readonly
+  * @enum {number}
+  * @property {number} WEBMASTER - Full administrative privileges (level 1)
+  * @property {number} MODERATOR - Moderation privileges (level 2)
+  * @property {number} EDITOR - Can write and submit content (level 3)
+  */
+  PRIVILEGE_LEVELS_ENUM: {
+      WEBMASTER : 1,
+      MODERATOR : 2,
+      EDITOR: 3
+    }
 });
 
 module.exports = { CONSTANTS };
