@@ -70,6 +70,7 @@ const fetchSiteConfig = async (req, res, next) => {
 }
 
 //Use Middleware.
+router.use(genericGetRequestRateLimiter);
 router.use(fetchSiteConfig);
 
 /**
