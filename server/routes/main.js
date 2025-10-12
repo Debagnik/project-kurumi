@@ -1048,7 +1048,7 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
   try {
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
     const cacheStatus = typeof configCache !== 'undefined'
-      ? (configCache.keys().length >= 0 ? 'available' : 'unavailable')
+      ? (configCache.keys().length > 0 ? 'available' : 'unavailable')
       : 'not_configured';
 
     // Memory usage summary (in MB)
