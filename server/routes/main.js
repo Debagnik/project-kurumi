@@ -360,7 +360,7 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
             res.set('Deprecation', 'true');
-            res.set('Link', '/post/:uniqueId; rel="successor-version"');
+            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
             res.render('posts', {
                 locals,
                 data,
@@ -371,16 +371,122 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
             });
         } else {
             res.set('Deprecation', 'true');
-            res.set('Link', '/post/:uniqueId; rel="successor-version"');
+            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
             res.redirect('/404');
         }
 
     } catch (error) {
         console.error('Post Fetch error', error);
         res.set('Deprecation', 'true');
-        res.set('Link', '/post/:uniqueId; rel="successor-version"');
+        res.set('Link', '/posts/:uniqueId; rel="successor-version"');
         res.status(404).redirect('/404');
     }
+});
+
+/**
+ * @route GET /posts/:uniqueId
+ * @description Fetches and renders a single blog post by its `uniqueId`.  
+ *              Enriches the post with author details, site config, captcha settings, 
+ *              and associated comments before rendering. This route is the recommended 
+ *              successor to the deprecated `/post/:id`.
+ * 
+ * @middleware
+ * @chain genericOpenRateLimiter - Protects route from abuse via rate limiting
+ * 
+ * @params
+ * @param {string} uniqueId - Unique identifier of the post to retrieve
+ * 
+ * @process
+ * @step Extracts `uniqueId` from `req.params.uniqueId` and sanitizes it
+ * @step Fetches post data by `uniqueId` from the database
+ * @step Retrieves author details; defaults to "Anonymous" if missing
+ * @step Constructs locals for title, description, keywords, and site config
+ * @step Checks if captcha is enabled in `siteConfig`
+ * @step Determines if the current user is Admin/Moderator
+ * @step Fetches comments for the given post ID
+ * 
+ * @conditions
+ * @check Post existence - throws error if not found
+ * @check Post visibility - allowed if `data.isApproved` or current user is logged in
+ * @check Redirects - non-approved post without logged-in user redirects to `/404`
+ * 
+ * @visibilityRules
+ * @rule Approved posts → Publicly visible
+ * @rule Unapproved posts → Only visible if:
+ *       - Current user is logged in
+ *       - OR Current user has elevated privileges (Admin/Moderator)
+ * 
+ * @response
+ * @success {200} Renders the `posts` EJS template with:
+ *   - locals (title, description, keywords, config)
+ *   - data (post content + authorName)
+ *   - csrfToken for secure interactions
+ *   - isCaptchaEnabled flag
+ *   - commentsData (fetched from `getCommentsFromPostId`)
+ *   - currentUser (boolean for moderator/admin)
+ * @failure {404} Redirects to `/404` on:
+ *   - Missing post
+ *   - Fetch errors
+ *   - Unauthorized access to unapproved posts
+ * 
+ * @security
+ * @csrfToken Injected into template for form security
+ * @rateLimited Prevents abuse via `genericOpenRateLimiter`
+ * 
+ * @logging
+ * @errorLogs Logs post fetch errors and unauthorized access attempts
+ * 
+ * @access Public (restricted for unapproved posts)
+ */
+router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
+    try {
+        if(process.env.NODE_ENV !== 'production'){
+            console.log(`Fetching post by uniqueId: ${req.params.uniqueId}`);
+        }
+        const currentUser = await getUserFromCookieToken(req);
+        let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+        const data = await post.findOne({ uniqueId: cleanedUniqueId });
+        if (!data) {
+            throw new Error('404 - No such post found');
+        }
+        
+        const locals = {
+            title: data.title,
+            description: data.desc,
+            keywords: data.tags,
+            config: res.locals.siteConfig
+        };
+
+        const postAuthor = await user.findOne({ username: data.author });
+        if(!postAuthor || !postAuthor.name){
+            data.authorName = 'Anonymous';
+        } else {
+            data.authorName = postAuthor.name;
+        }
+
+        const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
+        
+        if(currentUser || data.isApproved){
+            return res.render('posts', {
+                locals,
+                data,
+                csrfToken: req.csrfToken(),
+                isCaptchaEnabled,
+                commentsData: await getCommentsFromPostId(data._id),
+                currentUser: isCurrentUserAModOrAdmin
+            });
+        } else {
+            if(process.env.NODE_ENV !== 'production'){
+                console.warn(`unlogged user tried fetching unapproved post`);
+            }
+            return res.status(404).redirect('/404');
+        } 
+    }catch(error) {
+        console.error('Post Fetch error', error);
+        return res.status(404).redirect('/404');
+    }
+        
 });
 
 /**
