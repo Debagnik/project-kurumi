@@ -335,7 +335,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  */
 router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
-        console.warn('[DEPRICATED] The route /post/:id is deprecated since version 3.0.0. Please use /post/:uniqueId instead. Sunset date: TBD');
+        console.warn('[DEPRECATED] The route /post/:id is deprecated since version 3.0.0. Please use /post/:uniqueId instead. Sunset date: TBD');
         const currentUser = await getUserFromCookieToken(req);
 
         let slug = req.params.id;
