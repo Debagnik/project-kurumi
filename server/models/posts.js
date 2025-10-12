@@ -45,6 +45,11 @@ const postSchema = new schema({
         type: Boolean,
         default: false,
         required: true
+    },
+    uniqueId: {
+        type: String,
+        required: true,
+        unique: true
     }
 
 });
@@ -54,6 +59,7 @@ postSchema.index({
     body: 'text',
     tags: 'text',
     author: 'text',
+    uniqueId: 'text',
 }, {
     name: 'TextSearchIndex'
 });
