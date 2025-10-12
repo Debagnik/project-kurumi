@@ -35,7 +35,14 @@ const fetchSiteConfigCached = async (req, res, next) => {
       config = await siteConfig.findOne();
       if (!config) {
         console.warn('Site config is not available in database, creating a default one.');
-        defaultConfig = {
+        const defaultConfig = {
+          isRegistrationEnabled: true,
+          lastModifiedBy: 'System',
+          lastModifiedDate: Date.now(),
+          isCommentsEnabled: false,
+          isCaptchaEnabled: false,
+          isAISummerizerEnabled: false
+        };
           isRegistrationEnabled: true,
           lastModifiedBy: 'System',
           lastModifiedDate: Date.now(),
