@@ -13,6 +13,7 @@ const siteConfig = require('../models/config');
 
 const { isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
 
+const { fetchSiteConfigCached, invalidateCache } = require('../../utils/fetchSiteConfigurations.js');
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const {CONSTANTS} = require('../../utils/constants');
@@ -59,31 +60,8 @@ const authToken = (req, res, next) => {
   }
 }
 
-/**
- * Middleware to fetch the site configuration from the database and 
- * attach it to `res.locals` for use in views.
- * Logs a warning if the config is not found and ensures `res.locals.siteConfig` is always defined.
- *
- * @param {import('express').Request} req - The Express request object.
- * @param {import('express').Response} res - The Express response object.
- * @param {import('express').NextFunction} next - The next middleware function.
- */
-const fetchSiteConfig = async (req, res, next) => {
-  try {
-    const config = await siteConfig.findOne();
-    if (!config) {
-      console.warn('Site config is not available');
-    }
-    res.locals.siteConfig = config || {};
-  } catch (error) {
-    console.error("Site Config Fetch error", error.message);
-    res.locals.siteConfig = {};
-  }
-  next();
-};
 
-
-router.use(genericAdminRateLimiter, fetchSiteConfig);
+router.use(fetchSiteConfigCached);
 
 /**
  * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.
@@ -131,6 +109,8 @@ function markdownToHtml(markdownString) {
  * @query {string} locals.description - Page description ("Admin Panel")
  * @query {Object} locals.config - Site configuration from res.locals
  * 
+ * @middleware genericAdminRateLimiter - Applies rate limiting to prevent abuse
+ * 
  * @response
  * @renders admin/index - Admin panel view with:
  * @property {Object} locals - Page metadata and config
@@ -143,7 +123,7 @@ function markdownToHtml(markdownString) {
  * @access Private (implied by admin route)
  * @csrf Generates and requires CSRF token
  */
-router.get('/admin', async (req, res) => {
+router.get('/admin', genericAdminRateLimiter, async (req, res) => {
   try {
     const locals = {
       title: "Admin Panel",
@@ -1108,16 +1088,6 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       config: res.locals.siteConfig
     }
 
-    let config = await siteConfig.findOne();
-    if (!config) {
-      config = new siteConfig({
-        isRegistrationEnabled: true,
-        siteName: 'Blog-Site',
-        lastModifiedBy: 'System',
-      });
-      await config.save();
-    }
-
     const users = await user.find({ _id: { $ne: currentUser._id } }).sort({ privilege: -1 });
 
     res.render('admin/webmaster', {
@@ -1126,7 +1096,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       currentUser,
       csrfToken: req.csrfToken(),
       isWebMaster: isWebMaster(currentUser),
-      config: config,
+      config: res.locals.siteConfig,
       users,
       isUserLoggedIn: Boolean(req.userId)
     });
@@ -1280,8 +1250,10 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       if (!globalSiteConfig) {
         globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled));
         await globalSiteConfig.save();
+        invalidateCache();
       } else {
         await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled), { new: true });
+        invalidateCache();
       }
       console.log(`Site settings updated successfully by user: ${currentUser.username}`);
       req.flash('success', `Site settings are sucessfully updated`);

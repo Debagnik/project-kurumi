@@ -1,0 +1,87 @@
+meta {
+  name: status|healtz
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{url}}/healtz
+  body: none
+  auth: inherit
+}
+
+docs {
+  ### GET /healtz
+  
+  **Description:**  
+  * Performs a system-wide health check and reports the current operational status of the API server.  
+  * This includes checks for the **database connection**, **cache system**, and **runtime environment diagnostics** such as uptime, Node.js version, and memory usage.  
+  * The endpoint is **public** and intended for use by **uptime monitors**, **reverse proxies**, and **load balancers**.
+  
+  ---
+  
+  **Middleware Used:**  
+  * `genericGetRequestRateLimiter` — Prevents excessive polling or abuse of the endpoint.
+  
+  ---
+  
+  **Route Params:**  
+  * None  
+  
+  ---
+  
+  **Query Parameters:**  
+  * None  
+  
+  ---
+  
+  **Request Body Parameters:**  
+  * None  
+  
+  ---
+  
+  **Flow:**  
+  1. Checks MongoDB connection via `mongoose.connection.readyState`.  
+  2. Verifies cache system availability (if configured).  
+  3. Gathers system diagnostics: uptime, Node.js version, and memory stats.  
+  4. Returns a summary JSON object with `status: ok` if all checks pass.  
+  5. If any dependency (e.g., database) is unavailable, responds with `status: error`.
+  
+  ---
+  
+  **Success Response:**  
+  * **HTTP Status:** `200 OK`  
+  * **Content-Type:** `application/json`  
+  * **Response Body Example:**
+    ```json
+    {
+      "status": "ok",
+      "timestamp": "2025-10-12T14:58:34.931Z",
+      "uptimeSeconds": 12452.38,
+      "environment": "production",
+      "nodeVersion": "v20.11.1",
+      "database": "connected",
+      "cache": "available",
+      "memory": {
+        "rss": "92.45",
+        "heapUsed": "47.12",
+        "heapTotal": "64.00"
+      }
+    }
+    ```
+  **Failure Responses:**  
+  * **HTTP 500 – Internal Server Error**
+    Occurs when the database connection fails or a critical dependency is not operational.
+    ```json
+    {
+      "status": "error",
+      "message": "Health check failed",
+      "error": "Database connection not established",
+      "timestamp": "2025-10-12T14:58:34.931Z"
+    }
+    ```
+  **View Rendered:**
+  None (Json only)
+  
+  
+}
