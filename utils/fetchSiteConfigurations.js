@@ -30,10 +30,18 @@ const configCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const fetchSiteConfigCached = async (req, res, next) => {
   try {
     let config = configCache.get('siteConfig');
+
+    // Bypass for health check endpoint
+    if(req.path === '/healtz'){
+      if(process.env.NODE_ENV !== 'production'){
+        console.log('Health check endpoint accessed, bypassing site config fetch.');
+      }
+      return next();
+    }
     
     if (!config) {
-      config = await siteConfig.findOne();
-      if (!config) {
+      const found = await siteConfig.findOne().lean();
+      if (!found) {
         console.warn('Site config is not available in database, creating a default one.');
         const defaultConfig = {
           isRegistrationEnabled: true,
@@ -50,12 +58,19 @@ const fetchSiteConfigCached = async (req, res, next) => {
           console.error("Error creating default site config:", err.message);
           throw new Error(`Failed to create default site configuration: ${err.message}`);
         }
+      } else {
+        config = found;
+        if(process.env.NODE_ENV !== 'production'){
+          console.log('Site config fetched from database.');
+        }
+        configCache.set('siteConfig', config);
       }
     } else {
-      console.log('Site config retrieved from cache.');
+      if(process.env.NODE_ENV !== 'production'){
+        console.log('Site config fetched from cache.');
+      }
     }
     
-    configCache.set('siteConfig', config);
     res.locals.siteConfig = config;
     next();
   } catch (error) {
@@ -83,4 +98,16 @@ const fetchSiteConfigCached = async (req, res, next) => {
  */
 const invalidateCache = () => configCache.del('siteConfig');
 
-module.exports = { fetchSiteConfigCached, invalidateCache };
+/**
+ * @function getCacheStatus
+ * @description Checks the in-memory site configuration cache (`configCache`) and returns
+ *              whether the cached configuration is available or not.
+ * 
+ * @returns {string} Returns `'available'` if the `siteConfig` key exists in the cache,
+ *                   otherwise returns `'unavailable'`.
+ */
+const getCacheStatus = () => {
+  return configCache.has('siteConfig') ? 'available' : 'unavailable';
+}
+
+module.exports = { fetchSiteConfigCached, invalidateCache, getCacheStatus };

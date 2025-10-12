@@ -9,7 +9,7 @@ const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileS
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
 const utils = require('../../utils/validations.js');
-const { fetchSiteConfigCached } = require('../../utils/fetchSiteConfigurations.js');
+const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSiteConfigurations.js');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
 
@@ -1056,10 +1056,7 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       });
     }
 
-    const cacheStatus =
-      res.locals.siteConfig && Object.keys(res.locals.siteConfig).length > 0
-        ? 'available'
-        : 'unavailable';
+    const cacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
 
     const memoryUsage = process.memoryUsage();
     const memory = {
@@ -1068,14 +1065,17 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
     };
 
+    const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
+    const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
+
     res.status(200).json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptimeSeconds: process.uptime(),
-      environment: process.env.NODE_ENV,
-      nodeVersion: process.version,
+      environment: environment,
+      nodeVersion: nodeVersion,
       database: dbStatus,
-      cache: cacheStatus,
+      siteConfigCache: cacheStatus,
       memory,
     });
   } catch (error) {
