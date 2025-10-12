@@ -12,7 +12,7 @@ const configSchema = new schema({
         required: true,
         default: 'Project Walnut',
         minlength: [3, 'Site name must be at least 3 characters!'],
-        maxlength: [10, 'Site name is too long!'],
+        maxlength: [50, 'Site name is too long!'],
         trim: true
     },
     siteMetaDataKeywords:{
@@ -71,7 +71,8 @@ const configSchema = new schema({
         maxlength: 20
     },
     homepageWelcomeImage:{
-        type: String
+        type: String,
+        default: 'https://via.placeholder.com/1440x720',
     },
     copyrightText:{
         type: String,

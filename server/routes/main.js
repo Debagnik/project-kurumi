@@ -2,7 +2,6 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const post = require('../models/posts');
-const siteConfig = require('../models/config');
 const user = require('../models/user');
 const comment = require('../models/comments');
 const csrf = require('csurf');
@@ -10,67 +9,15 @@ const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileS
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
 const utils = require('../../utils/validations.js');
-
+const { fetchSiteConfigCached } = require('../../utils/fetchSiteConfigurations.js');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
-/**
- * @middleware fetchSiteConfig
- * @description Retrieves the global site configuration from the database and attaches it to
- *              `res.locals.siteConfig` for use in downstream route handlers and views.
- *              Ensures that templates always have access to config values, even if empty.
- * 
- * @operation
- * @fetch Queries `siteConfig` collection for the latest configuration
- * @inject Attaches configuration object to `res.locals.siteConfig`
- * 
- * @response
- * @success {next()} Proceeds to the next middleware/route handler with:
- * @property {Object} res.locals.siteConfig - The site-wide configuration object
- *           @case Empty object `{}` if no config found
- * 
- * @failure {500} Renders `error` view when database access fails
- * @property {string} title - "Configuration Error"
- * @property {string} description - "Unable to load site configuration"
- * 
- * @logging
- * @warn Logs warning if no config is present in DB
- * @error Logs critical errors if DB query fails
- * 
- * @errorHandling
- * @dbFailure Gracefully handles database fetch issues
- * @userFeedback Provides descriptive error page to users on fatal config errors
- * 
- * @security
- * @note Does not expose sensitive config fields unless intentionally stored in DB
- * 
- * @access Public (middleware runs for all users)
- */
-const fetchSiteConfig = async (req, res, next) => {
-    try {
-        const config = await siteConfig.findOne();
-        if (!config) {
-            console.warn('Site config is not available in database');
-            res.locals.siteConfig = {};
-        } else {
-            res.locals.siteConfig = config;
-        }
-        next();
-    } catch (error) {
-        console.error("Critical: Site Config Fetch error", error.message);
-        return res.status(500).render('error', {
-            locals: {
-                title: 'Configuration Error',
-                description: 'Unable to load site configuration'
-            }
-        });
-    }
-}
 
 //Use Middleware.
-router.use(fetchSiteConfig);
+router.use(fetchSiteConfigCached);
 
 /**
  * @config JWT Secret Validation
@@ -261,6 +208,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
  * @param {string} title - "About Us Section - <siteName>" (defaults to "Project Walnut" if missing)
  * @param {string} description - Static description: "A blogging site created with Node, express and MongoDB"
  * @param {Object} config - Site-wide configuration from `res.locals.siteConfig`
+ * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
  * 
  * @response
  * @success {200} Renders the `about` EJS template with:
@@ -269,6 +217,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
  * 
  * @security
  * @csrfToken Included in rendered template to protect any interactive form on the page
+ * @rateLimited Prevents excessive requests to the about page
  * 
  * @access Public (no authentication required)
  * 
@@ -279,7 +228,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
  * Provides visitors with an informational "About Us" section, highlighting
  * the purpose of the site and its underlying stack.
  */
-router.get('/about', (req, res) => {
+router.get('/about', genericOpenRateLimiter, (req, res) => {
     const locals = {
         title: 'About Us Section' + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
         description: "A blogging site created with Node, express and MongoDB",
@@ -300,6 +249,7 @@ router.get('/about', (req, res) => {
  * @param {string} title - "Contacts us - <siteName>" (defaults to "Project Walnut" if missing)
  * @param {string} description - Static description: "A blogging site created with Node, express and MongoDB"
  * @param {Object} config - Site-wide configuration from `res.locals.siteConfig`
+ * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
  * 
  * @response
  * @success {200} Renders the `contact` EJS template with:
@@ -308,6 +258,7 @@ router.get('/about', (req, res) => {
  * 
  * @security
  * @csrfToken Included in rendered template to protect any form on the page
+ * @rateLimited Prevents excessive requests to the contact page
  * 
  * @access Public (no authentication required)
  * 
@@ -317,7 +268,7 @@ router.get('/about', (req, res) => {
  * @useCase
  * Provides a contact form/page to allow visitors to reach out to the site owners/admins.
  */
-router.get('/contact', (req, res) => {
+router.get('/contact', genericOpenRateLimiter, (req, res) => {
     const locals = {
         title: "Contacts us" + ' - ' + (res.locals.siteConfig.siteName || 'Project Walnut'),
         description: "A blogging site created with Node, express and MongoDB",
