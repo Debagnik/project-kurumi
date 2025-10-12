@@ -285,7 +285,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  * @description Fetches and renders a single blog post by its MongoDB `_id`. 
  *              Enriches the post with author details, site config, captcha settings, 
  *              and associated comments before rendering.
- * 
+ * @deprecated Since 3.0.0 - Use `/post/:uniqueId` instead
  * @middleware
  * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
  * 
@@ -335,6 +335,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  */
 router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
+        console.warn('[DEPRECATED] The route /post/:id is deprecated since version 3.0.0. Please use /post/:uniqueId instead. Sunset date: TBD');
         const currentUser = await getUserFromCookieToken(req);
 
         let slug = req.params.id;
@@ -358,6 +359,8 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
+            res.set('Deprecation', 'true');
+            res.set('Link', '/post/:uniqueId; rel="successor-version"');
             res.render('posts', {
                 locals,
                 data,
@@ -367,11 +370,15 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
                 currentUser: isCurrentUserAModOrAdmin
             });
         } else {
+            res.set('Deprecation', 'true');
+            res.set('Link', '/post/:uniqueId; rel="successor-version"');
             res.redirect('/404');
         }
 
     } catch (error) {
         console.error('Post Fetch error', error);
+        res.set('Deprecation', 'true');
+        res.set('Link', '/post/:uniqueId; rel="successor-version"');
         res.status(404).redirect('/404');
     }
 });
