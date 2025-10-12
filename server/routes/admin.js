@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const post = require('../models/posts');
 const user = require('../models/user');
+const siteConfig = require('../models/config');
 
 const { isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
 

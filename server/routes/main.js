@@ -1031,5 +1031,62 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
     }
 });
 
+/**
+ * @route GET /healtz
+ * @description Health check endpoint that reports the operational status of the server, database,
+ *              and cache system. It also includes diagnostic information such as uptime, memory usage,
+ *              Node.js version, and environment mode. This route is public and safe to expose to
+ *              uptime monitoring systems or load balancers.
+ * 
+ * @access public
+ * 
+ * @returns {200} JSON response confirming service health, uptime, environment info, and resource usage.
+ * @returns {500} JSON response if any critical dependency (e.g., database) is not functional.
+ */
+
+router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
+  try {
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    const cacheStatus = typeof configCache !== 'undefined'
+      ? (configCache.keys().length >= 0 ? 'available' : 'unavailable')
+      : 'not_configured';
+
+    // Memory usage summary (in MB)
+    const memoryUsage = process.memoryUsage();
+    const memory = {
+      rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
+      heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2),
+      heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
+    };
+
+    const healthInfo = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: process.uptime(),
+      environment: process.env.NODE_ENV,
+      nodeVersion: process.version,
+      database: dbStatus,
+      cache: cacheStatus,
+      memory,
+    };
+
+    if (dbStatus !== 'connected') {
+      throw new Error('Database connection not established');
+    }
+
+    res.status(200).json(healthInfo);
+
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+
 
 module.exports = router;

@@ -35,7 +35,7 @@ const fetchSiteConfigCached = async (req, res, next) => {
       config = await siteConfig.findOne();
       if (!config) {
         console.warn('Site config is not available in database, creating a default one.');
-        config = {
+        defaultConfig = {
           isRegistrationEnabled: true,
           lastModifiedBy: 'System',
           lastModifiedDate: Date.now(),
@@ -44,12 +44,18 @@ const fetchSiteConfigCached = async (req, res, next) => {
           isAISummarizerEnabled: false
         };
         try{
-          await new siteConfig(config).save();
+          const createConfigObject = await new siteConfig(defaultConfig).save();
+          config = createConfigObject.toObject();
         } catch(err){
           console.error("Error creating default site config:", err.message);
+          throw new Error('Failed to create default site configuration', err);
         }
       }
-      configCache.set('siteConfig', config);
+      if (config && config.toObject) {
+        configCache.set('siteConfig', config);
+      } else {
+        configCache.set('siteConfig', config);
+      }
     }
     
     res.locals.siteConfig = config;
