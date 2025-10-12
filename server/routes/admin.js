@@ -61,7 +61,7 @@ const authToken = (req, res, next) => {
 }
 
 
-router.use(genericAdminRateLimiter, fetchSiteConfigCached);
+router.use(fetchSiteConfigCached);
 
 /**
  * Converts a Markdown string to sanitized HTML, adjusting heading levels to avoid large headers.

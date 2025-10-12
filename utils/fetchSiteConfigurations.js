@@ -42,14 +42,7 @@ const fetchSiteConfigCached = async (req, res, next) => {
           isCommentsEnabled: false,
           isCaptchaEnabled: false,
           isAISummerizerEnabled: false
-        };
-          isRegistrationEnabled: true,
-          lastModifiedBy: 'System',
-          lastModifiedDate: Date.now(),
-          isCommentsEnabled: false,
-          isCaptchaEnabled: false,
-          isAISummarizerEnabled: false
-        };
+        }
         try{
           const createConfigObject = await new siteConfig(defaultConfig).save();
           config = createConfigObject.toObject();
@@ -58,13 +51,11 @@ const fetchSiteConfigCached = async (req, res, next) => {
           throw new Error(`Failed to create default site configuration: ${err.message}`);
         }
       }
-      if (config && config.toObject) {
-        configCache.set('siteConfig', config);
-      } else {
-        configCache.set('siteConfig', config);
-      }
+    } else {
+      console.log('Site config retrieved from cache.');
     }
     
+    configCache.set('siteConfig', config);
     res.locals.siteConfig = config;
     next();
   } catch (error) {

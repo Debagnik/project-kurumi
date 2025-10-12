@@ -1034,24 +1034,33 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
 /**
  * @route GET /healtz
  * @description Health check endpoint that reports the operational status of the server, database,
- *              and cache system. It also includes diagnostic information such as uptime, memory usage,
- *              Node.js version, and environment mode. This route is public and safe to expose to
- *              uptime monitoring systems or load balancers.
+ *              and configuration cache system. It includes diagnostic data such as uptime,
+ *              memory usage, Node.js version, and environment mode.
+ *              This route is public and intended for uptime monitoring systems or load balancers.
  * 
  * @access public
  * 
  * @returns {200} JSON response confirming service health, uptime, environment info, and resource usage.
- * @returns {500} JSON response if any critical dependency (e.g., database) is not functional.
+ * @returns {503} JSON response if a dependency (e.g., database) is unavailable.
+ * @returns {500} JSON response if an unexpected internal error occurs.
  */
-
 router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
   try {
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    const cacheStatus = typeof configCache !== 'undefined'
-      ? (configCache.keys().length > 0 ? 'available' : 'unavailable')
-      : 'not_configured';
+    if (dbStatus !== 'connected') {
+      return res.status(503).json({
+        status: 'error',
+        message: 'Database connection not established',
+        timestamp: new Date().toISOString(),
+        database: dbStatus,
+      });
+    }
 
-    // Memory usage summary (in MB)
+    const cacheStatus =
+      res.locals.siteConfig && Object.keys(res.locals.siteConfig).length > 0
+        ? 'available'
+        : 'unavailable';
+
     const memoryUsage = process.memoryUsage();
     const memory = {
       rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
@@ -1059,7 +1068,7 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
     };
 
-    const healthInfo = {
+    res.status(200).json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptimeSeconds: process.uptime(),
@@ -1068,25 +1077,16 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       database: dbStatus,
       cache: cacheStatus,
       memory,
-    };
-
-    if (dbStatus !== 'connected') {
-      throw new Error('Database connection not established');
-    }
-
-    res.status(200).json(healthInfo);
-
+    });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(500).json({
       status: 'error',
       message: 'Health check failed',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
-
-
 
 module.exports = router;
