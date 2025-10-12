@@ -54,6 +54,7 @@ const fetchSiteConfigCached = async (req, res, next) => {
         try{
           const createConfigObject = await new siteConfig(defaultConfig).save();
           config = createConfigObject.toObject();
+          configCache.set('siteConfig', config);
         } catch(err){
           console.error("Error creating default site config:", err.message);
           throw new Error(`Failed to create default site configuration: ${err.message}`);
