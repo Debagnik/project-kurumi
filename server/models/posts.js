@@ -4,7 +4,7 @@ const schema = mongoose.Schema;
 const postSchema = new schema({
     title: {
         type: String,
-        require: true
+        required: true
     },
     markdownbody: {
         type: String,
@@ -23,7 +23,7 @@ const postSchema = new schema({
     },
     author: {
         type: String,
-        require: true
+        required: true
     },
     tags: {
         type: [String],
@@ -59,7 +59,6 @@ postSchema.index({
     body: 'text',
     tags: 'text',
     author: 'text',
-    uniqueId: 'text',
 }, {
     name: 'TextSearchIndex'
 });
@@ -70,6 +69,14 @@ postSchema.index({
 }, {
     name: 'ApprovedDateIndex'
 });
+
+postSchema.index({
+    uniqueId: 1
+}, {
+    name: 'UniqueIdIndex',
+    unique: true
+});
+
 
 postSchema.index({
     tags: 1
