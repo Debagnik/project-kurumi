@@ -1,0 +1,106 @@
+meta {
+  name: getPostByUniqueId
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{url}}/posts/:uniqueId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  uniqueId: A_new_post_2947
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Connection: keep-alive
+  DNT: 1
+  If-None-Match: W/"4bca-nloyXuQV2SemDNVitminN3I3P+8"
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+docs {
+  # GET /posts/:uniqueId
+  
+  **Description:**
+  Fetches and renders a specific blog post based on its `uniqueId`. Includes post metadata, author details, comments, and conditionally shows the post based on approval status or user privileges. This route is the recommended successor to the deprecated `/post/:id`.
+  
+  **Middleware:**
+  
+  * `genericOpenRateLimiter` – Protects route from abuse via rate limiting
+  * `fetchSiteConfig` (via `res.locals`) – Attaches site-wide configuration
+  
+  **Parameters:**
+  
+  * `:uniqueId` (Path Param) – Unique identifier of the blog post to retrieve
+  
+  **Access:**
+  
+  * Public if post is approved
+  * Admin/Moderator can view unapproved posts
+  
+  **Behavior / Flow:**
+  
+  1. Sanitizes `uniqueId` from `req.params`
+  2. Fetches post by `uniqueId` from the database
+  3. Checks if the post exists
+  4. Retrieves post author details; defaults to "Anonymous" if missing
+  5. Constructs `locals` with title, description, keywords, and site config
+  6. Determines if CAPTCHA is enabled based on site config
+  7. Determines if current user is Admin/Moderator
+  8. Fetches comments associated with the post
+  9. Renders the post if approved or if user is authorized
+  10. Redirects to `/404` if unauthorized or post not found
+  
+  **Template Rendered:**
+  
+  * `posts.ejs`
+  
+  **Error Handling:**
+  
+  * Logs fetch errors and redirects to `/404` on missing post or unauthorized access
+  
+  **Response:**
+  
+  * **200 OK** – Renders the `posts` template with:
+  
+    * `locals` (title, description, keywords, site config)
+    * `data` (post content + authorName)
+    * `csrfToken` for secure forms
+    * `isCaptchaEnabled` flag
+    * `commentsData` (from `getCommentsFromPostId`)
+    * `currentUser` (boolean if Admin/Mod)
+  * **404 Not Found** – Redirects to `/404` for:
+  
+    * Missing post
+    * Unapproved post accessed by non-logged-in user
+    * Any errors during fetch
+  
+  **Security:**
+  
+  * CSRF token injected into template for form security
+  * Rate limiting via `genericOpenRateLimiter`
+  
+  **Logging:**
+  
+  * Errors in fetching posts and unauthorized access attempts are logged
+  
+  **Access Notes:**
+  
+  * Public for approved posts
+  * Restricted for unapproved posts to logged-in or privileged users
+  
+}
