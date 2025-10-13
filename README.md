@@ -74,6 +74,11 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
       USER_PROMPT_2=characters) do not add character/word count in the response. #Required if AI Integration is enabled from webmaster.
       LLM_MODEL=<The Model name supported by OpenRouter, e.g., "anthropic/claude-3-opus"> #Required if AI Integration is enabled from webmaster.
       LLM_BASE_URL=https://openrouter.ai/api/v1 # Required OpenRouter API base URL (Or use any OpenAI SDK compatible LLM Base url API) Leave as is if AI Integration is disbabled.
+
+      ## Post Caching config
+      POST_CACHE_MAX_SIZE=50 #defaults to 100
+      POST_CACHE_TTL=3600  #defaults to 3600 mins
+      POST_HIT_RESET_INTERVAL_HOURS=24 #defaults to 24 hours.
      ```
 5. **Start the application:**
    ```bash
