@@ -386,58 +386,63 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
 
 /**
  * @route GET /posts/:uniqueId
- * @description Fetches and renders a single blog post by its `uniqueId`.  
- *              Enriches the post with author details, site config, captcha settings, 
- *              and associated comments before rendering. This route is the recommended 
- *              successor to the deprecated `/post/:id`.
- * 
+ * @description Retrieves and renders a single blog post identified by its `uniqueId`.  
+ *              Integrates author information, site configuration, captcha status, and 
+ *              associated comments before rendering the view.  
+ *              This route supersedes the deprecated `/post/:id` endpoint.
+ *
  * @middleware
- * @chain genericOpenRateLimiter - Protects route from abuse via rate limiting
- * 
+ * @chain genericOpenRateLimiter - Applies open rate-limiting to prevent abuse.
+ *
  * @params
- * @param {string} uniqueId - Unique identifier of the post to retrieve
- * 
+ * @param {string} uniqueId - The unique identifier of the post to retrieve.
+ *
  * @process
- * @step Extracts `uniqueId` from `req.params.uniqueId` and sanitizes it
- * @step Fetches post data by `uniqueId` from the database
- * @step Retrieves author details; defaults to "Anonymous" if missing
- * @step Constructs locals for title, description, keywords, and site config
- * @step Checks if captcha is enabled in `siteConfig`
- * @step Determines if the current user is Admin/Moderator
- * @step Fetches comments for the given post ID
- * 
+ * @step 1. Extracts and sanitizes `uniqueId` from the request parameters.
+ * @step 2. Attempts to fetch post data from the in-memory cache (`postCache`).
+ * @step 3. On cache miss, retrieves post data from the database.
+ * @step 4. Resolves the author name; defaults to `"Anonymous"` if unavailable.
+ * @step 5. Stores the fetched and processed post back in the cache for reuse.
+ * @step 6. Builds `locals` for rendering (title, description, keywords, and config).
+ * @step 7. Evaluates captcha enablement and user privileges (Moderator/Admin).
+ * @step 8. Retrieves associated comments via `getCommentsFromPostId`.
+ *
  * @conditions
- * @check Post existence - throws error if not found
- * @check Post visibility - allowed if `data.isApproved` or current user is logged in
- * @check Redirects - non-approved post without logged-in user redirects to `/404`
- * 
+ * @check Post existence — Throws `404` if no matching post is found.
+ * @check Post visibility — Allowed if the post is approved or the user is logged in.
+ * @check Redirects — Unauthorized users requesting unapproved posts are redirected to `/404`.
+ *
  * @visibilityRules
- * @rule Approved posts → Publicly visible
- * @rule Unapproved posts → Only visible if:
- *       - Current user is logged in
- *       - OR Current user has elevated privileges (Admin/Moderator)
- * 
+ * @rule Approved posts → Publicly accessible.
+ * @rule Unapproved posts → Accessible only if:
+ *       - The current user is authenticated, or
+ *       - The current user has elevated privileges (Moderator/Admin).
+ *
  * @response
  * @success {200} Renders the `posts` EJS template with:
- *   - locals (title, description, keywords, config)
- *   - data (post content + authorName)
- *   - csrfToken for secure interactions
- *   - isCaptchaEnabled flag
- *   - commentsData (fetched from `getCommentsFromPostId`)
- *   - currentUser (boolean for moderator/admin)
- * @failure {404} Redirects to `/404` on:
- *   - Missing post
- *   - Fetch errors
- *   - Unauthorized access to unapproved posts
- * 
+ *   - `locals` → Metadata and configuration for rendering.
+ *   - `data` → Post content including `authorName`.
+ *   - `csrfToken` → Secure form token for submission.
+ *   - `isCaptchaEnabled` → Boolean indicating if captcha is active.
+ *   - `commentsData` → List of associated comments.
+ *   - `currentUser` → Boolean flag for Moderator/Admin status.
+ *
+ * @failure {404} Redirects to `/404` when:
+ *   - The post is missing.
+ *   - An error occurs during fetch or rendering.
+ *   - Access to an unapproved post is unauthorized.
+ *
  * @security
- * @csrfToken Injected into template for form security
- * @rateLimited Prevents abuse via `genericOpenRateLimiter`
- * 
+ * @csrfToken Embedded into the rendered page for form validation.
+ * @rateLimited Controlled via `genericOpenRateLimiter` to prevent request abuse.
+ *
  * @logging
- * @errorLogs Logs post fetch errors and unauthorized access attempts
- * 
- * @access Public (restricted for unapproved posts)
+ * @infoLogs Logs cache hits and misses for post lookups.
+ * @warnLogs Logs unauthorized attempts to view unapproved posts.
+ * @errorLogs Logs database fetch errors and rendering issues.
+ *
+ * @access
+ * Public (restricted for unapproved or unauthorized posts).
  */
 router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
     try {
