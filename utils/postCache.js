@@ -7,9 +7,9 @@
 
 const nodeCache = require('node-cache');
 
-const MAX_CACHE_SIZE = parseInt(process.env.POST_CACHE_MAX_SIZE) || 100;
-const POST_TTL_SECONDS = parseInt(process.env.POST_CACHE_TTL) || 3600; // default 1 hour TTL
-const HIT_RESET_INTERVAL_HOURS = parseInt(process.env.HIT_RESET_INTERVAL_HOURS) || 24;
+const MAX_CACHE_SIZE = Math.max(1, parseInt(process.env.POST_CACHE_MAX_SIZE) || 100)
+const POST_TTL_SECONDS = Math.max(1, parseInt(process.env.POST_CACHE_TTL) || 3600); // default 1 hour TTL
+const HIT_RESET_INTERVAL_HOURS = Math.max(1, parseInt(process.env.POST_HIT_RESET_INTERVAL_HOURS) || 24);
 
 const cache = new nodeCache({stdTTL: POST_TTL_SECONDS, checkperiod: 60*60 });
 
@@ -26,8 +26,17 @@ function getPostFromCache(uniqueId){
         return null;
     }
 
-    entry.hits++;
-    cache.set(uniqueId, entry, POST_TTL_SECONDS);
+    // Create a new entry object to avoid mutating cached data
+    const updatedEntry = {
+        data: entry.data,
+        hits: entry.hits + 1
+    };
+    
+    // Preserve original TTL instead of resetting on every read
+    const ttlMs = cache.getTtl(uniqueId);
+    const remainingSeconds = ttlMs ? Math.max(0, Math.ceil((ttlMs - Date.now()) / 1000)) : POST_TTL_SECONDS;
+
+    cache.set(uniqueId, updatedEntry, remainingSeconds);
     return entry.data;
 }
 

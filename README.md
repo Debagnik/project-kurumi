@@ -77,7 +77,7 @@ Welcome to the **Project Walnut** project. It is a simple webapp for small-start
 
       ## Post Caching config
       POST_CACHE_MAX_SIZE=50 #defaults to 100
-      POST_CACHE_TTL=3600  #defaults to 3600 mins
+      POST_CACHE_TTL=3600  #defaults to 3600 secs
       POST_HIT_RESET_INTERVAL_HOURS=24 #defaults to 24 hours.
      ```
 5. **Start the application:**
