@@ -71,7 +71,7 @@ function setPostToCache(uniqueId, processedData){
             } 
         });
 
-        if(keyToEvict || keyToEvict !== uniqueId){
+        if(keyToEvict && keyToEvict !== uniqueId){
             if(process.env.NODE_ENV !== 'production'){
                 console.log(`Evicting post data with unique id: ${keyToEvict}. from post Cache`);
             }
