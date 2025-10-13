@@ -35,72 +35,111 @@ headers {
 docs {
   # GET /posts/:uniqueId
   
-  **Description:**
-  Fetches and renders a specific blog post based on its `uniqueId`. Includes post metadata, author details, comments, and conditionally shows the post based on approval status or user privileges. This route is the recommended successor to the deprecated `/post/:id`.
+  ## 📝 Description
+  Retrieves and renders a single blog post identified by its `uniqueId`.  
+  The response includes enriched post metadata, author details, comments, and dynamic rendering logic based on post approval status or user privilege level.  
+  This endpoint replaces the deprecated `/post/:id` route and integrates in-memory caching for optimized performance.
   
-  **Middleware:**
+  ---
   
-  * `genericOpenRateLimiter` – Protects route from abuse via rate limiting
-  * `fetchSiteConfig` (via `res.locals`) – Attaches site-wide configuration
+  ## ⚙️ Middleware
+  - **`genericOpenRateLimiter`** — Prevents abuse through open rate limiting.
+  - **`fetchSiteConfig`** *(via `res.locals`)* — Injects global site configuration into the rendering context.
   
-  **Parameters:**
+  ---
   
-  * `:uniqueId` (Path Param) – Unique identifier of the blog post to retrieve
+  ## 🔢 Parameters
+  | Name | Location | Type | Description |
+  |------|-----------|------|-------------|
+  | `uniqueId` | Path | `string` | Unique identifier of the blog post to retrieve. |
   
-  **Access:**
+  ---
   
-  * Public if post is approved
-  * Admin/Moderator can view unapproved posts
+  ## 🔐 Access Control
+  - **Public** – For approved posts.
+  - **Restricted** – For unapproved posts; accessible only to:
+    - Logged-in users, or  
+    - Users with elevated privileges *(Admin / Moderator)*.
   
-  **Behavior / Flow:**
+  ---
   
-  1. Sanitizes `uniqueId` from `req.params`
-  2. Fetches post by `uniqueId` from the database
-  3. Checks if the post exists
-  4. Retrieves post author details; defaults to "Anonymous" if missing
-  5. Constructs `locals` with title, description, keywords, and site config
-  6. Determines if CAPTCHA is enabled based on site config
-  7. Determines if current user is Admin/Moderator
-  8. Fetches comments associated with the post
-  9. Renders the post if approved or if user is authorized
-  10. Redirects to `/404` if unauthorized or post not found
+  ## 🔄 Request Flow
+  1. Extracts and sanitizes `uniqueId` from the request parameters.
+  2. Checks the **in-memory cache** (`postCache`) for a pre-processed post entry.
+  3. On cache miss, fetches the post from the database using the `uniqueId`.
+  4. Validates post existence — throws `404` if not found.
+  5. Retrieves author information; defaults to **"Anonymous"** if unavailable.
+  6. Constructs `locals` containing title, description, keywords, and site configuration.
+  7. Evaluates if CAPTCHA is enabled in `siteConfig`.
+  8. Determines if the current user is an **Admin** or **Moderator**.
+  9. Fetches associated comments via `getCommentsFromPostId`.
+  10. Renders the post if approved or authorized.
+  11. Redirects to `/404` for unauthorized access or missing posts.
   
-  **Template Rendered:**
+  ---
   
-  * `posts.ejs`
+  ## 🧩 Template Rendered
+  - **`posts.ejs`**
   
-  **Error Handling:**
+  ---
   
-  * Logs fetch errors and redirects to `/404` on missing post or unauthorized access
+  ## ⚠️ Error Handling
+  - Logs all database or rendering errors.
+  - Redirects to `/404` when:
+    - The post is missing,
+    - The user lacks authorization,
+    - Or any unexpected exception occurs.
   
-  **Response:**
+  ---
   
-  * **200 OK** – Renders the `posts` template with:
+  ## ✅ Response
   
-    * `locals` (title, description, keywords, site config)
-    * `data` (post content + authorName)
-    * `csrfToken` for secure forms
-    * `isCaptchaEnabled` flag
-    * `commentsData` (from `getCommentsFromPostId`)
-    * `currentUser` (boolean if Admin/Mod)
-  * **404 Not Found** – Redirects to `/404` for:
+  ### **200 OK**
+  Renders the `posts` template with the following data:
   
-    * Missing post
-    * Unapproved post accessed by non-logged-in user
-    * Any errors during fetch
+  | Field | Description |
+  |--------|--------------|
+  | `locals` | Title, description, keywords, and site configuration. |
+  | `data` | Full post content including resolved `authorName`. |
+  | `csrfToken` | Token used to protect form submissions. |
+  | `isCaptchaEnabled` | Indicates if CAPTCHA is active. |
+  | `commentsData` | List of comments retrieved via `getCommentsFromPostId`. |
+  | `currentUser` | Boolean indicating if user has Admin/Moderator privileges. |
   
-  **Security:**
+  ### **404 Not Found**
+  Redirects to `/404` when:
+  - The post does not exist.
+  - The post is unapproved and user lacks access.
+  - A fetch or rendering error occurs.
   
-  * CSRF token injected into template for form security
-  * Rate limiting via `genericOpenRateLimiter`
+  ---
   
-  **Logging:**
+  ## 🛡️ Security
+  - **CSRF Protection:** Each render includes a server-generated CSRF token.
+  - **Rate Limiting:** Controlled via `genericOpenRateLimiter` to mitigate abuse.
+  - **Data Sanitization:** Uses HTML sanitization on `uniqueId` input to prevent injection attacks.
   
-  * Errors in fetching posts and unauthorized access attempts are logged
+  ---
   
-  **Access Notes:**
+  ## 🧠 Caching Behavior
+  - Uses `postCache` to store processed posts in-memory.
+  - Cache lookups minimize database queries.
+  - Automatically updates cache hit counts and TTL.
+  - Evicts least-hit entries when the cache limit is reached.
   
-  * Public for approved posts
-  * Restricted for unapproved posts to logged-in or privileged users
+  ---
+  
+  ## 🧾 Logging
+  | Type | Description |
+  |------|--------------|
+  | **Info Logs** | Cache hits/misses and normal request handling. |
+  | **Warning Logs** | Unauthorized access attempts for unapproved posts. |
+  | **Error Logs** | Database or rendering exceptions. |
+  
+  ---
+  
+  ## 🔓 Access Summary
+  - ✅ **Approved posts:** Publicly accessible.  
+  - 🔒 **Unapproved posts:** Restricted to logged-in or privileged users.
   
 }
