@@ -12,6 +12,7 @@ const utils = require('../../utils/validations.js');
 const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSiteConfigurations.js');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
+const postCache = require('../../utils/postCache.js');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
@@ -445,9 +446,30 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
         }
         const currentUser = await getUserFromCookieToken(req);
         let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
-        const data = await post.findOne({ uniqueId: cleanedUniqueId });
-        if (!data) {
-            throw new Error('404 - No such post found');
+        
+        //check if post exist on postCache
+        let data = null;
+        data = postCache.getPostFromCache(cleanedUniqueId);
+        if(!data){
+            if(process.env.NODE_ENV !== 'production'){
+                console.log(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
+            }
+            data = await post.findOne({ uniqueId: cleanedUniqueId });
+            if (!data) {
+                throw new Error('404 - No such post found');
+            }
+
+            const postAuthor = await user.findOne({ username: data.author });
+            if(!postAuthor || !postAuthor.name){
+                data.authorName = 'Anonymous';
+            } else {
+                data.authorName = postAuthor.name;
+            }
+
+            postCache.setPostToCache(cleanedUniqueId, data);
+
+        } else {
+            console.log(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
         }
         
         const locals = {
@@ -456,13 +478,6 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
             keywords: data.tags,
             config: res.locals.siteConfig
         };
-
-        const postAuthor = await user.findOne({ username: data.author });
-        if(!postAuthor || !postAuthor.name){
-            data.authorName = 'Anonymous';
-        } else {
-            data.authorName = postAuthor.name;
-        }
 
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
@@ -478,7 +493,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
             });
         } else {
             if(process.env.NODE_ENV !== 'production'){
-                console.warn(`unlogged user tried fetching unapproved post`);
+                console.warn(`Unlogged user tried fetching unapproved post`);
             }
             return res.status(404).redirect('/404');
         } 

@@ -48,6 +48,9 @@ function getPostFromCache(uniqueId){
  * @param {Object} processedData - Processed post data
  */
 function setPostToCache(uniqueId, processedData){
+    if(process.env.NODE_ENV !== 'production'){
+        console.log(`Saving Post data from DB to Cache for UniqueId: ${uniqueId}`);
+    }
     if(cache.has(uniqueId)){
         const entry = cache.get(uniqueId);
         cache.set(uniqueId, {data: processedData, hits: entry.hits + 1}, POST_TTL_SECONDS);
@@ -69,14 +72,14 @@ function setPostToCache(uniqueId, processedData){
         });
 
         if(keyToEvict || keyToEvict !== uniqueId){
-            if(process.env.NODE_ENV === 'production'){
-                console.log(`evicting post data with unique id: ${keyToEvict}. from post Cache`);
+            if(process.env.NODE_ENV !== 'production'){
+                console.log(`Evicting post data with unique id: ${keyToEvict}. from post Cache`);
             }
             cache.del(keyToEvict);
         }
     }
 
-    if(process.env.NODE_ENV === 'production'){
+    if(process.env.NODE_ENV !== 'production'){
         console.log(`saving post processed data with unique id: ${uniqueId}. to post Cache`);
     }
     cache.set(uniqueId, {data: processedData, hits: 1}, POST_TTL_SECONDS);
