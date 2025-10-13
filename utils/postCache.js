@@ -50,9 +50,7 @@ function getPostFromCache(uniqueId){
 function setPostToCache(uniqueId, processedData){
     if(cache.has(uniqueId)){
         const entry = cache.get(uniqueId);
-        entry.data = processedData;
-        entry.hits++;
-        cache.set(uniqueId, entry, POST_TTL_SECONDS);
+        cache.set(uniqueId, {data: processedData, hits: entry.hits + 1}, POST_TTL_SECONDS);
         return;
     }
 
@@ -62,14 +60,15 @@ function setPostToCache(uniqueId, processedData){
         let keyToEvict = null;
 
         cache.keys().forEach(key => {
-            const hits = cache.get(key)?.hits || 0;
+            const entry = cache.get(key);
+            const hits = entry?.hits || 0;
             if(hits < minHits){
                 minHits = hits;
                 keyToEvict = key;
             } 
         });
 
-        if(keyToEvict){
+        if(keyToEvict || keyToEvict !== uniqueId){
             if(process.env.NODE_ENV === 'production'){
                 console.log(`evicting post data with unique id: ${keyToEvict}. from post Cache`);
             }
@@ -111,22 +110,49 @@ function getCacheSize() {
  * @description Resets hit counts for all cached entries every 24 hours to implement "least hits daily" eviction.
  */
 function resetHitsDaily() {
-  cache.keys().forEach(key => {
-    const entry = cache.get(key);
-    if (entry) {
-      entry.hits = 0;
-      cache.set(key, entry, POST_TTL_SECONDS);
-    }
-  });
-  console.log(`[Cache] Daily hit counts reset at ${new Date().toISOString()}`);
+    cache.keys().forEach(key => {
+        const entry = cache.get(key);
+        if(!entry){
+            return;
+        }
+        // Preserve original TTL duration instead of resetting it
+        const ttlMs = cache.getTtl(key);
+        const remainingSeconds = ttlMs ? Math.max(0, Math.ceil((ttlMs - Date.now()) / 1000)) : POST_TTL_SECONDS;
+
+        // Write a new object (avoid mutating existing entry)
+        const newEntry = { data: entry.data, hits: 0 };
+        cache.set(key, newEntry, remainingSeconds);
+    });
+
+    console.log(`[Cache] Daily hit counts reset at ${new Date().toISOString()}`);
+
 }
 
-// Schedule daily hit reset
-setInterval(resetHitsDaily, HIT_RESET_INTERVAL_HOURS * 60 * 60 * 1000);
+// Schedule daily hit reset and store interval ID for cleanup
+const hitResetIntervalId = setInterval(
+    resetHitsDaily,
+    HIT_RESET_INTERVAL_HOURS * 60 * 60 * 1000
+);
+
+// Allow process to exit naturally (non-blocking)
+if (hitResetIntervalId.unref){
+    hitResetIntervalId.unref();
+} 
+
+/**
+ * @function clearHitResetInterval
+ * @description Clears the scheduled daily hit reset interval.
+ *              Useful for testing environments or hot-reload setups.
+ */
+function clearHitResetInterval() {
+    clearInterval(hitResetIntervalId);
+    console.log('[Cache] Hit reset interval cleared.');
+}
 
 module.exports = {
   getPostFromCache,
   setPostToCache,
   invalidateCache,
+  clearHitResetInterval,
   getCacheSize
 };
