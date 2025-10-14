@@ -72,6 +72,30 @@ docs {
   }
   ```
   
+  - or if the Post Cache is unavalable:
+  
+  **HTTP Status:** `200 OK`  
+  **Content-Type:** `application/json`
+  
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "uptimeSeconds": 5.4557941,
+    "environment": "dev-local",
+    "nodeVersion": "v22.12.0",
+    "database": "connected",
+    "siteConfigCache": "available",
+    "postCacheStatus": "unavailable",
+    "postCacheSize": hidden,
+    "memory": {
+      "rss": "98.36",
+      "heapUsed": "33.26",
+      "heapTotal": "65.38"
+    }
+  }
+  ```
+  
   ## ⚠️ Failure Responses
   ### 503 — Service Degraded
   
