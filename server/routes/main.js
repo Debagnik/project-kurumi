@@ -1165,19 +1165,48 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
 });
 
 /**
- * @route GET /healtz
- * @description Health check endpoint that reports the operational status of the server, database,
- *              and configuration cache system. It includes diagnostic data such as uptime,
- *              memory usage, Node.js version, and environment mode.
- *              This route is public and intended for uptime monitoring systems or load balancers.
- * 
- * @access public
- * 
- * @returns {200} JSON response confirming service health, uptime, environment info, and resource usage.
- * @returns {503} JSON response if a dependency (e.g., database) is unavailable.
- * @returns {500} JSON response if an unexpected internal error occurs.
+ * @route GET /healthz
+ * @description
+ * Performs a comprehensive health check for the application, verifying the operational
+ * status of the **server**, **MongoDB connection**, **site configuration cache**, and **post cache**.
+ * Additionally, it reports runtime diagnostics such as uptime, Node.js version,
+ * environment mode, and memory usage.
+ *
+ * This route is public and intended primarily for uptime monitors, load balancers,
+ * and orchestration systems to ensure the API is healthy and responsive.
+ *
+ * @middleware
+ * @chain genericGetRequestRateLimiter - Prevents excessive polling or endpoint abuse.
+ *
+ * @access Public
+ *
+ * @returns {200} Service is healthy. Returns a JSON object including:
+ *  - `status`: "ok"
+ *  - `timestamp`: ISO string of current time
+ *  - `uptimeSeconds`: Process uptime in seconds
+ *  - `environment`: Current environment (hidden in production)
+ *  - `nodeVersion`: Node.js version (hidden in production)
+ *  - `database`: Connection status ("connected" | "disconnected")
+ *  - `siteConfigCache`: Availability of config cache system
+ *  - `postCacheStatus`: Availability of post cache
+ *  - `postCacheSize`: Cache size details `{ maxCacheSize, cacheSize }`
+ *  - `memory`: `{ rss, heapUsed, heapTotal }` in MB
+ *
+ * @returns {503} Service degradation. Returned when a critical dependency
+ * (e.g., database) is unavailable or not connected.
+ *
+ * @returns {500} Unexpected internal server error, typically due to
+ * unhandled exceptions during diagnostics or status collection.
+ *
+ * @security
+ * - CSRF not required (read-only route)
+ * - Protected via rate limiter
+ *
+ * @logging
+ * - Logs connection and cache issues for debugging
+ * - Logs internal errors on failure response
  */
-router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
+router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
   try {
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
     if (dbStatus !== 'connected') {
@@ -1189,7 +1218,8 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       });
     }
 
-    const cacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
+    const configCacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
+    const postCacheStatus = (typeof postCache.getCacheSize === 'function') ? 'available' : 'unavailable';
 
     const memoryUsage = process.memoryUsage();
     const memory = {
@@ -1208,7 +1238,9 @@ router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
       environment: environment,
       nodeVersion: nodeVersion,
       database: dbStatus,
-      siteConfigCache: cacheStatus,
+      siteConfigCache: configCacheStatus,
+      postCacheStatus: postCacheStatus,
+      postCacheSize: postCacheStatus === 'available' ? postCache.getCacheSize() : 'hidden',
       memory,
     });
   } catch (error) {

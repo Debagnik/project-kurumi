@@ -5,83 +5,97 @@ meta {
 }
 
 get {
-  url: {{url}}/healtz
+  url: {{url}}/healthz
   body: none
   auth: inherit
 }
 
 docs {
-  ### GET /healtz
+  # GET /healthz
+  ---
   
-  **Description:**  
-  * Performs a system-wide health check and reports the current operational status of the API server.  
-  * This includes checks for the **database connection**, **cache system**, and **runtime environment diagnostics** such as uptime, Node.js version, and memory usage.  
-  * The endpoint is **public** and intended for use by **uptime monitors**, **reverse proxies**, and **load balancers**.
+  ## 🩺 Description
+  Performs a **system-wide health check** to report the operational status of the server and its key dependencies:  
+  - **Database (MongoDB)**  
+  - **Site Configuration Cache**  
+  - **Post Cache**  
+  
+  It also returns diagnostic information such as uptime, Node.js version, memory usage, and environment mode.  
+  This route is **public** and safe for use by uptime monitors, orchestration systems, and reverse proxies.
   
   ---
   
-  **Middleware Used:**  
-  * `genericGetRequestRateLimiter` — Prevents excessive polling or abuse of the endpoint.
+  ## 🧩 Middleware Used
+  - `genericGetRequestRateLimiter` → Protects against excessive polling or abuse.
   
   ---
   
-  **Route Params:**  
-  * None  
+  ## ⚙️ Parameters
+  - **Path Params:** None  
+  - **Query Params:** None  
+  - **Body Params:** None  
   
   ---
   
-  **Query Parameters:**  
-  * None  
+  ## 🔄 Flow
+  1. Check MongoDB connection (`mongoose.connection.readyState`).
+  2. Verify cache system availability (`getCacheStatus` and `postCache.getCacheSize()`).
+  3. Gather runtime diagnostics (uptime, environment, Node.js version, memory).
+  4. Return aggregated status as JSON.
+  5. If a dependency fails, respond with an appropriate error code and message.
   
   ---
   
-  **Request Body Parameters:**  
-  * None  
+  ## ✅ Success Response
+  **HTTP Status:** `200 OK`  
+  **Content-Type:** `application/json`
   
-  ---
-  
-  **Flow:**  
-  1. Checks MongoDB connection via `mongoose.connection.readyState`.  
-  2. Verifies cache system availability (if configured).  
-  3. Gathers system diagnostics: uptime, Node.js version, and memory stats.  
-  4. Returns a summary JSON object with `status: ok` if all checks pass.  
-  5. If any dependency (e.g., database) is unavailable, responds with `status: error`.
-  
-  ---
-  
-  **Success Response:**  
-  * **HTTP Status:** `200 OK`  
-  * **Content-Type:** `application/json`  
-  * **Response Body Example:**
-    ```json
-    {
-      "status": "ok",
-      "timestamp": "2025-10-12T14:58:34.931Z",
-      "uptimeSeconds": 12452.38,
-      "environment": "production",
-      "nodeVersion": "v20.11.1",
-      "database": "connected",
-      "cache": "available",
-      "memory": {
-        "rss": "92.45",
-        "heapUsed": "47.12",
-        "heapTotal": "64.00"
-      }
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "uptimeSeconds": 5.4557941,
+    "environment": "dev-local",
+    "nodeVersion": "v22.12.0",
+    "database": "connected",
+    "siteConfigCache": "available",
+    "postCacheStatus": "available",
+    "postCacheSize": {
+      "maxCacheSize": 2,
+      "cacheSize": 0
+    },
+    "memory": {
+      "rss": "98.36",
+      "heapUsed": "33.26",
+      "heapTotal": "65.38"
     }
-    ```
-  **Failure Responses:**  
-  * **HTTP 500 – Internal Server Error**
-    Occurs when the database connection fails or a critical dependency is not operational.
-    ```json
-    {
-      "status": "error",
-      "message": "Health check failed",
-      "error": "Database connection not established",
-      "timestamp": "2025-10-12T14:58:34.931Z"
-    }
-    ```
-  **View Rendered:**
-  None (Json only)
+  }
+  ```
   
+  ## ⚠️ Failure Responses
+  ### 503 — Service Degraded
   
+  Returned when a critical dependency (like MongoDB) is unavailable.
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Database connection not established",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "database": "disconnected"
+  }
+  ```
+  
+  ### 500 — Internal Server Error
+  
+  Returned when an unexpected exception occurs during health evaluation.
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Health check failed",
+    "error": "TypeError: Cannot read property ...",
+    "timestamp": "2025-10-14T08:00:34.943Z"
+  }
+  ```
 }
