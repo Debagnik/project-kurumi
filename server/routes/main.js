@@ -13,6 +13,7 @@ const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSite
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
 const postCache = require('../../utils/postCache.js');
+const recentPostCache = require('../../utils/recentPostsCache.js');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
@@ -161,7 +162,6 @@ router.get('/api/test/getCsrfToken', csrfProtection, genericGetRequestRateLimite
  * with pagination support, starting from the most recent content.
  */
 router.get('', genericOpenRateLimiter, async (req, res) => {
-
     try {
         const locals = {
             title: res.locals.siteConfig.siteName || "Project Walnut",
@@ -172,11 +172,6 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
         let page = parseInt(req.query.page) || 1;
 
-        const data = await post.aggregate([
-            { $match: { isApproved: true } },
-            { $sort: { createdAt: -1 } }
-        ]).skip(perPage * page - perPage).limit(perPage).exec();
-
         const count = await post.countDocuments({ isApproved: true });
         const nextPage = parseInt(page) + 1;
         const hasNextPage = nextPage <= Math.ceil(count / perPage);
@@ -184,8 +179,34 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         const previousPage = parseInt(page) - 1;
         const hasPreviousPage = previousPage >= 1;
 
+        if (page === 1) {
+            if (recentPostCache.getRecentPostsFromCache()) {
+                console.log("RecentPost on Page 1 Served from Cache");
 
-        res.render('index', {
+                return res.render('index', {
+                    locals,
+                    data: recentPostCache.getRecentPostsFromCache(),
+                    currentPage: page,
+                    nextPage: hasNextPage ? nextPage : null,
+                    previousPage: hasPreviousPage ? previousPage : null,
+                    csrfToken: req.csrfToken(),
+                    totalPages: Math.ceil(count / perPage)
+                });
+            }
+        }
+
+        console.log(`DB Posts Data fetched, for page ${page}`);
+        const data = await post.aggregate([
+            { $match: { isApproved: true } },
+            { $sort: { createdAt: -1 } }
+        ]).skip(perPage * page - perPage).limit(perPage).exec();
+
+        if (page === 1) {
+            console.log("Saving Recent posts, on Page 1 in cache");
+            recentPostCache.setRecentPostsToCache(data, perPage);
+        }
+
+        return res.render('index', {
             locals,
             data,
             currentPage: page,
@@ -194,7 +215,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
             csrfToken: req.csrfToken(),
             totalPages: Math.ceil(count / perPage)
         });
-        console.log(`DB Posts Data fetched`);
+
     } catch (error) {
         console.log(error);
     }
@@ -444,19 +465,19 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
  * @access
  * Public (restricted for unapproved or unauthorized posts).
  */
-router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
+router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
     try {
-        if(process.env.NODE_ENV !== 'production'){
+        if (process.env.NODE_ENV !== 'production') {
             console.log(`Fetching post by uniqueId: ${req.params.uniqueId}`);
         }
         const currentUser = await getUserFromCookieToken(req);
         let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
-        
+
         //check if post exist on postCache
         let data = null;
         data = postCache.getPostFromCache(cleanedUniqueId);
-        if(!data){
-            if(process.env.NODE_ENV !== 'production'){
+        if (!data) {
+            if (process.env.NODE_ENV !== 'production') {
                 console.log(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
             }
             data = await post.findOne({ uniqueId: cleanedUniqueId });
@@ -465,7 +486,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
             }
 
             const postAuthor = await user.findOne({ username: data.author });
-            if(!postAuthor || !postAuthor.name){
+            if (!postAuthor || !postAuthor.name) {
                 data.authorName = 'Anonymous';
             } else {
                 data.authorName = postAuthor.name;
@@ -476,7 +497,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
         } else {
             console.log(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
         }
-        
+
         const locals = {
             title: data.title,
             description: data.desc,
@@ -486,8 +507,8 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
 
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
-        
-        if(currentUser || data.isApproved){
+
+        if (currentUser || data.isApproved) {
             return res.render('posts', {
                 locals,
                 data,
@@ -497,16 +518,16 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter , async (req, res) => {
                 currentUser: isCurrentUserAModOrAdmin
             });
         } else {
-            if(process.env.NODE_ENV !== 'production'){
+            if (process.env.NODE_ENV !== 'production') {
                 console.warn(`Unlogged user tried fetching unapproved post`);
             }
             return res.status(404).redirect('/404');
-        } 
-    }catch(error) {
+        }
+    } catch (error) {
         console.error('Post Fetch error', error);
         return res.status(404).redirect('/404');
     }
-        
+
 });
 
 /**
@@ -1127,13 +1148,13 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
  * @access Public
  */
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
-    try{
+    try {
         const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-        if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+        if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)) {
             throw new Error("Invalid Username");
         }
-        const selectedUser = await user.findOne({username: sanitizedUsername});
-        if(!selectedUser){
+        const selectedUser = await user.findOne({ username: sanitizedUsername });
+        if (!selectedUser) {
             req.flash('error', 'User does not exist');
             return res.redirect('/');
         }
@@ -1157,7 +1178,7 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
             sanitizedUserDetails,
             csrfToken: req.csrfToken()
         });
-    }catch(error){
+    } catch (error) {
         req.flash('error', 'Internal server error');
         console.error(error);
         return res.redirect('/');
@@ -1207,51 +1228,51 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
  * - Logs internal errors on failure response
  */
 router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
-  try {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    if (dbStatus !== 'connected') {
-      return res.status(503).json({
-        status: 'error',
-        message: 'Database connection not established',
-        timestamp: new Date().toISOString(),
-        database: dbStatus,
-      });
+    try {
+        const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+        if (dbStatus !== 'connected') {
+            return res.status(503).json({
+                status: 'error',
+                message: 'Database connection not established',
+                timestamp: new Date().toISOString(),
+                database: dbStatus,
+            });
+        }
+
+        const configCacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
+        const postCacheStatus = (typeof postCache.getCacheSize === 'function') ? 'available' : 'unavailable';
+
+        const memoryUsage = process.memoryUsage();
+        const memory = {
+            rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
+            heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2),
+            heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
+        };
+
+        const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
+        const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
+
+        res.status(200).json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptimeSeconds: process.uptime(),
+            environment: environment,
+            nodeVersion: nodeVersion,
+            database: dbStatus,
+            siteConfigCache: configCacheStatus,
+            postCacheStatus: postCacheStatus,
+            postCacheSize: postCacheStatus === 'available' ? postCache.getCacheSize() : 'hidden',
+            memory,
+        });
+    } catch (error) {
+        console.error('Health check failed:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Health check failed',
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
     }
-
-    const configCacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
-    const postCacheStatus = (typeof postCache.getCacheSize === 'function') ? 'available' : 'unavailable';
-
-    const memoryUsage = process.memoryUsage();
-    const memory = {
-      rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
-      heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2),
-      heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
-    };
-
-    const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
-    const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
-
-    res.status(200).json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptimeSeconds: process.uptime(),
-      environment: environment,
-      nodeVersion: nodeVersion,
-      database: dbStatus,
-      siteConfigCache: configCacheStatus,
-      postCacheStatus: postCacheStatus,
-      postCacheSize: postCacheStatus === 'available' ? postCache.getCacheSize() : 'hidden',
-      memory,
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Health check failed',
-      error: error.message,
-      timestamp: new Date().toISOString(),
-    });
-  }
 });
 
 module.exports = router;
