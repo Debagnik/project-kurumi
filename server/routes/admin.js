@@ -17,7 +17,7 @@ const { fetchSiteConfigCached, invalidateCache } = require('../../utils/fetchSit
 const postCache = require('../../utils/postCache.js');
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
-const {CONSTANTS} = require('../../utils/constants');
+const { CONSTANTS } = require('../../utils/constants');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -215,7 +215,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // checking for existing user
-    const existingUser = await user.findOne({username: {$eq: username}})
+    const existingUser = await user.findOne({ username: { $eq: username } })
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
@@ -308,14 +308,14 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     if (!username || !password) {
       throw new Error('Username and Passwords are mandatory');
     }
-    
+
     //sanitize User Input username
-    if(typeof(username) !== 'string'){
+    if (typeof (username) !== 'string') {
       throw Error('Chica, Its not this easy to dupe me, Try harder');
     }
 
     //checks if the user exists
-    const currentUser = await user.findOne({username: {$eq: username}});
+    const currentUser = await user.findOne({ username: { $eq: username } });
     if (!currentUser) {
       console.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
@@ -681,7 +681,14 @@ async function savePostToDB(req, res) {
       throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
-    const uniqueId = createUniqueId(req.body.title.trim());
+    let uniqueId = null;
+    while (true) {
+      uniqueId = createUniqueId(req.body.title);
+      const existingPost = await post.findOne({ uniqueId: uniqueId });
+      if (!existingPost) {
+        break;
+      }
+    }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
@@ -775,7 +782,7 @@ router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, asyn
 
     const data = await post.findOne({ uniqueId: sanitizedUniqueId });
 
-    if(!data){
+    if (!data) {
       throw Error(`No posts found with uniqueiD: ${sanitizedUniqueId}`);
     }
 
@@ -891,14 +898,14 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     }
 
     const sanitizedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
-    if(postCache.getPostFromCache(sanitizedUniqueId)){
-      if(process.env.NODE_ENV !== 'production'){
+    if (postCache.getPostFromCache(sanitizedUniqueId)) {
+      if (process.env.NODE_ENV !== 'production') {
         console.log('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
       }
       postCache.invalidateCache(sanitizedUniqueId);
     }
 
-    const postToUpdate = await post.findOne({uniqueId: sanitizedUniqueId});
+    const postToUpdate = await post.findOne({ uniqueId: sanitizedUniqueId });
 
     const currentSiteConfig = res.locals.siteConfig;
     let siteConfigDefaultThumbnail;
@@ -934,52 +941,57 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
 
     const generateUniqueId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId
     let uniqueId = null;
-    if(generateUniqueId){
-      uniqueId = createUniqueId(req.body.title)
+    if (generateUniqueId) {
+      while(true){
+        uniqueId = createUniqueId(req.body.title);
+        const existingPost = await post.findOne({ uniqueId: uniqueId });
+        if (!existingPost) {
+          break;
+        }
+      }
     } else {
       uniqueId = postToUpdate.uniqueId
     }
 
+  const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-    const htmlBody = markdownToHtml(req.body.markdownbody.trim());
-
-    const updatePostData = {
-      title: req.body.title.trim(),
-      body: htmlBody,
-      markdownbody: req.body.markdownbody.trim(),
-      desc: req.body.desc.trim(),
-      tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
-      thumbnailImageURI: defaultThumbnailImageURI,
-      modifiedAt: Date.now(),
-      lastUpdateAuthor: currentUser.username,
-      uniqueId: uniqueId
-    }
-
-    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      updatePostData.isApproved = req.body.isApproved === 'on'
-    }
-
-    await post.findByIdAndUpdate(
-      postToUpdate._id,
-      { $set: updatePostData },
-      { runValidators: true }
-    );
-
-    const updatedPost = await post.findById(postToUpdate._id);
-    if (!updatedPost) {
-      console.error('Failed to update post', uniqueId);
-      req.flash('error', 'Something went wrong, Post not updated')
-      return res.redirect(`/admin/edit-post/${uniqueId}`);
-    }
-
-    req.flash('success', `Successfully updated post with id ${uniqueId}`);
-    res.redirect(`/dashboard/`);
-
-  } catch (error) {
-    console.log(error);
-    req.flash('error', 'Something Went Wrong');
-    res.redirect('/dashboard');
+  const updatePostData = {
+    title: req.body.title.trim(),
+    body: htmlBody,
+    markdownbody: req.body.markdownbody.trim(),
+    desc: req.body.desc.trim(),
+    tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
+    thumbnailImageURI: defaultThumbnailImageURI,
+    modifiedAt: Date.now(),
+    lastUpdateAuthor: currentUser.username,
+    uniqueId: uniqueId
   }
+
+  if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    updatePostData.isApproved = req.body.isApproved === 'on'
+  }
+
+  await post.findByIdAndUpdate(
+    postToUpdate._id,
+    { $set: updatePostData },
+    { runValidators: true }
+  );
+
+  const updatedPost = await post.findById(postToUpdate._id);
+  if (!updatedPost) {
+    console.error('Failed to update post', uniqueId);
+    req.flash('error', 'Something went wrong, Post not updated')
+    return res.redirect(`/admin/edit-post/${uniqueId}`);
+  }
+
+  req.flash('success', `Successfully updated post with id ${uniqueId}`);
+  res.redirect(`/dashboard/`);
+
+} catch (error) {
+  console.log(error);
+  req.flash('error', 'Something Went Wrong');
+  res.redirect('/dashboard');
+}
 });
 
 /**
@@ -1053,14 +1065,14 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
 
     const cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
 
-    const postToDelete = await post.findOne({uniqueId: cleanedUniqueId});
+    const postToDelete = await post.findOne({ uniqueId: cleanedUniqueId });
     if (!postToDelete) {
       console.error('Post not found', cleanedUniqueId);
       req.flash('error', `post not found`);
       return res.redirect('/dashboard');
     }
 
-    if(postCache.getPostFromCache(cleanedUniqueId)){
+    if (postCache.getPostFromCache(cleanedUniqueId)) {
       postCache.invalidateCache(uniqueId);
     }
 
@@ -1414,8 +1426,8 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
-    if(!isUserIdValid){
-      console.error({code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid`});
+    if (!isUserIdValid) {
+      console.error({ code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid` });
       throw new Error('User ID is invalid');
     }
     const userToDelete = await user.findById(req.params.id);
@@ -1501,12 +1513,12 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
-    if(!isUserIdValid){
+    if (!isUserIdValid) {
       console.error("Invalid username");
       throw new Error("User id to be edited is invalid");
     }
 
-    const selectedUser = await user.findOne({ _id: req.params.id});
+    const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
       console.error('User not found', req.params.id);
       throw new Error('User not found');
@@ -1606,7 +1618,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
 
-    if(!isUserIdValid){
+    if (!isUserIdValid) {
       console.error("Invalid userID");
       throw new Error('User ID is not valid');
     }
@@ -1892,11 +1904,11 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
 
-    const sanitizedUserName = sanitizeHtml(String(username).trim(), CONSTANTS.SANITIZE_FILTER);  
+    const sanitizedUserName = sanitizeHtml(String(username).trim(), CONSTANTS.SANITIZE_FILTER);
     if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       throw new Error("Invalid username format");
     }
-    
+
     const userModel = await user.findOne({ username: { $eq: sanitizedUserName } });
     if (!userModel) {
       throw new Error(`User doesn't exist`);
@@ -2076,7 +2088,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-    if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+    if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)) {
       throw new Error("Invalid username");
     }
     const currentUser = await user.findOne({ username: sanitizedUsername });
@@ -2084,7 +2096,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       req.flash('error', 'User not found');
       return res.redirect('/dashboard');
     }
-    const { name, description, portfolioLink } = req.body; 
+    const { name, description, portfolioLink } = req.body;
 
     if (req.userId === currentUser.id) {
       // Check for required fields first
@@ -2110,7 +2122,8 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       const sanitizedName = sanitizeHtml(String(name).trim(), CONSTANTS.SANITIZE_FILTER);
       const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : CONSTANTS.EMPTY_STRING;
       const sanitizedDesc = sanitizeHtml(description, {
-      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt', 'title']}});
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt', 'title'] }
+      });
       const HTMLDescription = markdownToHtml(description);
       currentUser.name = sanitizedName;
       currentUser.portfolioLink = sanitizedLink ? sanitizedLink : (currentUser.portfolioLink || CONSTANTS.EMPTY_STRING);
@@ -2129,7 +2142,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       }
     } else {
       req.flash("error", `Hmph! Don’t get ahead of yourself — you’re not allowed to edit someone else’s profile, got it?!`);
-      console.error({code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}`});
+      console.error({ code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}` });
       return res.redirect('/dashboard');
     }
   } catch (error) {
