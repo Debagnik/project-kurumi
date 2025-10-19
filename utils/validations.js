@@ -146,7 +146,7 @@ exports.createUniqueId = (title) => {
   const sanitizedTitle = sanitizeHtml(title, CONSTANTS.SANITIZE_FILTER);
   const randomSuffix = '_' + Math.random().toString().substring(2, 6);
 
-  const cleanedTitle = sanitizedTitle.toLocaleLowerCase().replace(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '').replace(CONSTANTS.REMOVE_ALL_SPACES_REGEX, "_").trim();
+  const cleanedTitle = sanitizedTitle.toLowerCase().replace(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '').replace(CONSTANTS.REMOVE_ALL_SPACES_REGEX, "_").trim();
   const uniqueId = cleanedTitle + randomSuffix;
   return uniqueId;
 }
