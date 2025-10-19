@@ -683,14 +683,19 @@ async function savePostToDB(req, res) {
 
     let uniqueId = null;
     let count = 0;
+    const maxRetries = 10;
     while (true) {
-      const maxRetries = 10;
       uniqueId = createUniqueId(req.body.title.trim());
       count += 1;
       const existingPost = await post.findOne({ uniqueId: uniqueId });
       if (!existingPost || count >= maxRetries) {
         break;
       }
+    }
+
+    if(uniqueId === null) {
+      console.error('Could not generate uniqueId for the post after 10 attempts');
+      throw new Error('Could not generate uniqueId for the post, please try again with a different title');
     }
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
@@ -953,14 +958,19 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     let uniqueId = null;
     if (generateUniqueId) {
       let count = 0;
+      const maxRetries = 10;
       while(true){
-        const maxRetries = 10;
         uniqueId = createUniqueId(req.body.title.trim());
         count += 1;
         const existingPost = await post.findOne({ uniqueId: uniqueId });
         if (!existingPost || count >= maxRetries) {
           break;
         }
+      }
+      if(uniqueId === null) {
+        console.error('Could not generate uniqueId for the post after 10 attempts');
+        req.flash('error', 'Could not generate uniqueId for the post, please try again with a different title, Post is not updated');
+        return res.redirect(`/admin/edit-post/${req.params.id}`);
       }
     } else {
       uniqueId = postToUpdate.uniqueId
