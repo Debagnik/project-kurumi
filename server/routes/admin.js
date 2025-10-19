@@ -683,9 +683,12 @@ async function savePostToDB(req, res) {
 
     let uniqueId = null;
     while (true) {
+      let count = 0;
+      const maxRetries = 10;
       uniqueId = createUniqueId(req.body.title.trim());
+      count += 1;
       const existingPost = await post.findOne({ uniqueId: uniqueId });
-      if (!existingPost) {
+      if (!existingPost || count >= maxRetries) {
         break;
       }
     }
@@ -707,7 +710,7 @@ async function savePostToDB(req, res) {
 
     await newPost.save();
 
-    console.log(`New post added by ${currentUser.username} /n ${newPost}`);
+    console.log(`New post added by ${currentUser.username} \n ${newPost}`);
     return newPost._id.toString();
   } catch (error) {
     console.error(`Could not save post data: ${error.message}`);
@@ -783,7 +786,7 @@ router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, asyn
     const data = await post.findOne({ uniqueId: sanitizedUniqueId });
 
     if (!data) {
-      throw Error(`No posts found with uniqueiD: ${sanitizedUniqueId}`);
+      throw Error(`No posts found with uniqueId: ${sanitizedUniqueId}`);
     }
 
     const locals = {
@@ -950,9 +953,12 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     let uniqueId = null;
     if (generateUniqueId) {
       while(true){
+        let count = 0;
+        const maxRetries = 10;
         uniqueId = createUniqueId(req.body.title.trim());
+        count += 1;
         const existingPost = await post.findOne({ uniqueId: uniqueId });
-        if (!existingPost) {
+        if (!existingPost || count >= maxRetries) {
           break;
         }
       }
@@ -1080,7 +1086,7 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
     }
 
     if (postCache.getPostFromCache(cleanedUniqueId)) {
-      postCache.invalidateCache(uniqueId);
+      postCache.invalidateCache(cleanedUniqueId);
     }
 
     await post.deleteOne({ _id: postToDelete._id });
