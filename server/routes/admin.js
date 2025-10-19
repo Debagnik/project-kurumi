@@ -906,6 +906,13 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     }
 
     const postToUpdate = await post.findOne({ uniqueId: sanitizedUniqueId });
+    if (!postToUpdate) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Post not found with uniqueId:', sanitizedUniqueId);
+      }
+      req.flash('error', `Post not found with id: ${sanitizedUniqueId}, Post not updated`);
+      return res.redirect('/dashboard');
+    }
 
     const currentSiteConfig = res.locals.siteConfig;
     let siteConfigDefaultThumbnail;
