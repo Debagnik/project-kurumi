@@ -683,7 +683,7 @@ async function savePostToDB(req, res) {
 
     let uniqueId = null;
     while (true) {
-      uniqueId = createUniqueId(req.body.title);
+      uniqueId = createUniqueId(req.body.title.trim());
       const existingPost = await post.findOne({ uniqueId: uniqueId });
       if (!existingPost) {
         break;
@@ -950,7 +950,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     let uniqueId = null;
     if (generateUniqueId) {
       while(true){
-        uniqueId = createUniqueId(req.body.title);
+        uniqueId = createUniqueId(req.body.title.trim());
         const existingPost = await post.findOne({ uniqueId: uniqueId });
         if (!existingPost) {
           break;
