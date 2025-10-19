@@ -17,7 +17,7 @@
     <ul class="article-ul">
         <% data.forEach(posts => { %>
             <li>
-                <a href="/post/<%= posts._id %>">
+                <a href="/posts/<%= posts.uniqueId %>">
                     <span><%= posts.title %></span>
                     <span class="article-list__date"><%= posts.createdAt.toDateString() %></span>
                     <!--<span class="article-list__tags">tags: <%= posts.tag %></span> to be developed later-->
