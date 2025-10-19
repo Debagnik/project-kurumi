@@ -934,9 +934,9 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
       return res.redirect(`/admin/edit-post/${req.params.id}`)
     }
 
-    const MAX_TITLE_LENGTH = Math.max(parseInt(process.env.MAX_TITLE_LENGTH), 50);
-    const MAX_DESCRIPTION_LENGTH = Math.max(parseInt(process.env.MAX_DESCRIPTION_LENGTH), 1000);
-    const MAX_BODY_LENGTH = Math.max(parseInt(process.env.MAX_BODY_LENGTH), 100000);
+    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
+    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
+    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       if (process.env.NODE_ENV !== 'production') {
