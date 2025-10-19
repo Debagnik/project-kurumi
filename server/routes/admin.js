@@ -682,8 +682,8 @@ async function savePostToDB(req, res) {
     }
 
     let uniqueId = null;
+    let count = 0;
     while (true) {
-      let count = 0;
       const maxRetries = 10;
       uniqueId = createUniqueId(req.body.title.trim());
       count += 1;
@@ -952,8 +952,8 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     const generateUniqueId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId
     let uniqueId = null;
     if (generateUniqueId) {
+      let count = 0;
       while(true){
-        let count = 0;
         const maxRetries = 10;
         uniqueId = createUniqueId(req.body.title.trim());
         count += 1;
