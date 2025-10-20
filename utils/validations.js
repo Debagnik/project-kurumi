@@ -141,7 +141,7 @@ exports.parseTags = (textTags) => {
 
 exports.createUniqueId = (title) => {
   if (typeof title !== 'string' || title.trim() === '') {
-    return null;
+    title = 'null_post_title';
   }
   const sanitizedTitle = sanitizeHtml(title, CONSTANTS.SANITIZE_FILTER);
   const randomSuffix = '_' + Math.random().toString().substring(2, 6);
