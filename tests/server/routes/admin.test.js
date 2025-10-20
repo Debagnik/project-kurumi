@@ -138,9 +138,9 @@ jest.mock('../../../utils/constants', () => ({
         EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
         SANITIZE_FILTER: { allowedTags: [], allowedAttributes: {} },
         PRIVILEGE_LEVELS_ENUM: {
-            EDITOR: 1,
+            WEBMASTER: 1,
             MODERATOR: 2,
-            WEBMASTER: 3
+            EDITOR: 3
         },
         EMPTY_STRING: '',
         PASSWORD_MIN_LENGTH: '8',
