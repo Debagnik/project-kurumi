@@ -684,12 +684,16 @@ async function savePostToDB(req, res) {
     let uniqueId = null;
     let count = 0;
     const maxRetries = 10;
-    while (true) {
+    while (count >= maxRetries) {
       uniqueId = createUniqueId(req.body.title.trim());
       count += 1;
       const existingPost = await post.findOne({ uniqueId: uniqueId });
-      if (!existingPost || count >= maxRetries) {
+      if (!existingPost) {
         break;
+      }
+      if (count >= maxRetries) {
+          console.error('Failed to generate unique ID after maximum retries');
+          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
       }
     }
 
@@ -954,12 +958,16 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     if (generateUniqueId) {
       let count = 0;
       const maxRetries = 10;
-      while(true){
+      while(count >= maxRetries){
         uniqueId = createUniqueId(req.body.title.trim());
         count += 1;
         const existingPost = await post.findOne({ uniqueId: uniqueId });
-        if (!existingPost || count >= maxRetries) {
+        if (!existingPost) {
           break;
+        }
+        if (count >= maxRetries) {
+          console.error('Failed to generate unique ID after maximum retries');
+          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
         }
       }
     } else {
