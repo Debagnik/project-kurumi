@@ -10,6 +10,7 @@ const router = express.Router();
 const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
+const comment = require('../models/comments');
 
 const { isWebMaster, isValidURI, isValidTrackingScript, parseTags, createUniqueId } = require('../../utils/validations');
 
