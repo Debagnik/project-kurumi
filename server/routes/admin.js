@@ -1097,6 +1097,10 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
       postCache.invalidateCache(cleanedUniqueId);
     }
 
+    //Comments of the posts are also deleted
+    const deletedComments = await comment.deleteMany({ postId: postToDelete._id });
+    console.log(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);
+
     await post.deleteOne({ _id: postToDelete._id });
     console.log(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${postToDelete}`);
     req.flash('success', `Post Successfully Deleted with Id ${postToDelete.uniqueId}`);
