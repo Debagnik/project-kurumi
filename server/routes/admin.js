@@ -11,12 +11,13 @@ const post = require('../models/posts');
 const user = require('../models/user');
 const siteConfig = require('../models/config');
 
-const { isWebMaster, isValidURI, isValidTrackingScript, parseTags } = require('../../utils/validations');
+const { isWebMaster, isValidURI, isValidTrackingScript, parseTags, createUniqueId } = require('../../utils/validations');
 
 const { fetchSiteConfigCached, invalidateCache } = require('../../utils/fetchSiteConfigurations.js');
+const postCache = require('../../utils/postCache.js');
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
-const {CONSTANTS} = require('../../utils/constants');
+const { CONSTANTS } = require('../../utils/constants');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -214,7 +215,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     }
 
     // checking for existing user
-    const existingUser = await user.findOne({username: {$eq: username}})
+    const existingUser = await user.findOne({ username: { $eq: username } })
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
@@ -307,14 +308,14 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     if (!username || !password) {
       throw new Error('Username and Passwords are mandatory');
     }
-    
+
     //sanitize User Input username
-    if(typeof(username) !== 'string'){
+    if (typeof (username) !== 'string') {
       throw Error('Chica, Its not this easy to dupe me, Try harder');
     }
 
     //checks if the user exists
-    const currentUser = await user.findOne({username: {$eq: username}});
+    const currentUser = await user.findOne({ username: { $eq: username } });
     if (!currentUser) {
       console.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
@@ -574,69 +575,78 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
 
 /**
  * @function savePostToDB
- * @description Handles the complete post creation workflow including validation,
- *              markdown conversion, and database persistence. Applies business
- *              rules for content length, required fields, and thumbnail defaults.
+ * @description Handles the complete workflow for creating and saving a new post,
+ *              including validation, markdown conversion, thumbnail handling,
+ *              unique ID generation, and database persistence. Ensures user
+ *              authentication, field constraints, and safe defaults for missing data.
  * 
- * @param {Object} req - Express request object containing:
- * @param {string} req.userId - Authenticated user's ID from JWT
- * @param {Object} req.body - Post data including:
- * @param {string} req.body.title - Post title (trimmed, length validated)
- * @param {string} req.body.markdownbody - Markdown content (converted to HTML)
- * @param {string} req.body.desc - Post description (trimmed, length validated)
- * @param {string} [req.body.tags] - Optional tag string
- * @param {string} [req.body.thumbnailImageURI] - Optional custom thumbnail URI
+ * @async
+ * @param {Object} req - Express request object containing user and post data.
+ * @param {string} req.userId - Authenticated user ID extracted from JWT.
+ * @param {Object} req.body - Request body containing post creation data.
+ * @param {string} req.body.title - Post title (trimmed and validated for length).
+ * @param {string} req.body.markdownbody - Post content in markdown format (converted to HTML).
+ * @param {string} req.body.desc - Post description (trimmed and validated for length).
+ * @param {string} [req.body.tags] - Optional comma-separated tag string.
+ * @param {string} [req.body.thumbnailImageURI] - Optional thumbnail URI (validated or replaced by fallback).
  * 
- * @param {Object} res - Express response object (unused in current implementation)
+ * @param {Object} res - Express response object, used for site config access and redirect on failure.
  * 
- * @returns {Promise<string>} Resolves with the new post's ID string on success
+ * @returns {Promise<string>} Resolves with the newly created post’s MongoDB ID as a string.
  * 
- * @throws {Error} With descriptive messages for:
- * @throws User not found
- * @throws Missing required fields
- * @throws Content length violations
+ * @throws {Error} When:
+ * @throws User not found during creation attempt.
+ * @throws Missing required fields (title, description, markdown body).
+ * @throws Field length violations for title, description, or body.
  * 
- * @businessLogic
- * @step 1 User verification
- * @step 2 Site configuration lookup (for default thumbnail)
- * @step 3 Field validation (required fields + length checks)
- * @step 4 Markdown-to-HTML conversion
- * @step 5 Post object creation with:
- *        - Author tracking
- *        - Timestamping
- *        - Tag parsing
- *        - Thumbnail fallback logic
- * @step 6 Database persistence
+ * @workflow
+ * @step 1 Validate authenticated user via `req.userId`.
+ * @step 2 Retrieve and verify site configuration from `res.locals.siteConfig`.
+ * @step 3 Determine fallback thumbnail URI (priority: user input → site config → env variable).
+ * @step 4 Enforce field presence and length validation.
+ * @step 5 Generate `uniqueId` from sanitized title (slug-like identifier).
+ * @step 6 Convert markdown body to HTML using `markdownToHtml`.
+ * @step 7 Construct post object with:
+ *         - Author attribution
+ *         - Timestamps
+ *         - Tag parsing via `parseTags`
+ *         - Default thumbnail assignment
+ * @step 8 Save post to database and return ID.
  * 
  * @validation
- * @rule Title, body, and description are required (trimmed)
- * @rule Title max length: configurable via MAX_TITLE_LENGTH (default: 50)
- * @rule Description max length: configurable via MAX_DESCRIPTION_LENGTH (default: 1000)
- * @rule Body max length: configurable via MAX_BODY_LENGTH (default: 100000)
- * @rule Thumbnail URI falls back to:
- *       1. Provided URI (if valid)
- *       2. Site config default
- *       3. Environment variable default
+ * @rule Title, body, and description must be non-empty and trimmed.
+ * @rule Title ≤ MAX_TITLE_LENGTH (default 50 chars).
+ * @rule Description ≤ MAX_DESCRIPTION_LENGTH (default 1000 chars).
+ * @rule Body ≤ MAX_BODY_LENGTH (default 100000 chars).
+ * @rule Thumbnail URI validated via `isValidURI`; uses fallback if invalid.
  * 
  * @dependencies
- * @external markdownToHtml - Converts markdown to HTML
- * @external isValidURI - Validates thumbnail URIs
- * @external parseTags - Processes tag strings (implementation not shown)
- * 
- * @logging
- * @successLog Records username and post details (full in dev, partial in prod)
- * @errorLog Detailed validation failures
- * @configWarning Logs missing site config in non-production
+ * @requires user - Mongoose user model for verification.
+ * @requires post - Mongoose post model for persistence.
+ * @external markdownToHtml - Converts markdown to sanitized HTML.
+ * @external parseTags - Parses tags into array form.
+ * @external isValidURI - Ensures thumbnail URI validity.
+ * @external createUniqueId - Generates slug-based unique identifier for posts.
  * 
  * @security
- * @ensures All string fields are trimmed
- * @tracks Author and last editor
+ * @ensures Input sanitization via trimming and URI validation.
+ * @tracks Author and last editor metadata.
  * 
  * @configuration
- * @env MAX_TITLE_LENGTH - Configures title max chars
- * @env MAX_DESCRIPTION_LENGTH - Configures description max chars
- * @env MAX_BODY_LENGTH - Configures body max chars
- * @env DEFAULT_POST_THUMBNAIL_LINK - Fallback thumbnail URI
+ * @env MAX_TITLE_LENGTH - Maximum allowed title length.
+ * @env MAX_DESCRIPTION_LENGTH - Maximum allowed description length.
+ * @env MAX_BODY_LENGTH - Maximum allowed markdown body length.
+ * @env DEFAULT_POST_THUMBNAIL_LINK - Global fallback thumbnail URI.
+ * 
+ * @logging
+ * @successLogs Records successful creation with author and post summary.
+ * @warningLogs Emits missing site config warnings (non-production only).
+ * @errorLogs Captures and logs validation or DB errors with detailed messages.
+ * 
+ * @flashMessages
+ * @error On failure, displays “Internal Server Error” via `req.flash` and redirects to `/dashboard`.
+ * 
+ * @access Private (Authenticated users only)
  */
 async function savePostToDB(req, res) {
   try {
@@ -646,7 +656,7 @@ async function savePostToDB(req, res) {
       throw new Error("User not found while saving post.");
     }
 
-    const currentSiteConfig = await siteConfig.findOne();
+    const currentSiteConfig = res.locals.siteConfig;
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
       if (process.env.NODE_ENV !== 'production') {
@@ -671,6 +681,22 @@ async function savePostToDB(req, res) {
       throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
+    let uniqueId = null;
+    let count = 0;
+    const maxRetries = 10;
+    while (count <= maxRetries) {
+      uniqueId = createUniqueId(req.body.title.trim());
+      count += 1;
+      const existingPost = await post.findOne({ uniqueId: uniqueId });
+      if (!existingPost) {
+        break;
+      }
+      if (count >= maxRetries) {
+          console.error('Failed to generate unique ID after maximum retries');
+          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
+      }
+    }
+
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
     const newPost = new post({
@@ -682,74 +708,90 @@ async function savePostToDB(req, res) {
       desc: req.body.desc.trim(),
       thumbnailImageURI: defaultThumbnailImageURI,
       lastUpdateAuthor: currentUser.username.trim(),
-      modifiedAt: Date.now()
+      modifiedAt: Date.now(),
+      uniqueId: uniqueId
     });
 
     await newPost.save();
 
-    console.log('New post added by ', currentUser.username, '\n', newPost);
+    console.log(`New post added by ${currentUser.username} \n ${newPost}`);
     return newPost._id.toString();
   } catch (error) {
-    throw new Error(`Could not save post data: ${error.message}`);
+    console.error(`Could not save post data: ${error.message}`);
+    req.flash('error', 'Internal Server error');
+    res.status(500).redirect('/dashboard');
   }
 }
 
 /**
- * @route GET /edit-post/:id
- * @description Renders the post editing interface for authorized users.
- *              Loads the specified post's data and verifies user privileges.
- *              Provides CSRF protection and webmaster status detection.
+ * @route GET /edit-post/:uniqueId
+ * @description Renders the post editing interface for authenticated users.
+ *              Fetches the target post by its sanitized `uniqueId` (slug-based identifier)
+ *              instead of MongoDB `_id`. Ensures that only authorized users can access the
+ *              editor and provides CSRF protection and webmaster detection.
  * 
  * @middleware
- * @chain authToken - Validates JWT authentication
- * @chain genericGetRequestRateLimiter - Prevents brute force attacks
+ * @chain authToken - Validates JWT authentication and populates `req.userId`
+ * @chain genericGetRequestRateLimiter - Prevents brute-force and abuse of editor endpoints
  * 
  * @params
- * @param {string} id - MongoDB _id of the post to edit
+ * @param {string} uniqueId - Sanitized, human-readable unique post identifier
+ *                            (auto-generated from the title using regex filtering and slug rules)
+ * 
+ * @sanitization
+ * @uses sanitizeHtml - Sanitizes the `uniqueId` parameter with `CONSTANTS.SANITIZE_FILTER`
+ *                      to prevent XSS or malformed slug attacks
  * 
  * @request
  * @cookie {string} token - JWT for authentication
  * 
  * @response
- * @success {200} Renders edit-post view with:
- * @property {Object} locals - Page metadata including:
- *           @subprop {string} title - Dynamic title with post name
- *           @subprop {string} description - Static editor description
- *           @subprop {Object} config - Site configuration
- * @property {Object} data - The full post document from database
- * @property {string} layout - Admin layout template
- * @property {string} csrfToken - CSRF protection token
- * @property {boolean} isWebMaster - Webmaster privilege flag
- * @property {Object} currentUser - Minimal user data containing privilege level
+ * @success {200} Renders `admin/edit-post` EJS view with:
+ * @property {Object} locals - Metadata for the editor page
+ *           @subprop {string} title - "Edit Post - <post.title>"
+ *           @subprop {string} description - "Post Editor"
+ *           @subprop {Object} config - Site configuration loaded from middleware
+ * @property {Object} data - Post document fetched by `uniqueId`
+ * @property {string} layout - Admin layout template (`adminLayout`)
+ * @property {string} csrfToken - Token for form submission protection
+ * @property {boolean} isWebMaster - Indicates whether current user has webmaster privileges
+ * @property {Object} currentUser - Minimal user object (contains privilege level)
+ * @property {boolean} isUserLoggedIn - Indicates authenticated session
  * 
- * @failure {302} Redirects to /dashboard with error flash when:
- * @case Post not found
- * @case User not authenticated
- * @case Server error occurs
+ * @failure {302} Redirects to `/dashboard` with a flash error when:
+ * @case Post not found for given `uniqueId`
+ * @case User authentication fails
+ * @case Internal server error occurs
  * 
  * @security
  * @requires JWT Authentication
  * @csrf Protected endpoint
- * @rateLimited Against excessive requests
+ * @rateLimited Prevents excessive edit page access attempts
  * 
- * @access Private (requires valid authentication)
+ * @access Private (Authenticated users only)
  * 
  * @privilegeHandling
- * @note Actual edit permissions should be checked during POST submission
+ * @note Actual permission verification is deferred to POST submission validation
  * 
  * @errorHandling
- * @catches All errors generically
- * @logs Full error to console
- * @notifies User with generic flash message
+ * @catches All runtime and DB errors
+ * @logs Detailed errors to console
+ * @notifies User with a generic error flash message
  * 
  * @logging
- * @verboseLogs Includes post lookup details
- * @securityLogs Records access attempts
+ * @verboseLogs Includes `uniqueId` lookup results
+ * @securityLogs Records editor access attempts and privilege level
  */
-router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
+router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
 
-    const data = await post.findOne({ _id: req.params.id });
+    const sanitizedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+
+    const data = await post.findOne({ uniqueId: sanitizedUniqueId });
+
+    if (!data) {
+      throw Error(`No posts found with uniqueId: ${sanitizedUniqueId}`);
+    }
 
     const locals = {
       title: "Edit Post - " + data.title,
@@ -759,7 +801,7 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
 
     const currentUser = await user.findById(req.userId);
 
-    res.render('admin/edit-post', {
+    return res.render('admin/edit-post', {
       locals,
       data,
       layout: adminLayout,
@@ -777,74 +819,109 @@ router.get('/edit-post/:id', authToken, genericGetRequestRateLimiter, async (req
 });
 
 /**
- * @route PUT /edit-post/:id
- * @description Handles post updates with comprehensive validation and moderation capabilities.
- *              Performs field validation, markdown conversion, and privilege-based updates.
+ * @route PUT /edit-post/:uniqueId
+ * @description Handles post updates with comprehensive validation, sanitization,
+ *              cache invalidation, and privilege-based moderation. Automatically
+ *              regenerates the post’s `uniqueId` slug when the title changes and
+ *              ensures strict input sanitization and markdown conversion.
  * 
  * @middleware
- * @chain authToken - Validates JWT authentication
- * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * @chain authToken - Validates JWT authentication and populates req.userId
+ * @chain genericAdminRateLimiter - Prevents abuse through rate limiting
  * 
  * @params
- * @param {string} id - MongoDB _id of the post to update
+ * @param {string} uniqueId - Sanitized, human-readable post identifier (slug)
+ *                            used to locate the post instead of MongoDB _id
+ * 
+ * @sanitization
+ * @uses sanitizeHtml - Sanitizes `uniqueId` with `CONSTANTS.SANITIZE_FILTER`
+ *                      to prevent injection or malformed input attacks
+ * 
+ * @cache
+ * @note Automatically invalidates cache entry for the post via `postCache.invalidateCache`
+ *       if it exists before performing update
  * 
  * @request
- * @body {Object} Post data including:
- * @body {string} title - Updated post title (trimmed, length validated)
+ * @body {Object} Updated post data including:
+ * @body {string} title - Updated post title (validated, trimmed, length checked)
  * @body {string} markdownbody - Updated markdown content (converted to HTML)
- * @body {string} desc - Updated description (trimmed, length validated)
- * @body {string} [tags] - Optional updated tags
- * @body {string} [thumbnailImageURI] - Optional updated thumbnail URI
- * @body {string} [isApproved] - 'on' for moderators/webmasters to approve posts
+ * @body {string} desc - Updated post description (validated, trimmed)
+ * @body {string} [tags] - Optional tag list (comma-separated, sanitized)
+ * @body {string} [thumbnailImageURI] - Optional updated thumbnail URI (validated)
+ * @body {string} [isApproved] - Moderation toggle (`on` if approved)
  * 
  * @validation
- * @rule All required fields must be present (title, markdownbody, desc)
- * @rule Title max length: configurable via MAX_TITLE_LENGTH (default: 50)
- * @rule Description max length: configurable via MAX_DESCRIPTION_LENGTH (default: 1000)
- * @rule Body max length: configurable via MAX_BODY_LENGTH (default: 100000)
- * @rule Thumbnail URI falls back to site config or environment default
+ * @rule All required fields (title, markdownbody, desc) must be present
+ * @rule Title, description, and body lengths must not exceed configured limits
+ * @rule Thumbnail URI must be valid; falls back to site default or environment variable
+ * 
+ * @dynamicBehavior
+ * @action Regenerates post `uniqueId` slug if the title changes
+ * @action Converts Markdown content to HTML before saving
  * 
  * @privilegeHandling
- * @level MODERATOR/WEBMASTER - Can modify approval status via isApproved
- * @level EDITOR - Can only update standard fields
+ * @level WEBMASTER/MODERATOR - Can toggle approval status via `isApproved`
+ * @level EDITOR - Limited to standard field edits only
  * 
  * @response
- * @success {302} Redirects to dashboard with success flash
- * @failure {302} Redirect cases:
- * @case /edit-post/:id - Validation errors with field-specific messages
- * @case /dashboard - General errors or update failures
+ * @success {302} Redirects to `/dashboard` with success flash message upon successful update
+ * @failure {302} Redirects to:
+ * @case `/admin/edit-post/:uniqueId` - When validation fails
+ * @case `/dashboard` - When server or update errors occur
  * 
  * @security
  * @requires JWT Authentication
- * @rateLimited Against excessive updates
- * @tracks LastUpdateAuthor - Records username of editor
+ * @csrf Protected via middleware
+ * @rateLimited Against excessive PUT requests
+ * 
+ * @tracking
+ * @tracks lastUpdateAuthor - Records username of last editor
+ * @tracks modifiedAt - Updates modification timestamp
  * 
  * @logging
- * @devLog Detailed validation errors (suppressed in production)
- * @errorLog Full error traces for debugging
- * @updateLog Records modification timestamps
+ * @devLogs Validation, sanitization, and cache invalidation events (non-production only)
+ * @errorLogs Full error stack traces for debugging
+ * @updateLogs Record of post modification attempts and results
  * 
  * @configuration
- * @env MAX_TITLE_LENGTH - Controls title validation
- * @env MAX_DESCRIPTION_LENGTH - Controls description validation
- * @env MAX_BODY_LENGTH - Controls body validation
- * @env DEFAULT_POST_THUMBNAIL_LINK - Fallback thumbnail URI
+ * @env MAX_TITLE_LENGTH - Maximum title length (default: 50)
+ * @env MAX_DESCRIPTION_LENGTH - Maximum description length (default: 1000)
+ * @env MAX_BODY_LENGTH - Maximum markdown body length (default: 100000)
+ * @env DEFAULT_POST_THUMBNAIL_LINK - Fallback URI for missing thumbnails
  * 
- * @access Private (requires valid authentication)
+ * @access Private (authenticated users only)
  * 
  * @errorHandling
- * @userNotFound Specific error for missing users
- * @validationErrors Field-specific feedback via flash
- * @updateFailures Checks post-update verification
+ * @userNotFound Throws specific error for missing authenticated user
+ * @validationErrors Field-specific feedback via flash messages
+ * @updateFailures Checks database update confirmation post-operation
  */
-router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
+router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
       console.error('User not found', req.userId);
       throw new Error(`No User Found for: ${req.userId}`);
     }
-    const currentSiteConfig = await siteConfig.findOne();
+
+    const sanitizedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+    if (postCache.getPostFromCache(sanitizedUniqueId)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
+      }
+      postCache.invalidateCache(sanitizedUniqueId);
+    }
+
+    const postToUpdate = await post.findOne({ uniqueId: sanitizedUniqueId });
+    if (!postToUpdate) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Post not found with uniqueId:', sanitizedUniqueId);
+      }
+      req.flash('error', `Post not found with id: ${sanitizedUniqueId}, Post not updated`);
+      return res.redirect('/dashboard');
+    }
+
+    const currentSiteConfig = res.locals.siteConfig;
     let siteConfigDefaultThumbnail;
     if (!currentSiteConfig) {
       if (process.env.NODE_ENV !== 'production') {
@@ -858,10 +935,10 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Title, body, and description are missing while editing /post/', req.params.id);
+        console.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
       }
       req.flash('error', 'Title, body, and description are required!, Post is not updated');
-      return res.redirect(`/admin/edit-post/${req.params.id}`)
+      return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`)
     }
 
     const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
@@ -870,100 +947,135 @@ router.put('/edit-post/:id', authToken, genericAdminRateLimiter, async (req, res
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Title, body, and description must not exceed their respective limits while editing /post/', req.params.id);
+        console.error('Title, body, and description must not exceed their respective limits while editing /post/', sanitizedUniqueId);
       }
       req.flash('error', 'Title, body, and description must not exceed their respective limits!, Post is not updated');
-      return res.redirect(`/admin/edit-post/${req.params.id}`);
-
-    }
-    const htmlBody = markdownToHtml(req.body.markdownbody.trim());
-
-    const updatePostData = {
-      title: req.body.title.trim(),
-      body: htmlBody,
-      markdownbody: req.body.markdownbody.trim(),
-      desc: req.body.desc.trim(),
-      tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
-      thumbnailImageURI: defaultThumbnailImageURI,
-      modifiedAt: Date.now(),
-      lastUpdateAuthor: currentUser.username
+      return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`);
     }
 
-    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      updatePostData.isApproved = req.body.isApproved === 'on'
+    const generateUniqueId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId
+    let uniqueId = null;
+    if (generateUniqueId) {
+      let count = 0;
+      const maxRetries = 10;
+      while(count <= maxRetries){
+        uniqueId = createUniqueId(req.body.title.trim());
+        count += 1;
+        const existingPost = await post.findOne({ uniqueId: uniqueId });
+        if (!existingPost) {
+          break;
+        }
+        if (count >= maxRetries) {
+          console.error('Failed to generate unique ID after maximum retries');
+          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
+        }
+      }
+    } else {
+      uniqueId = postToUpdate.uniqueId;
     }
 
-    await post.findByIdAndUpdate(
-      req.params.id,
-      { $set: updatePostData },
-      { runValidators: true }
-    );
-    const updatedPost = await post.findById(req.params.id);
-    if (!updatedPost) {
-      console.error('Failed to update post', req.params.id);
-      req.flash('error', 'Something went wrong, Post not updated')
-      return res.redirect(`/admin/edit-post/${req.params.id}`);
-    }
+  const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-    req.flash('success', `Successfully updated post with id ${req.params.id}`);
-    res.redirect(`/dashboard/`);
-
-  } catch (error) {
-    console.log(error);
-    req.flash('error', 'Something Went Wrong');
-    res.redirect('/dashboard');
+  const updatePostData = {
+    title: req.body.title.trim(),
+    body: htmlBody,
+    markdownbody: req.body.markdownbody.trim(),
+    desc: req.body.desc.trim(),
+    tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
+    thumbnailImageURI: defaultThumbnailImageURI,
+    modifiedAt: Date.now(),
+    lastUpdateAuthor: currentUser.username,
+    uniqueId: uniqueId
   }
+
+  if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    updatePostData.isApproved = req.body.isApproved === 'on'
+  }
+
+  await post.findByIdAndUpdate(
+    postToUpdate._id,
+    { $set: updatePostData },
+    { runValidators: true }
+  );
+
+  const updatedPost = await post.findById(postToUpdate._id);
+  if (!updatedPost) {
+    console.error('Failed to update post', uniqueId);
+    req.flash('error', 'Something went wrong, Post not updated')
+    return res.redirect(`/admin/edit-post/${uniqueId}`);
+  }
+
+  req.flash('success', `Successfully updated post with id ${uniqueId}`);
+  res.redirect(`/dashboard/`);
+
+} catch (error) {
+  console.log(error);
+  req.flash('error', 'Something Went Wrong');
+  res.redirect('/dashboard');
+}
 });
 
 /**
- * @route DELETE /delete-post/:id
- * @description Handles post deletion with authorization checks and audit logging.
- *              Verifies both user authentication and post existence before deletion.
- *              Provides success/error feedback via flash messages.
+ * @route DELETE /delete-post/:uniqueId
+ * @description Handles post deletion with full authentication, sanitization,
+ *              and audit logging. Verifies that both the user and target post
+ *              exist before proceeding. Automatically invalidates post cache
+ *              and records the deletion event in logs.
  * 
  * @middleware
- * @chain authToken - Validates JWT authentication
- * @chain genericAdminRateLimiter - Prevents abuse with rate limiting
+ * @chain authToken - Validates JWT authentication and populates req.userId
+ * @chain genericAdminRateLimiter - Protects against excessive deletion requests
  * 
  * @params
- * @param {string} id - MongoDB _id of the post to delete
+ * @param {string} uniqueId - Sanitized human-readable post identifier (slug)
+ *                            used instead of MongoDB `_id`
+ * 
+ * @sanitization
+ * @uses sanitizeHtml - Cleans the `uniqueId` param using `CONSTANTS.SANITIZE_FILTER`
+ *                      to prevent injection or malformed input attacks
+ * 
+ * @cache
+ * @note Invalidates post entry in cache (if found) via `postCache.invalidateCache`
+ *       before performing database deletion
  * 
  * @validation
- * @check Verifies requesting user exists
- * @check Confirms target post exists
+ * @check Confirms the requesting user exists (`user.findById`)
+ * @check Ensures the post exists in database before deletion
  * 
  * @response
- * @success {302} Redirects to /dashboard with success flash
- * @failure {302} Redirect cases:
- * @case /admin - When user not found (with auth error)
- * @case /dashboard - When post not found or other errors
+ * @success {302} Redirects to `/dashboard` with success flash message upon deletion
+ * @failure {302} Redirects to:
+ * @case `/admin` - If user is missing or logged out
+ * @case `/dashboard` - If post not found or server error occurs
  * 
  * @security
  * @requires JWT Authentication
- * @rateLimited Against excessive delete requests
+ * @rateLimited Prevents excessive delete operations
+ * @csrf Protected via middleware
  * 
  * @auditing
- * @logs Detailed deletion record including:
- *       - Requesting username
- *       - Deleted post details
- * 
- * @access Private (requires admin privileges)
- * 
- * @errorHandling
- * @userNotFound Specific error for missing users
- * @postNotFound Specific error for missing posts
- * @serverErrors Generic error catch-all
+ * @logs Detailed record of the deletion event including:
+ *       - Username of the requester
+ *       - Deleted post’s `uniqueId`
+ *       - Timestamp of operation
  * 
  * @notifications
- * @successFlash Confirms deletion with post ID
- * @errorFlash Provides context-specific failure messages
+ * @successFlash Confirms successful deletion with post `uniqueId`
+ * @errorFlash Displays contextual error messages on failure
  * 
  * @logging
- * @securityLogs Records all deletion attempts
- * @auditLogs Detailed post deletion records
- * @errorLogs Full error traces for debugging
+ * @securityLogs Records all delete attempts (successful and failed)
+ * @auditLogs Includes post and user metadata for traceability
+ * @errorLogs Captures and logs unexpected server errors
+ * 
+ * @errorHandling
+ * @userNotFound Redirects to `/admin` if user is missing
+ * @postNotFound Redirects to `/dashboard` if post not found
+ * @serverErrors Generic catch-all with graceful flash feedback
+ * 
+ * @access Private (restricted to authenticated and privileged users)
  */
-router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req, res) => {
+router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
@@ -972,23 +1084,22 @@ router.delete('/delete-post/:id', authToken, genericAdminRateLimiter, async (req
       return res.redirect('/admin');
     }
 
-    const isReqUserIDValid = mongoose.Types.ObjectId.isValid(req.params.id);
-    if(!isReqUserIDValid){
-      console.error({code: 404, Status: `Not found`, message: `postID: ${req.params.id} is not valid`});
-      req.flash("error", "ID Not valid");
-      return res.redirect('/dashboard');
-    }
+    const cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
 
-    const postToDelete = await post.findById(req.params.id);
+    const postToDelete = await post.findOne({ uniqueId: cleanedUniqueId });
     if (!postToDelete) {
-      console.error('Post not found', req.params.id);
+      console.error('Post not found', cleanedUniqueId);
       req.flash('error', `post not found`);
       return res.redirect('/dashboard');
     }
 
-    await post.deleteOne({ _id: req.params.id });
-    console.log('Post deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted Post: ', postToDelete);
-    req.flash('success', `Post Successfully Deleted with Id ${req.params.id}`);
+    if (postCache.getPostFromCache(cleanedUniqueId)) {
+      postCache.invalidateCache(cleanedUniqueId);
+    }
+
+    await post.deleteOne({ _id: postToDelete._id });
+    console.log(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${postToDelete}`);
+    req.flash('success', `Post Successfully Deleted with Id ${postToDelete.uniqueId}`);
     res.redirect('/dashboard');
   } catch (error) {
     console.log(error);
@@ -1336,8 +1447,8 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
-    if(!isUserIdValid){
-      console.error({code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid`});
+    if (!isUserIdValid) {
+      console.error({ code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid` });
       throw new Error('User ID is invalid');
     }
     const userToDelete = await user.findById(req.params.id);
@@ -1423,12 +1534,12 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
 router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req, res) => {
   try {
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
-    if(!isUserIdValid){
+    if (!isUserIdValid) {
       console.error("Invalid username");
       throw new Error("User id to be edited is invalid");
     }
 
-    const selectedUser = await user.findOne({ _id: req.params.id});
+    const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
       console.error('User not found', req.params.id);
       throw new Error('User not found');
@@ -1528,7 +1639,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
 
-    if(!isUserIdValid){
+    if (!isUserIdValid) {
       console.error("Invalid userID");
       throw new Error('User ID is not valid');
     }
@@ -1814,11 +1925,11 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
 
-    const sanitizedUserName = sanitizeHtml(String(username).trim(), CONSTANTS.SANITIZE_FILTER);  
+    const sanitizedUserName = sanitizeHtml(String(username).trim(), CONSTANTS.SANITIZE_FILTER);
     if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       throw new Error("Invalid username format");
     }
-    
+
     const userModel = await user.findOne({ username: { $eq: sanitizedUserName } });
     if (!userModel) {
       throw new Error(`User doesn't exist`);
@@ -1998,7 +2109,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
 router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-    if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+    if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)) {
       throw new Error("Invalid username");
     }
     const currentUser = await user.findOne({ username: sanitizedUsername });
@@ -2006,7 +2117,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       req.flash('error', 'User not found');
       return res.redirect('/dashboard');
     }
-    const { name, description, portfolioLink } = req.body; 
+    const { name, description, portfolioLink } = req.body;
 
     if (req.userId === currentUser.id) {
       // Check for required fields first
@@ -2032,7 +2143,8 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       const sanitizedName = sanitizeHtml(String(name).trim(), CONSTANTS.SANITIZE_FILTER);
       const sanitizedLink = isValidURI(portfolioLink) ? portfolioLink : CONSTANTS.EMPTY_STRING;
       const sanitizedDesc = sanitizeHtml(description, {
-      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt', 'title']}});
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt', 'title'] }
+      });
       const HTMLDescription = markdownToHtml(description);
       currentUser.name = sanitizedName;
       currentUser.portfolioLink = sanitizedLink ? sanitizedLink : (currentUser.portfolioLink || CONSTANTS.EMPTY_STRING);
@@ -2051,7 +2163,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       }
     } else {
       req.flash("error", `Hmph! Don’t get ahead of yourself — you’re not allowed to edit someone else’s profile, got it?!`);
-      console.error({code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}`});
+      console.error({ code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}` });
       return res.redirect('/dashboard');
     }
   } catch (error) {

@@ -6,7 +6,7 @@
         <% if (data.length> 0) { %>
             <% data.forEach(post=> { %>
                 <li>
-                    <a href="/post/<%= post._id %>">
+                    <a href="/posts/<%= encodeURIComponent(post.uniqueId) %>">
                         <span>
                             <%= post.title %>
                         </span>

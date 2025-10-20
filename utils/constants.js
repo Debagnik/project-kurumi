@@ -29,7 +29,9 @@ const CONSTANTS = Object.freeze({
       WEBMASTER : 1,
       MODERATOR : 2,
       EDITOR: 3
-    }
+    },
+  UNIQUE_ID_GENERATION_REGEX: /[^A-Za-z0-9 ]+/,
+  REMOVE_ALL_SPACES_REGEX: /\s+/g
 });
 
 module.exports = { CONSTANTS };
