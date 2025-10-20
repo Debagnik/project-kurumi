@@ -692,7 +692,7 @@ async function savePostToDB(req, res) {
         break;
       }
     }
-    
+
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
     const newPost = new post({
@@ -931,10 +931,10 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Title, body, and description are missing while editing /post/', req.params.id);
+        console.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
       }
       req.flash('error', 'Title, body, and description are required!, Post is not updated');
-      return res.redirect(`/admin/edit-post/${req.params.id}`)
+      return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`)
     }
 
     const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
@@ -943,10 +943,10 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Title, body, and description must not exceed their respective limits while editing /post/', req.params.id);
+        console.error('Title, body, and description must not exceed their respective limits while editing /post/', sanitizedUniqueId);
       }
       req.flash('error', 'Title, body, and description must not exceed their respective limits!, Post is not updated');
-      return res.redirect(`/admin/edit-post/${req.params.id}`);
+      return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`);
     }
 
     const generateUniqueId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId
@@ -963,7 +963,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
         }
       }
     } else {
-      uniqueId = postToUpdate.uniqueId
+      uniqueId = postToUpdate.uniqueId;
     }
 
   const htmlBody = markdownToHtml(req.body.markdownbody.trim());
