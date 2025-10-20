@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{url}}/delete-post/:postId?_method=DELETE
+  url: {{url}}/delete-post/:postuniqueId?_method=DELETE
   body: formUrlEncoded
   auth: inherit
 }
@@ -15,7 +15,7 @@ params:query {
 }
 
 params:path {
-  postId: 680148bc20abde10df2bb054
+  postuniqueId: miku_2876
 }
 
 headers {
@@ -41,10 +41,10 @@ body:form-urlencoded {
 }
 
 docs {
-  POST /delete-post/:postId
+  POST /delete-post/:postuniqueId
   
   Description:
-    This route handles the deletion of a specific post, identified by :postId, from the admin panel. It allows an administrator to remove a post from the database permanently. The postId is provided in the URL as a route parameter.
+    This route handles the deletion of a specific post, identified by :postUniqueId, from the admin panel. It allows an administrator to remove a post from the database permanently. The postId is provided in the URL as a route parameter. The comments related the post to be deleted, will also get deleted if the request is successful.
   
   Middleware Used:
     * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
