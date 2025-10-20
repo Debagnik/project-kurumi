@@ -9,7 +9,7 @@ module.exports = {
     'utils/cloudflareTurnstileServerVerify.js',
     'utils/rateLimiter.js',
     'server/routes/main.js',
-    '!server/routes/admin.js',
+    'server/routes/admin.js',
     '!**/node_modules/**',
     '!coverage/**',
     '!jest.config.js'
@@ -35,7 +35,8 @@ module.exports = {
     '**/tests/utils/constants.test.js',
     '**/tests/utils/rateLimiter.test.js',
     '**/tests/utils/postCache.test.js',
-    '**/tests/server/routes/main.test.js'
+    '**/tests/server/routes/main.test.js',
+    '**/tests/server/routes/admin.test.js'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 30000
