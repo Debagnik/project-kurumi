@@ -6,6 +6,8 @@
   "scripts": {
     "test": "jest --coverage --detectOpenHandles",
     "test:watch": "jest --watch",
+    "test:utils": "jest tests/utils/ --coverage --coverageDirectory=coverage --collectCoverageFrom='utils/constants.js' --collectCoverageFrom='utils/validations.js' --collectCoverageFrom='utils/cloudflareTurnstileServerVerify.js' --collectCoverageFrom='utils/rateLimiter.js'",
+    "test:routes": "jest tests/server/routes/ --coverage --coverageDirectory=coverage --collectCoverageFrom='server/routes/main.js' --coverageThreshold='{}'",
     "start": "node app.js",
     "dev": "nodemon app.js"
   },
@@ -13,7 +15,7 @@
   "author": "@Debagnik",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.12.0",
+    "axios": "^1.12.2",
     "bcrypt": "^5.1.1",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^5.1.0",

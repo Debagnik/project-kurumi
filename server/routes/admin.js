@@ -713,7 +713,16 @@ async function savePostToDB(req, res) {
       uniqueId: uniqueId
     });
 
-    await newPost.save();
+    try{
+      await newPost.save();
+    } catch(error){
+      console.error(`Could not save post data: ${error.message}`);
+      if(error.code === 11000 && error.keyPattern && error.keyPattern.uniqueId){
+        req.flash('error', 'A post with a similar title already exists. Please try a slightly different title.');
+        return res.status(409).redirect('/dashboard');
+      }
+      throw error;
+    }
 
     console.log(`New post added by ${currentUser.username} \n ${newPost}`);
     return newPost._id.toString();
