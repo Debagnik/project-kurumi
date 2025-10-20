@@ -729,7 +729,7 @@ async function savePostToDB(req, res) {
   } catch (error) {
     console.error(`Could not save post data: ${error.message}`);
     req.flash('error', 'Internal Server error');
-    res.status(500).redirect('/dashboard');
+    return res.status.redirect(500, '/dashboard');
   }
 }
 

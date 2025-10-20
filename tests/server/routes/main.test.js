@@ -147,7 +147,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
         mockComment.find.mockReturnValue({
             sort: jest.fn().mockReturnThis(),
             limit: jest.fn().mockReturnThis(),
-            mockResolvedValue: jest.fn().mockResolvedValue([])
+            exec: jest.fn().mockResolvedValue([])
         });
         mockComment.findById.mockResolvedValue(null);
 
@@ -1150,7 +1150,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             mockComment.find.mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
                 limit: jest.fn().mockReturnThis(),
-                mockResolvedValue: jest.fn().mockResolvedValue([])
+                exec: jest.fn().mockResolvedValue([])
             });
             
             const response = await request(app).get('/posts/test-unique-id');
@@ -1265,7 +1265,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             mockComment.find.mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
                 limit: jest.fn().mockReturnThis(),
-                mockResolvedValue: jest.fn().mockResolvedValue([])
+                exec: jest.fn().mockResolvedValue([])
             });
             
             const response = await request(app).get('/posts/test-unique-id');
@@ -1282,7 +1282,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             mockComment.find.mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
                 limit: jest.fn().mockReturnThis(),
-                mockResolvedValue: jest.fn().mockResolvedValue([])
+                exec: jest.fn().mockResolvedValue([])
             });
             
             const response = await request(app).get('/posts/test-unique-id');
