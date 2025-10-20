@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{url}}/post/delete-comment/:commentId
+  url: {{url}}/posts/delete-comment/:commentId
   body: formUrlEncoded
   auth: inherit
 }
@@ -40,7 +40,7 @@ body:form-urlencoded {
 }
 
 docs {
-  POST /post/delete-comment/:commentId
+  POST /posts/delete-comment/:commentId
   
   Description:
   * Deletes a comment with the given comment ID.

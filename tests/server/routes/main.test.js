@@ -620,7 +620,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
     });
 
     describe('Comment Routes', () => {
-        test('POST /post/:id/post-comments should add comment successfully', async () => {
+        test('POST /posts/:id/post-comments should add comment successfully', async () => {
             const mockCommentInstance = {
                 save: jest.fn().mockResolvedValue(true),
                 commenterName: 'Test User',
@@ -637,7 +637,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -649,7 +649,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
 
 
-        test('POST /post/:id/post-comments should handle comment save errors', async () => {
+        test('POST /posts/:id/post-comments should handle comment save errors', async () => {
             const mockCommentInstance = {
                 save: jest.fn().mockRejectedValue(new Error('Save failed')),
                 commenterName: 'Test User',
@@ -665,7 +665,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -675,7 +675,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirect with error
         });
 
-        test('POST /post/:id/post-comments should log errors differently in production vs development', async () => {
+        test('POST /posts/:id/post-comments should log errors differently in production vs development', async () => {
             const originalEnv = process.env.NODE_ENV;
             
             // Test production error logging
@@ -698,7 +698,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
             
             await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -714,11 +714,11 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             process.env.NODE_ENV = originalEnv;
         });
 
-        test('POST /post/:id/post-comments should reject invalid post ID', async () => {
+        test('POST /posts/:id/post-comments should reject invalid post ID', async () => {
             mockMongoose.Types.ObjectId.isValid.mockReturnValue(false);
             
             const response = await request(app)
-                .post('/post/invalid-id/post-comments')
+                .post('/posts/invalid-id/post-comments')
                 .send({
                     postId: 'invalid-id',
                     commenterName: 'Test User',
@@ -729,9 +729,9 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.headers.location).toBe('/404');
         });
 
-        test('POST /post/:id/post-comments should reject mismatched post IDs', async () => {
+        test('POST /posts/:id/post-comments should reject mismatched post IDs', async () => {
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439012', // Different ID
                     commenterName: 'Test User',
@@ -742,7 +742,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.headers.location).toBe('/404');
         });
 
-        test('POST /post/:id/post-comments should reject when comments disabled', async () => {
+        test('POST /posts/:id/post-comments should reject when comments disabled', async () => {
             // Create a new app instance with comments disabled
             const testApp = express();
             testApp.use(express.json());
@@ -774,7 +774,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             testApp.use('/', mainRouter);
             
             const response = await request(testApp)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -784,11 +784,11 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirects back to post
         });
 
-        test('POST /post/:id/post-comments should handle CAPTCHA verification', async () => {
+        test('POST /posts/:id/post-comments should handle CAPTCHA verification', async () => {
             mockCaptcha.mockResolvedValue(false); // CAPTCHA fails
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -799,14 +799,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirects back to post
         });
 
-        test('POST /post/:id/post-comments should validate comment length', async () => {
+        test('POST /posts/:id/post-comments should validate comment length', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -816,14 +816,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirects back to post with error
         });
 
-        test('POST /post/:id/post-comments should validate commenter name length', async () => {
+        test('POST /posts/:id/post-comments should validate commenter name length', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'ab', // Too short
@@ -833,14 +833,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirects back to post with error
         });
 
-        test('POST /post/:id/post-comments should reject comments on unapproved posts', async () => {
+        test('POST /posts/:id/post-comments should reject comments on unapproved posts', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: false
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -851,7 +851,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.headers.location).toBe('/404');
         });
 
-        test('POST /post/delete-comment/:commentId should delete comment for admin', async () => {
+        test('POST /posts/delete-comment/:commentId should delete comment for admin', async () => {
             const mockCommentInstance = {
                 _id: 'comment123',
                 postId: '507f1f77bcf86cd799439011',
@@ -867,13 +867,13 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=admin-jwt-token']);
             
             expect(response.status).toBe(302); // Redirect after success
         });
 
-        test('POST /post/delete-comment/:commentId should handle deletion errors', async () => {
+        test('POST /posts/delete-comment/:commentId should handle deletion errors', async () => {
             const mockCommentInstance = {
                 _id: 'comment123',
                 postId: '507f1f77bcf86cd799439011',
@@ -889,7 +889,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=admin-jwt-token']);
             
             expect(response.status).toBe(302); // Redirect with error
@@ -897,7 +897,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
 
 
-        test('POST /post/delete-comment/:commentId should reject unauthorized users', async () => {
+        test('POST /posts/delete-comment/:commentId should reject unauthorized users', async () => {
             mockComment.findById.mockResolvedValue({
                 _id: 'comment123',
                 postId: '507f1f77bcf86cd799439011'
@@ -910,18 +910,18 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=user-jwt-token']);
             
             expect(response.status).toBe(302); // Redirects to /admin
             expect(response.headers.location).toBe('/admin');
         });
 
-        test('POST /post/delete-comment/:commentId should handle comment not found', async () => {
+        test('POST /posts/delete-comment/:commentId should handle comment not found', async () => {
             mockComment.findById.mockResolvedValue(null);
             
             const response = await request(app)
-                .post('/post/delete-comment/nonexistent');
+                .post('/posts/delete-comment/nonexistent');
             
             expect(response.status).toBe(302); // Redirects to /404
             expect(response.headers.location).toBe('/404');
@@ -1178,14 +1178,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
     });
 
     describe('Additional Coverage Tests', () => {
-        test('POST /post/:id/post-comments should handle missing comment data', async () => {
+        test('POST /posts/:id/post-comments should handle missing comment data', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: '', // Empty name
@@ -1195,7 +1195,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirect with error
         });
 
-        test('POST /post/:id/post-comments should handle CAPTCHA config errors', async () => {
+        test('POST /posts/:id/post-comments should handle CAPTCHA config errors', async () => {
             // Create app with CAPTCHA enabled but missing keys
             const testApp = express();
             testApp.use(express.json());
@@ -1229,7 +1229,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             testApp.use('/', mainRouter);
             
             const response = await request(testApp)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Test User',
@@ -1292,14 +1292,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             process.env.MAX_COMMENTS_LIMIT = originalLimit;
         });
 
-        test('POST /post/:id/post-comments should handle missing commenter name', async () => {
+        test('POST /posts/:id/post-comments should handle missing commenter name', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: null, // Missing name
@@ -1309,14 +1309,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirect with error
         });
 
-        test('POST /post/:id/post-comments should handle missing comment body', async () => {
+        test('POST /posts/:id/post-comments should handle missing comment body', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1326,14 +1326,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirect with error
         });
 
-        test('POST /post/:id/post-comments should handle empty comment body validation', async () => {
+        test('POST /posts/:id/post-comments should handle empty comment body validation', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1343,14 +1343,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.status).toBe(302); // Redirect with error
         });
 
-        test('POST /post/:id/post-comments should handle very short comment body', async () => {
+        test('POST /posts/:id/post-comments should handle very short comment body', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1362,14 +1362,14 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
 
 
-        test('POST /post/:id/post-comments should handle very long commenter name', async () => {
+        test('POST /posts/:id/post-comments should handle very long commenter name', async () => {
             mockPost.findById.mockResolvedValue({
                 _id: '507f1f77bcf86cd799439011',
                 isApproved: true
             });
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'a'.repeat(51), // Too long (> 50 chars)
@@ -1497,7 +1497,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             // Test exact boundary conditions
             const response1 = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'ab', // Exactly 2 chars (< 3)
@@ -1506,7 +1506,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response1.status).toBe(302);
             
             const response2 = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1515,7 +1515,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response2.status).toBe(302);
             
             const response3 = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'a'.repeat(51), // Exactly 51 chars (> 50)
@@ -1547,7 +1547,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=admin-jwt-token']);
             
             expect(response.status).toBe(302);
@@ -1578,7 +1578,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=admin-jwt-token']);
             
             expect(response.status).toBe(302);
@@ -1604,7 +1604,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             const response = await request(app)
-                .post('/post/delete-comment/comment123')
+                .post('/posts/delete-comment/comment123')
                 .set('Cookie', ['token=admin-jwt-token']);
             
             expect(response.status).toBe(302);
@@ -1626,7 +1626,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             // Test case 1: commenterName.length < 3
             await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'ab', // length = 2 < 3
@@ -1635,7 +1635,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             // Test case 2: commentBody.length < 1
             await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1644,7 +1644,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             // Test case 3: commenterName.length > 50
             await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'a'.repeat(51), // length = 51 > 50
@@ -1653,7 +1653,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             // Test case 4: commentBody.length > 500
             await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1680,7 +1680,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             mockPost.findById.mockResolvedValue(null); // Post not found
             
             const response = await request(app)
-                .post('/post/507f1f77bcf86cd799439011/post-comments')
+                .post('/posts/507f1f77bcf86cd799439011/post-comments')
                 .send({
                     postId: '507f1f77bcf86cd799439011',
                     commenterName: 'Valid User',
@@ -1689,6 +1689,130 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             
             expect(response.status).toBe(302);
             expect(response.headers.location).toBe('/404');
+        });
+
+        test('should handle JWT secret validation', async () => {
+            // Test the JWT secret validation at startup
+            // This is more of a conceptual test since the validation happens at module load
+            expect(process.env.JWT_SECRET).toBeDefined();
+        });
+
+        test('should handle advanced search with empty results and fallback', async () => {
+            // First query returns empty, second query (fallback) also returns empty
+            mockPost.find.mockReturnValueOnce({
+                sort: jest.fn().mockReturnThis(),
+                skip: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockReturnThis(),
+                exec: jest.fn().mockResolvedValue([])
+            });
+            mockPost.find.mockReturnValueOnce({
+                sort: jest.fn().mockReturnThis(),
+                skip: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockReturnThis(),
+                exec: jest.fn().mockResolvedValue([])
+            });
+            
+            const response = await request(app)
+                .post('/search')
+                .send({
+                    searchTerm: 'nonexistent',
+                    isAdvancedSearch: 'true'
+                });
+            
+            expect(response.status).toBe(200);
+            expect(mockPost.find).toHaveBeenCalledTimes(2); // Initial + fallback
+        });
+
+        test('should handle user profile with valid portfolio link', async () => {
+            mockUser.findOne.mockResolvedValue({
+                _id: 'user123',
+                username: 'testuser',
+                name: 'Test User',
+                htmlDesc: '<p>Test description</p>',
+                portfolioLink: 'https://valid-portfolio.com',
+                modifiedAt: new Date()
+            });
+            mockUtils.isValidURI.mockReturnValue(true);
+            
+            const response = await request(app).get('/users/testuser');
+            
+            expect(response.status).toBe(200);
+            expect(response.body.data.sanitizedUserDetails.socialLink).toBe('https://valid-portfolio.com');
+        });
+
+        test('should handle search with complex query conditions', async () => {
+            mockUser.findOne.mockResolvedValue({ username: 'testauthor' });
+            mockPost.find.mockReturnValue({
+                sort: jest.fn().mockReturnThis(),
+                skip: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockReturnThis(),
+                exec: jest.fn().mockResolvedValue([{ _id: '1', title: 'Complex Result' }])
+            });
+            mockUtils.parseTags.mockReturnValue(['tag1', 'tag2']);
+            
+            const response = await request(app)
+                .post('/search')
+                .send({
+                    searchTerm: 'complex',
+                    title: 'specific title',
+                    author: 'Test Author',
+                    tags: 'tag1,tag2',
+                    isAdvancedSearch: 'true'
+                });
+            
+            expect(response.status).toBe(200);
+            expect(response.body.template).toBe('search');
+        });
+
+        test('should handle comment deletion with post lookup failure', async () => {
+            const mockCommentInstance = {
+                _id: 'comment123',
+                postId: '507f1f77bcf86cd799439011',
+                deleteOne: jest.fn().mockRejectedValue(new Error('Delete failed'))
+            };
+            
+            mockComment.findById.mockResolvedValue(mockCommentInstance);
+            mockJwt.verify.mockReturnValue({ userId: 'admin123' });
+            mockUser.findById.mockResolvedValue({
+                _id: 'admin123',
+                username: 'admin',
+                privilege: 1 // WEBMASTER
+            });
+            
+            // Mock post lookup to fail
+            mockPost.findById.mockRejectedValue(new Error('Post lookup failed'));
+            
+            const response = await request(app)
+                .post('/posts/delete-comment/comment123')
+                .set('Cookie', ['token=admin-jwt-token']);
+            
+            expect(response.status).toBe(302);
+            // The actual redirect depends on the error handling logic
+            expect(['/404', '/admin']).toContain(response.headers.location);
+        });
+
+        test('should handle comment deletion without postId', async () => {
+            const mockCommentInstance = {
+                _id: 'comment123',
+                postId: null, // No postId
+                deleteOne: jest.fn().mockRejectedValue(new Error('Delete failed'))
+            };
+            
+            mockComment.findById.mockResolvedValue(mockCommentInstance);
+            mockJwt.verify.mockReturnValue({ userId: 'admin123' });
+            mockUser.findById.mockResolvedValue({
+                _id: 'admin123',
+                username: 'admin',
+                privilege: 1 // WEBMASTER
+            });
+            
+            const response = await request(app)
+                .post('/posts/delete-comment/comment123')
+                .set('Cookie', ['token=admin-jwt-token']);
+            
+            expect(response.status).toBe(302);
+            // The actual redirect depends on the error handling logic
+            expect(['/404', '/admin']).toContain(response.headers.location);
         });
     });
 

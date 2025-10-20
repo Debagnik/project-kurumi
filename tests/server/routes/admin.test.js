@@ -175,18 +175,34 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
         app = express();
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
-        
+
         // Mock middleware
         app.use((req, res, next) => {
             req.flash = jest.fn();
             req.cookies = { token: 'valid-token' };
             res.cookie = jest.fn();
             res.clearCookie = jest.fn();
-            res.render = jest.fn((view, data) => res.status(200).json({ view, data }));
-            res.redirect = jest.fn((url) => res.status(302).json({ redirect: url }));
+            
+            // Better redirect mock that doesn't cause header conflicts
+            const originalRedirect = res.redirect;
+            res.redirect = jest.fn((url) => {
+                res.statusCode = 302;
+                res.setHeader('Location', url);
+                res.end(JSON.stringify({ redirect: url }));
+                return res;
+            });
+            
+            // Better render mock
+            res.render = jest.fn((view, data) => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ view, data }));
+                return res;
+            });
+            
             next();
         });
-        
+
         // Import router after mocks are set up
         adminRouter = require('../../../server/routes/admin');
         app.use('/', adminRouter);
@@ -194,7 +210,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         // Setup default mocks
         mockJwt.verify.mockReturnValue({ userId: 'user123' });
         mockJwt.sign.mockReturnValue('test-jwt-token');
@@ -382,7 +398,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 password: 'hashedpassword',
                 isPasswordReset: false
             };
-            
+
             mockUser.findOne.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -439,7 +455,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'testuser',
                 isPasswordReset: true
             };
-            
+
             mockUser.findOne.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -459,7 +475,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 password: 'hashedpassword',
                 isPasswordReset: false
             };
-            
+
             mockUser.findOne.mockResolvedValue(mockUserData);
             mockBcrypt.compare.mockResolvedValue(false);
 
@@ -482,7 +498,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'editor',
                 privilege: 1
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
             mockPost.find.mockResolvedValue([{ title: 'Post 1', author: 'editor' }]);
 
@@ -499,7 +515,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'moderator',
                 privilege: 2
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
             mockPost.find.mockResolvedValue([{ title: 'Post 1' }]);
 
@@ -516,7 +532,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'webmaster',
                 privilege: 3
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
             mockPost.find.mockResolvedValue([]);
 
@@ -543,7 +559,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'user',
                 privilege: 999
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -571,7 +587,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'testuser',
                 privilege: 1
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -620,7 +636,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -640,7 +656,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
 
             const response = await request(app)
@@ -660,7 +676,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             mockUser.findById.mockResolvedValue(mockUserData);
             mockPost.findOne.mockResolvedValue({ uniqueId: 'test-post' });
 
@@ -731,7 +747,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'testuser',
                 privilege: 1
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -764,7 +780,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'testuser',
                 privilege: 1
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Old Title',
@@ -794,7 +810,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 })
                 .expect(302);
 
-            expect(response.body.redirect).toBe('/dashboard/');
+            expect(response.body.redirect).toBe('/dashboard');
             expect(mockPostCache.invalidateCache).toHaveBeenCalledWith('old-title');
         });
 
@@ -839,7 +855,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -866,7 +882,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -894,7 +910,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'moderator',
                 privilege: 2
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -922,7 +938,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 })
                 .expect(302);
 
-            expect(response.body.redirect).toBe('/dashboard/');
+            expect(response.body.redirect).toBe('/dashboard');
         });
 
         test('PUT /edit-post/:uniqueId should handle update failure', async () => {
@@ -930,7 +946,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -961,7 +977,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -1013,7 +1029,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -1040,7 +1056,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 username: 'webmaster',
                 privilege: 3
             };
-            
+
             const mockUsers = [
                 { _id: 'user1', username: 'user1', privilege: 1 },
                 { _id: 'user2', username: 'user2', privilege: 2 }
@@ -2132,7 +2148,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                 _id: 'user123',
                 username: 'testuser'
             };
-            
+
             const mockPostData = {
                 _id: 'post123',
                 title: 'Test Post',
@@ -2199,7 +2215,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
             mockMarked.parse.mockImplementation(() => {
                 throw new Error('Markdown error');
             });
-            
+
             const mockUserData = {
                 _id: 'user123',
                 username: 'testuser'
