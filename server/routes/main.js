@@ -286,7 +286,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  * @description Fetches and renders a single blog post by its MongoDB `_id`. 
  *              Enriches the post with author details, site config, captcha settings, 
  *              and associated comments before rendering.
- * @deprecated Since 3.0.0 - Use `/post/:uniqueId` instead
+ * @deprecated Since 3.0.0 - Use `/posts/:uniqueId` instead
  * @middleware
  * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
  * 

@@ -693,8 +693,8 @@ async function savePostToDB(req, res) {
         break;
       }
       if (count >= maxRetries) {
-          console.error('Failed to generate unique ID after maximum retries');
-          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
+        console.error('Failed to generate unique ID after maximum retries');
+        throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
       }
     }
 
@@ -906,12 +906,10 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     }
 
     const sanitizedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
-    if (postCache.getPostFromCache(sanitizedUniqueId)) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
-      }
-      postCache.invalidateCache(sanitizedUniqueId);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
     }
+    postCache.invalidateCache(sanitizedUniqueId);
 
     const postToUpdate = await post.findOne({ uniqueId: sanitizedUniqueId });
     if (!postToUpdate) {
@@ -959,7 +957,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     if (generateUniqueId) {
       let count = 0;
       const maxRetries = 10;
-      while(count <= maxRetries){
+      while (count <= maxRetries) {
         uniqueId = createUniqueId(req.body.title.trim());
         count += 1;
         const existingPost = await post.findOne({ uniqueId: uniqueId });
@@ -975,45 +973,45 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
       uniqueId = postToUpdate.uniqueId;
     }
 
-  const htmlBody = markdownToHtml(req.body.markdownbody.trim());
+    const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
-  const updatePostData = {
-    title: req.body.title.trim(),
-    body: htmlBody,
-    markdownbody: req.body.markdownbody.trim(),
-    desc: req.body.desc.trim(),
-    tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
-    thumbnailImageURI: defaultThumbnailImageURI,
-    modifiedAt: Date.now(),
-    lastUpdateAuthor: currentUser.username,
-    uniqueId: uniqueId
+    const updatePostData = {
+      title: req.body.title.trim(),
+      body: htmlBody,
+      markdownbody: req.body.markdownbody.trim(),
+      desc: req.body.desc.trim(),
+      tags: parseTags((req.body.tags || CONSTANTS.EMPTY_STRING).trim()),
+      thumbnailImageURI: defaultThumbnailImageURI,
+      modifiedAt: Date.now(),
+      lastUpdateAuthor: currentUser.username,
+      uniqueId: uniqueId
+    }
+
+    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+      updatePostData.isApproved = req.body.isApproved === 'on'
+    }
+
+    await post.findByIdAndUpdate(
+      postToUpdate._id,
+      { $set: updatePostData },
+      { runValidators: true }
+    );
+
+    const updatedPost = await post.findById(postToUpdate._id);
+    if (!updatedPost) {
+      console.error('Failed to update post', uniqueId);
+      req.flash('error', 'Something went wrong, Post not updated')
+      return res.redirect(`/admin/edit-post/${uniqueId}`);
+    }
+
+    req.flash('success', `Successfully updated post with id ${uniqueId}`);
+    res.redirect(`/dashboard/`);
+
+  } catch (error) {
+    console.log(error);
+    req.flash('error', 'Something Went Wrong');
+    res.redirect('/dashboard');
   }
-
-  if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-    updatePostData.isApproved = req.body.isApproved === 'on'
-  }
-
-  await post.findByIdAndUpdate(
-    postToUpdate._id,
-    { $set: updatePostData },
-    { runValidators: true }
-  );
-
-  const updatedPost = await post.findById(postToUpdate._id);
-  if (!updatedPost) {
-    console.error('Failed to update post', uniqueId);
-    req.flash('error', 'Something went wrong, Post not updated')
-    return res.redirect(`/admin/edit-post/${uniqueId}`);
-  }
-
-  req.flash('success', `Successfully updated post with id ${uniqueId}`);
-  res.redirect(`/dashboard/`);
-
-} catch (error) {
-  console.log(error);
-  req.flash('error', 'Something Went Wrong');
-  res.redirect('/dashboard');
-}
 });
 
 /**
@@ -1093,11 +1091,11 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
       req.flash('error', `post not found`);
       return res.redirect('/dashboard');
     }
-
-    if (postCache.getPostFromCache(cleanedUniqueId)) {
-      postCache.invalidateCache(cleanedUniqueId);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Deleting Post, Invalidating cache for post:', cleanedUniqueId);
     }
-
+    postCache.invalidateCache(cleanedUniqueId);
+    
     //Comments of the posts are also deleted
     const deletedComments = await comment.deleteMany({ postId: postToDelete._id });
     console.log(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);
