@@ -1,4 +1,3 @@
-const { response } = require('express');
 const mongoose = require('mongoose');
 const MAX_RETRY = 3;
 const RETRY_DELAY = 5000;
