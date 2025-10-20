@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{url}}/edit-post/:postId
+  url: {{url}}/edit-post/:postUniqueId
   body: none
   auth: inherit
 }
 
 params:path {
-  postId: 68020f705c40195dc94d3ed7
+  postUniqueId: miku_9209
 }
 
 headers {
@@ -31,10 +31,10 @@ headers {
 }
 
 docs {
-  GET /edit-post/:id
+  GET /edit-post/:uniqueId
   
   Description:
-    Retrieves the details of a specific post (identified by :id) for editing in the admin panel. This route allows the administrator to view the current content of a post and make changes to it. It checks for the user's authentication and renders an editing interface with the post's current data.
+    Retrieves the details of a specific post (identified by :UniqueId) for editing in the admin panel. This route allows the administrator to view the current content of a post and make changes to it. It checks for the user's authentication and renders an editing interface with the post's current data.
   
   Middleware Used:
     * authToken: Verifies the JWT token in the request. If the token is invalid or missing, the user is redirected to the /admin page.
@@ -61,5 +61,5 @@ docs {
     * The template also includes an indication of whether the current user is a webmaster or has other relevant privileges.
   
   Example Request:
-    * GET /edit-post/60c72b2f9f1b2c001d8f3b52
+    * GET /edit-post/a_post_id_2298
 }

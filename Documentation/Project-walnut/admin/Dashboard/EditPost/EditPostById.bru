@@ -5,7 +5,7 @@ meta {
 }
 
 put {
-  url: {{url}}/edit-post/:postId?_method=PUT
+  url: {{url}}/edit-post/:postUniqueId?_method=PUT
   body: formUrlEncoded
   auth: inherit
 }
@@ -15,7 +15,7 @@ params:query {
 }
 
 params:path {
-  postId: 68020f705c40195dc94d3ed7
+  postUniqueId: miku_9209
 }
 
 headers {
@@ -47,7 +47,7 @@ body:form-urlencoded {
 }
 
 docs {
-  PUT /edit-post/:id
+  PUT /edit-post/:uniqueId
   
   Description:
     This route handles the update of a specific post (identified by :id) in the admin panel. It allows an administrator to edit the details of an existing post, including its title, body, description, tags, and thumbnail image URI. The request must be authenticated and must include valid data in the form.
@@ -86,7 +86,7 @@ docs {
     * The post is updated in the database using `findByIdAndUpdate`, and the user is redirected to the dashboard page.
   
   Example Request:
-    PUT /edit-post/60c72b2f9f1b2c001d8f3b52
+    PUT /edit-post/miku_5658
     Request Body:
     
     ```

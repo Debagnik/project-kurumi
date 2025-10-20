@@ -32,7 +32,7 @@ const fetchSiteConfigCached = async (req, res, next) => {
     let config = configCache.get('siteConfig');
 
     // Bypass for health check endpoint
-    if(req.path === '/healtz'){
+    if(req.path === '/healthz'){
       if(process.env.NODE_ENV !== 'production'){
         console.log('Health check endpoint accessed, bypassing site config fetch.');
       }

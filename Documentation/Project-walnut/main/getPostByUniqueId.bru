@@ -1,0 +1,145 @@
+meta {
+  name: getPostByUniqueId
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{url}}/posts/:uniqueId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  uniqueId: A_new_post_2947
+}
+
+headers {
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.6
+  Connection: keep-alive
+  DNT: 1
+  If-None-Match: W/"4bca-nloyXuQV2SemDNVitminN3I3P+8"
+  Sec-Fetch-Dest: document
+  Sec-Fetch-Mode: navigate
+  Sec-Fetch-Site: same-origin
+  Sec-Fetch-User: ?1
+  Sec-GPC: 1
+  Upgrade-Insecure-Requests: 1
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
+  sec-ch-ua: "Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+  sec-ch-ua-mobile: ?0
+  sec-ch-ua-platform: "Windows"
+}
+
+docs {
+  # GET /posts/:uniqueId
+  
+  ## 📝 Description
+  Retrieves and renders a single blog post identified by its `uniqueId`.  
+  The response includes enriched post metadata, author details, comments, and dynamic rendering logic based on post approval status or user privilege level.  
+  This endpoint replaces the deprecated `/post/:id` route and integrates in-memory caching for optimized performance.
+  
+  ---
+  
+  ## ⚙️ Middleware
+  - **`genericOpenRateLimiter`** — Prevents abuse through open rate limiting.
+  - **`fetchSiteConfig`** *(via `res.locals`)* — Injects global site configuration into the rendering context.
+  
+  ---
+  
+  ## 🔢 Parameters
+  | Name | Location | Type | Description |
+  |------|-----------|------|-------------|
+  | `uniqueId` | Path | `string` | Unique identifier of the blog post to retrieve. |
+  
+  ---
+  
+  ## 🔐 Access Control
+  - **Public** – For approved posts.
+  - **Restricted** – For unapproved posts; accessible only to:
+    - Logged-in users, or  
+    - Users with elevated privileges *(Admin / Moderator)*.
+  
+  ---
+  
+  ## 🔄 Request Flow
+  1. Extracts and sanitizes `uniqueId` from the request parameters.
+  2. Checks the **in-memory cache** (`postCache`) for a pre-processed post entry.
+  3. On cache miss, fetches the post from the database using the `uniqueId`.
+  4. Validates post existence — throws `404` if not found.
+  5. Retrieves author information; defaults to **"Anonymous"** if unavailable.
+  6. Constructs `locals` containing title, description, keywords, and site configuration.
+  7. Evaluates if CAPTCHA is enabled in `siteConfig`.
+  8. Determines if the current user is an **Admin** or **Moderator**.
+  9. Fetches associated comments via `getCommentsFromPostId`.
+  10. Renders the post if approved or authorized.
+  11. Redirects to `/404` for unauthorized access or missing posts.
+  
+  ---
+  
+  ## 🧩 Template Rendered
+  - **`posts.ejs`**
+  
+  ---
+  
+  ## ⚠️ Error Handling
+  - Logs all database or rendering errors.
+  - Redirects to `/404` when:
+    - The post is missing,
+    - The user lacks authorization,
+    - Or any unexpected exception occurs.
+  
+  ---
+  
+  ## ✅ Response
+  
+  ### **200 OK**
+  Renders the `posts` template with the following data:
+  
+  | Field | Description |
+  |--------|--------------|
+  | `locals` | Title, description, keywords, and site configuration. |
+  | `data` | Full post content including resolved `authorName`. |
+  | `csrfToken` | Token used to protect form submissions. |
+  | `isCaptchaEnabled` | Indicates if CAPTCHA is active. |
+  | `commentsData` | List of comments retrieved via `getCommentsFromPostId`. |
+  | `currentUser` | Boolean indicating if user has Admin/Moderator privileges. |
+  
+  ### **404 Not Found**
+  Redirects to `/404` when:
+  - The post does not exist.
+  - The post is unapproved and user lacks access.
+  - A fetch or rendering error occurs.
+  
+  ---
+  
+  ## 🛡️ Security
+  - **CSRF Protection:** Each render includes a server-generated CSRF token.
+  - **Rate Limiting:** Controlled via `genericOpenRateLimiter` to mitigate abuse.
+  - **Data Sanitization:** Uses HTML sanitization on `uniqueId` input to prevent injection attacks.
+  
+  ---
+  
+  ## 🧠 Caching Behavior
+  - Uses `postCache` to store processed posts in-memory.
+  - Cache lookups minimize database queries.
+  - Automatically updates cache hit counts and TTL.
+  - Evicts least-hit entries when the cache limit is reached.
+  
+  ---
+  
+  ## 🧾 Logging
+  | Type | Description |
+  |------|--------------|
+  | **Info Logs** | Cache hits/misses and normal request handling. |
+  | **Warning Logs** | Unauthorized access attempts for unapproved posts. |
+  | **Error Logs** | Database or rendering exceptions. |
+  
+  ---
+  
+  ## 🔓 Access Summary
+  - ✅ **Approved posts:** Publicly accessible.  
+  - 🔒 **Unapproved posts:** Restricted to logged-in or privileged users.
+  
+}

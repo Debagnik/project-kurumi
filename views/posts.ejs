@@ -73,7 +73,7 @@
                                 <p><span class="comments"><%= commentData.commentBody %></span></p>
                                 <% if (currentUser) { %>
                                  <div>
-                                    <form action="delete-comment/<%= commentData._id %>" method="POST">
+                                    <form action="delete-comment/<%= encodeURIComponent(commentData._id) %>" method="POST">
                                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="commentId" value="<%= commentData._id %>">
                                         <input type="hidden" name="postId" value="<%= data._id %>">

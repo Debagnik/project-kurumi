@@ -12,6 +12,7 @@ const utils = require('../../utils/validations.js');
 const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSiteConfigurations.js');
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
+const postCache = require('../../utils/postCache.js');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
@@ -285,7 +286,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  * @description Fetches and renders a single blog post by its MongoDB `_id`. 
  *              Enriches the post with author details, site config, captcha settings, 
  *              and associated comments before rendering.
- * 
+ * @deprecated Since 3.0.0 - Use `/posts/:uniqueId` instead
  * @middleware
  * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
  * 
@@ -335,6 +336,7 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  */
 router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
     try {
+        console.warn('[DEPRECATED] The route /post/:id is deprecated since version 3.0.0. Please use /post/:uniqueId instead. Sunset date: TBD');
         const currentUser = await getUserFromCookieToken(req);
 
         let slug = req.params.id;
@@ -358,6 +360,8 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
         const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (currentUser || data.isApproved) {
+            res.set('Deprecation', 'true');
+            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
             res.render('posts', {
                 locals,
                 data,
@@ -367,13 +371,142 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
                 currentUser: isCurrentUserAModOrAdmin
             });
         } else {
+            res.set('Deprecation', 'true');
+            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
             res.redirect('/404');
         }
 
     } catch (error) {
         console.error('Post Fetch error', error);
+        res.set('Deprecation', 'true');
+        res.set('Link', '/posts/:uniqueId; rel="successor-version"');
         res.status(404).redirect('/404');
     }
+});
+
+/**
+ * @route GET /posts/:uniqueId
+ * @description Retrieves and renders a single blog post identified by its `uniqueId`.  
+ *              Integrates author information, site configuration, captcha status, and 
+ *              associated comments before rendering the view.  
+ *              This route supersedes the deprecated `/post/:id` endpoint.
+ *
+ * @middleware
+ * @chain genericOpenRateLimiter - Applies open rate-limiting to prevent abuse.
+ *
+ * @params
+ * @param {string} uniqueId - The unique identifier of the post to retrieve.
+ *
+ * @process
+ * @step 1. Extracts and sanitizes `uniqueId` from the request parameters.
+ * @step 2. Attempts to fetch post data from the in-memory cache (`postCache`).
+ * @step 3. On cache miss, retrieves post data from the database.
+ * @step 4. Resolves the author name; defaults to `"Anonymous"` if unavailable.
+ * @step 5. Stores the fetched and processed post back in the cache for reuse.
+ * @step 6. Builds `locals` for rendering (title, description, keywords, and config).
+ * @step 7. Evaluates captcha enablement and user privileges (Moderator/Admin).
+ * @step 8. Retrieves associated comments via `getCommentsFromPostId`.
+ *
+ * @conditions
+ * @check Post existence — Throws `404` if no matching post is found.
+ * @check Post visibility — Allowed if the post is approved or the user is logged in.
+ * @check Redirects — Unauthorized users requesting unapproved posts are redirected to `/404`.
+ *
+ * @visibilityRules
+ * @rule Approved posts → Publicly accessible.
+ * @rule Unapproved posts → Accessible only if:
+ *       - The current user is authenticated, or
+ *       - The current user has elevated privileges (Moderator/Admin).
+ *
+ * @response
+ * @success {200} Renders the `posts` EJS template with:
+ *   - `locals` → Metadata and configuration for rendering.
+ *   - `data` → Post content including `authorName`.
+ *   - `csrfToken` → Secure form token for submission.
+ *   - `isCaptchaEnabled` → Boolean indicating if captcha is active.
+ *   - `commentsData` → List of associated comments.
+ *   - `currentUser` → Boolean flag for Moderator/Admin status.
+ *
+ * @failure {404} Redirects to `/404` when:
+ *   - The post is missing.
+ *   - An error occurs during fetch or rendering.
+ *   - Access to an unapproved post is unauthorized.
+ *
+ * @security
+ * @csrfToken Embedded into the rendered page for form validation.
+ * @rateLimited Controlled via `genericOpenRateLimiter` to prevent request abuse.
+ *
+ * @logging
+ * @infoLogs Logs cache hits and misses for post lookups.
+ * @warnLogs Logs unauthorized attempts to view unapproved posts.
+ * @errorLogs Logs database fetch errors and rendering issues.
+ *
+ * @access
+ * Public (restricted for unapproved or unauthorized posts).
+ */
+router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
+    try {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`Fetching post by uniqueId: ${req.params.uniqueId}`);
+        }
+        const currentUser = await getUserFromCookieToken(req);
+        let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+
+        //check if post exist on postCache
+        let data = null;
+        data = postCache.getPostFromCache(cleanedUniqueId);
+        if (!data) {
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
+            }
+            data = await post.findOne({ uniqueId: cleanedUniqueId });
+            if (!data) {
+                throw new Error('404 - No such post found');
+            }
+
+            const postAuthor = await user.findOne({ username: data.author });
+            if (!postAuthor || !postAuthor.name) {
+                data.authorName = 'Anonymous';
+            } else {
+                data.authorName = postAuthor.name;
+            }
+
+            postCache.setPostToCache(cleanedUniqueId, data);
+
+        } else {
+            console.log(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
+        }
+
+        const locals = {
+            title: data.title,
+            description: data.desc,
+            keywords: data.tags,
+            config: res.locals.siteConfig
+        };
+
+        const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
+        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
+
+        if (currentUser || data.isApproved) {
+            return res.render('posts', {
+                locals,
+                data,
+                csrfToken: req.csrfToken(),
+                isCaptchaEnabled,
+                commentsData: await getCommentsFromPostId(data._id),
+                currentUser: isCurrentUserAModOrAdmin
+            });
+        } else {
+            if (process.env.NODE_ENV !== 'production') {
+                console.warn(`Unlogged user tried fetching unapproved post`);
+            }
+            return res.status(404).redirect('/404');
+        }
+    } catch (error) {
+        console.error('Post Fetch error', error);
+        return res.status(404).redirect('/404');
+    }
+
 });
 
 /**
@@ -739,7 +872,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
  * 
  * @access Public (anyone can comment if comments are enabled)
  */
-router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => {
+router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     const paramId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(paramId) || postId !== paramId) {
@@ -750,17 +883,28 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         req.flash('error', 'Invalid post reference');
         return res.status(404).redirect('/404');
     }
+    let existingPost = null;
+    try {
+        existingPost = await post.findById(paramId);
+    }
+    catch (error) {
+        console.error('Error fetching post for comment addition:', error);
+    }
+    if (!existingPost) {
+        req.flash('error', 'No post found to comment on');
+        return res.status(404).redirect('/404');
+    }
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
         console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
         req.flash('error', 'Comments are disabled or Cloudflare keys are not set');
-        return res.status(403).redirect(`/post/${postId}`);
+        return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     if (siteConfig.isCaptchaEnabled && (!siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey)) {
         console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
         req.flash('error', 'CAPTCHA config error, contact the webmaster.');
-        return res.status(403).redirect(`/post/${postId}`);
+        return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     const captchaToken = req.body['cf-turnstile-response'];
@@ -771,32 +915,24 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
         if (!isUserHuman) {
             console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': remoteIp });
             req.flash('error', 'CAPTCHA verification failed, please try again.');
-            return res.status(403).redirect(`/post/${postId}`);
+            return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
         }
     }
 
     if (!commenterName || !commentBody) {
         console.error(400, 'Invalid comment data');
         req.flash('error', 'Invalid comment data, please ensure all fields are filled out.');
-        return res.status(400).redirect(`/post/${postId}`);
+        return res.status(400).redirect(`/posts/${existingPost.uniqueId}`);
     }
     if (commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
         console.error(400, 'Invalid comment data', 'Size mismatch');
         req.flash('error', 'Invalid comment data, please ensure comment length is between 1 and 500 characters and commenter name length is between 3 and 50 characters.');
-        return res.status(400).redirect(`/post/${postId}`);
+        return res.status(400).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     try {
-
-        //verify if post exists before adding comment. If not, return 404. 404 status code indicates the requested resource was not found on the server. 401 status code
-        const existingPost = await post.findById(postId);
-        if (!existingPost) {
-            console.error({ "error": 404, "message": 'No post found', "Post_Id": postId });
-            return res.status(404).redirect('/404');
-        }
-
         if (!existingPost.isApproved) {
-            console.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost._id });
+            console.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost.uniqueId });
             return res.status(403).redirect(`/404`);
         }
 
@@ -816,7 +952,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
             console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
         }
         req.flash('success', 'Comment submitted successfully');
-        res.status(200).redirect(`/post/${postId}`);
+        res.status(200).redirect(`/posts/${existingPost.uniqueId}`);
     } catch (error) {
         console.error('Error adding comment:', error);
         if (process.env.NODE_ENV === 'production') {
@@ -825,13 +961,13 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
             console.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         }
         req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
-        res.status(500).redirect(`/post/${postId}`);
+        res.status(500).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
 });
 
 /**
- * @route POST /post/delete-comment/:commentId
+ * @route POST /posts/delete-comment/:commentId
  * @description Deletes a comment from a post if the requesting user has sufficient privileges.
  *              Only users with ADMIN or MODERATOR privilege levels are authorized to delete comments.
  *              Validates comment existence, checks user authorization, logs all operations, and provides
@@ -875,7 +1011,7 @@ router.post('/post/:id/post-comments', commentsRateLimiter, async (req, res) => 
  * 
  * @access Private (Admin or Moderator only)
  */
-router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
+router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
     const { commentId } = req.params;
     try {
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
@@ -898,7 +1034,10 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
         if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 8:', req.session);
         }
-        return res.status(200).redirect(`/post/${thisComment.postId}`);
+        // Get the post to find its uniqueId for proper redirect
+        const thisPost = await post.findById(thisComment.postId);
+        const redirectUrl = thisPost ? `/posts/${thisPost.uniqueId}` : '/404';
+        return res.status(200).redirect(redirectUrl);
 
     } catch (err) {
         console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
@@ -906,8 +1045,15 @@ router.post('/post/delete-comment/:commentId', genericAdminRateLimiter, async (r
         if (process.env.NODE_ENV !== 'production') {
             console.log('Session after flash 9:', req.session);
         }
-        if (thisComment.postId) {
-            return res.status(500).redirect(`/post/${thisComment.postId}`);
+        if (thisComment && thisComment.postId) {
+            // Get the post to find its uniqueId for proper redirect
+            try {
+                const thisPost = await post.findById(thisComment.postId);
+                const redirectUrl = thisPost ? `/posts/${thisPost.uniqueId}` : '/404';
+                return res.status(500).redirect(redirectUrl);
+            } catch (postErr) {
+                return res.status(500).redirect('/404');
+            }
         } else {
             return res.status(404).redirect('/404');
         }
@@ -994,13 +1140,13 @@ router.get('/advanced-search', genericGetRequestRateLimiter, (req, res) => {
  * @access Public
  */
 router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) => {
-    try{
+    try {
         const sanitizedUsername = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
-        if(!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)){
+        if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUsername)) {
             throw new Error("Invalid Username");
         }
-        const selectedUser = await user.findOne({username: sanitizedUsername});
-        if(!selectedUser){
+        const selectedUser = await user.findOne({ username: sanitizedUsername });
+        if (!selectedUser) {
             req.flash('error', 'User does not exist');
             return res.redirect('/');
         }
@@ -1024,7 +1170,7 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
             sanitizedUserDetails,
             csrfToken: req.csrfToken()
         });
-    }catch(error){
+    } catch (error) {
         req.flash('error', 'Internal server error');
         console.error(error);
         return res.redirect('/');
@@ -1032,61 +1178,93 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
 });
 
 /**
- * @route GET /healtz
- * @description Health check endpoint that reports the operational status of the server, database,
- *              and configuration cache system. It includes diagnostic data such as uptime,
- *              memory usage, Node.js version, and environment mode.
- *              This route is public and intended for uptime monitoring systems or load balancers.
- * 
- * @access public
- * 
- * @returns {200} JSON response confirming service health, uptime, environment info, and resource usage.
- * @returns {503} JSON response if a dependency (e.g., database) is unavailable.
- * @returns {500} JSON response if an unexpected internal error occurs.
+ * @route GET /healthz
+ * @description
+ * Performs a comprehensive health check for the application, verifying the operational
+ * status of the **server**, **MongoDB connection**, **site configuration cache**, and **post cache**.
+ * Additionally, it reports runtime diagnostics such as uptime, Node.js version,
+ * environment mode, and memory usage.
+ *
+ * This route is public and intended primarily for uptime monitors, load balancers,
+ * and orchestration systems to ensure the API is healthy and responsive.
+ *
+ * @middleware
+ * @chain genericGetRequestRateLimiter - Prevents excessive polling or endpoint abuse.
+ *
+ * @access Public
+ *
+ * @returns {200} Service is healthy. Returns a JSON object including:
+ *  - `status`: "ok"
+ *  - `timestamp`: ISO string of current time
+ *  - `uptimeSeconds`: Process uptime in seconds
+ *  - `environment`: Current environment (hidden in production)
+ *  - `nodeVersion`: Node.js version (hidden in production)
+ *  - `database`: Connection status ("connected" | "disconnected")
+ *  - `siteConfigCache`: Availability of config cache system
+ *  - `postCacheStatus`: Availability of post cache
+ *  - `postCacheSize`: Cache size details `{ maxCacheSize, cacheSize }`
+ *  - `memory`: `{ rss, heapUsed, heapTotal }` in MB
+ *
+ * @returns {503} Service degradation. Returned when a critical dependency
+ * (e.g., database) is unavailable or not connected.
+ *
+ * @returns {500} Unexpected internal server error, typically due to
+ * unhandled exceptions during diagnostics or status collection.
+ *
+ * @security
+ * - CSRF not required (read-only route)
+ * - Protected via rate limiter
+ *
+ * @logging
+ * - Logs connection and cache issues for debugging
+ * - Logs internal errors on failure response
  */
-router.get('/healtz', genericGetRequestRateLimiter, async (req, res) => {
-  try {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    if (dbStatus !== 'connected') {
-      return res.status(503).json({
-        status: 'error',
-        message: 'Database connection not established',
-        timestamp: new Date().toISOString(),
-        database: dbStatus,
-      });
+router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
+    try {
+        const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+        if (dbStatus !== 'connected') {
+            return res.status(503).json({
+                status: 'error',
+                message: 'Database connection not established',
+                timestamp: new Date().toISOString(),
+                database: dbStatus,
+            });
+        }
+
+        const configCacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
+        const postCacheStatus = (typeof postCache.getCacheSize === 'function') ? 'available' : 'unavailable';
+
+        const memoryUsage = process.memoryUsage();
+        const memory = {
+            rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
+            heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2),
+            heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
+        };
+
+        const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
+        const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
+
+        res.status(200).json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptimeSeconds: process.uptime(),
+            environment: environment,
+            nodeVersion: nodeVersion,
+            database: dbStatus,
+            siteConfigCache: configCacheStatus,
+            postCacheStatus: postCacheStatus,
+            postCacheSize: postCacheStatus === 'available' ? postCache.getCacheSize() : 'hidden',
+            memory,
+        });
+    } catch (error) {
+        console.error('Health check failed:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Health check failed',
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
     }
-
-    const cacheStatus = (typeof getCacheStatus === 'function') ? getCacheStatus() : 'unavailable';
-
-    const memoryUsage = process.memoryUsage();
-    const memory = {
-      rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),
-      heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2),
-      heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
-    };
-
-    const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
-    const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
-
-    res.status(200).json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptimeSeconds: process.uptime(),
-      environment: environment,
-      nodeVersion: nodeVersion,
-      database: dbStatus,
-      siteConfigCache: cacheStatus,
-      memory,
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Health check failed',
-      error: error.message,
-      timestamp: new Date().toISOString(),
-    });
-  }
 });
 
 module.exports = router;

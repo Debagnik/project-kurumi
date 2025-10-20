@@ -138,3 +138,15 @@ exports.parseTags = (textTags) => {
     .map(tag => tag.substring(0, 30))
     .filter(tag => tag.length > 0);
 }
+
+exports.createUniqueId = (title) => {
+  if (typeof title !== 'string' || title.trim() === '') {
+    title = 'null_post_title';
+  }
+  const sanitizedTitle = sanitizeHtml(title, CONSTANTS.SANITIZE_FILTER);
+  const randomSuffix = '_' + Math.random().toString().substring(2, 6);
+
+  const cleanedTitle = sanitizedTitle.toLowerCase().replace(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '').replace(CONSTANTS.REMOVE_ALL_SPACES_REGEX, "_").trim();
+  const uniqueId = cleanedTitle + randomSuffix;
+  return uniqueId;
+}

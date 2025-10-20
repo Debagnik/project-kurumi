@@ -1,0 +1,125 @@
+meta {
+  name: healthz (Node Status)
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{url}}/healthz
+  body: none
+  auth: inherit
+}
+
+docs {
+  # GET /healthz
+  ---
+  
+  ## 🩺 Description
+  Performs a **system-wide health check** to report the operational status of the server and its key dependencies:  
+  - **Database (MongoDB)**  
+  - **Site Configuration Cache**  
+  - **Post Cache**  
+  
+  It also returns diagnostic information such as uptime, Node.js version, memory usage, and environment mode.  
+  This route is **public** and safe for use by uptime monitors, orchestration systems, and reverse proxies.
+  
+  ---
+  
+  ## 🧩 Middleware Used
+  - `genericGetRequestRateLimiter` → Protects against excessive polling or abuse.
+  
+  ---
+  
+  ## ⚙️ Parameters
+  - **Path Params:** None  
+  - **Query Params:** None  
+  - **Body Params:** None  
+  
+  ---
+  
+  ## 🔄 Flow
+  1. Check MongoDB connection (`mongoose.connection.readyState`).
+  2. Verify cache system availability (`getCacheStatus` and `postCache.getCacheSize()`).
+  3. Gather runtime diagnostics (uptime, environment, Node.js version, memory).
+  4. Return aggregated status as JSON.
+  5. If a dependency fails, respond with an appropriate error code and message.
+  
+  ---
+  
+  ## ✅ Success Response
+  **HTTP Status:** `200 OK`  
+  **Content-Type:** `application/json`
+  
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "uptimeSeconds": 5.4557941,
+    "environment": "dev-local",
+    "nodeVersion": "v22.12.0",
+    "database": "connected",
+    "siteConfigCache": "available",
+    "postCacheStatus": "available",
+    "postCacheSize": {
+      "maxCacheSize": 2,
+      "cacheSize": 0
+    },
+    "memory": {
+      "rss": "98.36",
+      "heapUsed": "33.26",
+      "heapTotal": "65.38"
+    }
+  }
+  ```
+  
+  - or if the Post Cache is unavailable:
+  
+  **HTTP Status:** `200 OK`  
+  **Content-Type:** `application/json`
+  
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "uptimeSeconds": 5.4557941,
+    "environment": "dev-local",
+    "nodeVersion": "v22.12.0",
+    "database": "connected",
+    "siteConfigCache": "available",
+    "postCacheStatus": "unavailable",
+    "postCacheSize": "hidden",
+    "memory": {
+      "rss": "98.36",
+      "heapUsed": "33.26",
+      "heapTotal": "65.38"
+    }
+  }
+  ```
+  
+  ## ⚠️ Failure Responses
+  ### 503 — Service Degraded
+  
+  Returned when a critical dependency (like MongoDB) is unavailable.
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Database connection not established",
+    "timestamp": "2025-10-14T08:00:34.943Z",
+    "database": "disconnected"
+  }
+  ```
+  
+  ### 500 — Internal Server Error
+  
+  Returned when an unexpected exception occurs during health evaluation.
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Health check failed",
+    "error": "TypeError: Cannot read property ...",
+    "timestamp": "2025-10-14T08:00:34.943Z"
+  }
+  ```
+}

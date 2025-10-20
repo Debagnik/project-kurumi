@@ -1,13 +1,13 @@
 <a href="/dashboard">&larr; Back</a>
 <div class="admin-title">
     <h2>View / Edit Post</h2>
-    <form action="/delete-post/<%= data._id %>?_method=DELETE" method="POST" onsubmit="return confirm('Are you sure you want to delete this post?');">
+    <form action="/delete-post/<%= encodeURIComponent(data.uniqueId) %>?_method=DELETE" method="POST" onsubmit="return confirm('Are you sure you want to delete this post?');">
         <input type="submit" value="Delete" class="btn-delete btn">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     </form>
 </div>
 <div class="edit-post-form">
-    <form action="/edit-post/<%= data._id %>?_method=PUT" method="POST">
+    <form action="/edit-post/<%= encodeURIComponent(data.uniqueId) %>?_method=PUT" method="POST">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <label for="title">Title</label>
         <input type="text" id="title" name="title" value="<%= data.title %>" required placeholder="Post Title">

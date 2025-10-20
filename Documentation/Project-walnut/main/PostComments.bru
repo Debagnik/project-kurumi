@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{url}}/post/:id/post-comments
+  url: {{url}}/posts/:id/post-comments
   body: formUrlEncoded
   auth: inherit
 }
@@ -43,7 +43,7 @@ body:form-urlencoded {
 }
 
 docs {
-  POST /post/:id/post-comments
+  POST /posts/:id/post-comments
   
   Description:
   * Handles comment submission for a specific blog post.

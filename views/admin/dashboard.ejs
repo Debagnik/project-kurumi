@@ -11,12 +11,12 @@
     <ul class="admin-posts">
         <% data.forEach(post => { %>
             <li>
-                <a href="/post/<%= encodeURIComponent(post._id) %>" target="_blank" rel="noopener noreferrer">
+                <a href="/posts/<%= encodeURIComponent(post.uniqueId) %>" target="_blank" rel="noopener noreferrer">
                     <%= post.title %>&nearr;
                 </a>
                 <div class="admin-posts-controls">
-                    <a href="/edit-post/<%= post._id %>" class="btn">Edit</a>
-                    <form action="/delete-post/<%= post._id %>?_method=DELETE" method="POST">
+                    <a href="/edit-post/<%= encodeURIComponent(post.uniqueId) %>" class="btn">Edit</a>
+                    <form action="/delete-post/<%= encodeURIComponent(post.uniqueId) %>?_method=DELETE" method="POST">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="submit" value="Delete" class="btn-delete btn">
                     </form>
