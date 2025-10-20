@@ -970,7 +970,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
       if(uniqueId === null) {
         console.error('Could not generate uniqueId for the post after 10 attempts');
         req.flash('error', 'Could not generate uniqueId for the post, please try again with a different title, Post is not updated');
-        return res.redirect(`/admin/edit-post/${req.params.id}`);
+        return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`);
       }
     } else {
       uniqueId = postToUpdate.uniqueId
