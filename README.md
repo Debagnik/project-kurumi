@@ -118,3 +118,7 @@ For any questions or concerns, you can reach out at [info@debagnik.in](mailto:in
 This project is enhanced by:
 - [CodeRabbitAI](https://coderabbit.ai) - Code review assistance
 - [ChatGPT](https://chatgpt.com) - Google and Stack overflow alternative
+
+## Repo Visits
+---
+![](https://count.getloli.com/@Project-Kurumi?name=Project-Kurumi&theme=booru-yuyuyui&padding=8&offset=10&align=top&scale=1.2&pixelated=1&darkmode=auto)
