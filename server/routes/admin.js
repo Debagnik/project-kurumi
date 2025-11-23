@@ -1338,6 +1338,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       const commentsEnabled = req.body.isCommentsEnabled === 'on';
       const captchaEnabled = req.body.isCaptchaEnabled === 'on';
       const aISummerizerEnabled = req.body.isAISummerizerEnabled === 'on';
+      const siteVisitCounter = isValidURI(req.body.siteVisitCounter) ? req.body.siteVisitCounter : CONSTANTS.EMPTY_STRING;
 
       let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
       if (req.body.homepageWelcomeImage) {
@@ -1367,7 +1368,8 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
         searchLimit: searchLimit,
         cloudflareSiteKey: sanitizeHtml(String(req.body.cloudflareSiteKey), CONSTANTS.SANITIZE_FILTER),
         cloudflareServerKey: sanitizeHtml(String(req.body.cloudflareServerKey), CONSTANTS.SANITIZE_FILTER),
-        isAISummerizerEnabled: aISummerizerEnabled
+        isAISummerizerEnabled: aISummerizerEnabled,
+        siteVisitCounter: siteVisitCounter
       });
 
       if (!globalSiteConfig) {

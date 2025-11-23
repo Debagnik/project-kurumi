@@ -5,4 +5,11 @@
     &copy; <%= new Date().getFullYear().toString() %> - <%= locals.config.copyrightText %>
     <% } %> <br>
     Webmaster email: <a href="mailto:<%= locals.config.siteAdminEmail %>" target="_blank"><%= locals.config.siteAdminEmail %></a>
+    <% if (locals.config.siteVisitCounter) { %>
+        <p>
+        <hr>
+        Total Site Visits:<br>
+        <img src="<%= locals.config.siteVisitCounter %>">
+        </p>
+    <% } %>
 </footer>
