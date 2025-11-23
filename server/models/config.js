@@ -107,6 +107,10 @@ const configSchema = new schema({
         type: Boolean,
         default: false,
         required: true
+    },
+    siteVisitCounter:{
+        type: String,
+        default: ""
     }
 });
 
