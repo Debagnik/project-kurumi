@@ -30,13 +30,19 @@ name: SonarCloud
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+      - release/**
+      - hotfix/**
   pull_request:
-    branches: [ "master" ]
-
+    branches:
+      - master
+      - release/**
+      - hotfix/**
+      
 jobs:
-  sonarcloud:
-    name: SonarCloud Scan
+  sonar:
+    name: Sonar Scan
     runs-on: ubuntu-latest
 
     steps:
@@ -45,7 +51,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+      - name: Sonar Scan
+        uses: sonarsource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
