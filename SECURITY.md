@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Only the latest version on the default branch (`main`) is currently supported
+Only the latest version on the default branch (`master`) is currently supported
 with security updates.
 
 Older releases, forks, or modified deployments are **not supported**.
