@@ -27,7 +27,7 @@ If you believe you have found a security vulnerability in this project, report
 it responsibly using **one of the following private channels**:
 
 - GitHub Security Advisories (preferred)
-- Email: **debagnik@debagnik.in** (replace with a real address if needed)
+- Email: `debagnik@debagnik.in`
 
 ### What to include
 When reporting, please include:
