@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Skip Dependabot and any other bot PRs
-    if: !contains(github.actor, '[bot]')
+    if: "!contains(github.actor, '[bot]')"
 
     steps:
       - name: Checkout repository
