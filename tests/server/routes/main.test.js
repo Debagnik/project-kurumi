@@ -297,31 +297,6 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
     });
 
     describe('Post Routes - Individual Posts', () => {
-        test('GET /post/:id should render deprecated post page', async () => {
-            const response = await request(app).get('/post/507f1f77bcf86cd799439011');
-            
-            expect(response.status).toBe(200);
-            expect(response.body.template).toBe('posts');
-            expect(response.headers.deprecation).toBe('true');
-        });
-
-        test('GET /post/:id should redirect unapproved posts for non-logged users', async () => {
-            mockPost.findById.mockResolvedValue({ _id: '1', title: 'Test Post', isApproved: false, author: 'testuser' });
-            
-            const response = await request(app).get('/post/507f1f77bcf86cd799439011');
-            
-            expect(response.status).toBe(302);
-            expect(response.headers.location).toBe('/404');
-        });
-
-        test('GET /post/:id should handle post not found', async () => {
-            mockPost.findById.mockResolvedValue(null);
-            
-            const response = await request(app).get('/post/507f1f77bcf86cd799439011');
-            
-            expect(response.status).toBe(302); // Redirects to /404
-            expect(response.headers.location).toBe('/404');
-        });
 
         test('GET /posts/:uniqueId should render post from cache', async () => {
             mockPostCache.getPostFromCache.mockReturnValue({

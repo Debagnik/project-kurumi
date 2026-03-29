@@ -723,11 +723,11 @@ async function savePostToDB(req, res) {
       uniqueId: uniqueId
     });
 
-    try{
+    try {
       await newPost.save();
-    } catch(error){
+    } catch (error) {
       console.error(`Could not save post data: ${error.message}`);
-      if(error.code === 11000 && error.keyPattern?.uniqueId){
+      if (error.code === 11000 && error.keyPattern?.uniqueId) {
         req.flash('error', 'A post with a similar title already exists. Please try a slightly different title.');
         return res.status(409).redirect('/dashboard');
       }
@@ -941,7 +941,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
 
     const currentSiteConfig = res.locals.siteConfig;
     let defaultThumbnailImageURI = getDefaultThumbnailURI(currentSiteConfig, req.body.thumbnailImageURI);
-    
+
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       if (process.env.NODE_ENV !== 'production') {
         console.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
@@ -999,7 +999,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     }
 
     req.flash('success', `Successfully updated post with id ${uniqueId}`);
-    res.redirect(`/dashboard/`);
+    res.redirect(`/dashboard`);
 
   } catch (error) {
     console.log(error);
@@ -1089,7 +1089,7 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
       console.log('Deleting Post, Invalidating cache for post:', cleanedUniqueId);
     }
     postCache.invalidateCache(cleanedUniqueId);
-    
+
     //Comments of the posts are also deleted
     const deletedComments = await comment.deleteMany({ postId: postToDelete._id });
     console.log(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);

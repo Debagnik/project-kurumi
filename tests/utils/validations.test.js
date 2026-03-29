@@ -33,6 +33,7 @@ describe('Validations Module', () => {
     test('should return false for URLs without hostname', () => {
       expect(isValidURI('https://')).toBe(false);
       expect(isValidURI('http://')).toBe(false);
+      expect(isValidURI('http://///')).toBe(false);
     });
   });
 
@@ -71,6 +72,23 @@ describe('Validations Module', () => {
     test('should return valid Google Analytics script', () => {
       const validGA = '<script src="https://www.googletagmanager.com/gtag/js?id=G-ABC123"></script><script>gtag(\'config\', \'G-ABC123\');</script>';
       expect(isValidTrackingScript(validGA)).toBe(validGA);
+    });
+
+    test('should return valid Inspectlet script', () => {
+      const validInsp = 'window.__insp = window.__insp || []; inspectlet.js?wid=12345';
+      expect(isValidTrackingScript(validInsp)).toBe(validInsp);
+    });
+
+    test('should return valid Microsoft Clarity script', () => {
+      const validClarity = '<script>(function(){ "https://www.clarity.ms/tag/" + abc })();</script>';
+      expect(isValidTrackingScript(validClarity)).toBe(validClarity);
+    });
+
+    test('should handle regex throwing error', () => {
+      const originalTest = CONSTANTS.GA_REGEX.test;
+      CONSTANTS.GA_REGEX.test = () => { throw new Error('Regex mock crash'); };
+      expect(isValidTrackingScript('trigger-crash')).toBe('Error on script validation');
+      CONSTANTS.GA_REGEX.test = originalTest;
     });
 
     test('should return error for invalid script types', () => {
