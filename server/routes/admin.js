@@ -28,6 +28,9 @@ const adminLayout = '../views/layouts/admin';
 // DO NOT HASH THIS VALUE - it is intended to be unusable
 const resettedPassword = 'Qm9jY2hpIHRoZSBSb2Nr';
 
+function sanitizeLogParams(logObject) {
+  return String(logObject).replaceAll(CONSTANTS.LOGS_ESCAPE_REGEX, CONSTANTS.EMPTY_STRING);
+}
 
 if (!jwtSecretKey) {
   throw new Error('JWT_SECRET is not set in Environment variable');
@@ -204,7 +207,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
 
     // check is username is of proper format defined in regex pattern
     const usernameRegex = CONSTANTS.USERNAME_REGEX;
-    const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
+    const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!';
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
       if (env?.toLowerCase() === "production") {
@@ -218,7 +221,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     let sanitizedUsername = sanitizeHtml(username, CONSTANTS.SANITIZE_FILTER);
 
     // checking for existing user
-    const existingUser = await user.findOne({ username: { $eq: sanitizedUsername } })
+    const existingUser = await user.findOne({ username: { $eq: sanitizedUsername } });
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
@@ -238,9 +241,9 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     if (res.locals.siteConfig.isRegistrationEnabled) {
       const hashedPassword = await bcrypt.hash(password, 10);
       try {
-        const newUser = await user.create({ sanitizedUsername, password: hashedPassword, name });
+        const newUser = await user.create({ username: sanitizedUsername, password: hashedPassword, name });
         console.log('User created', newUser, 201);
-        req.flash('success', `new user ${sanitizedUsername} is created, try signing in`)
+        req.flash('success', `new user ${sanitizedUsername} is created, try signing in`);
         res.redirect('/admin');
       } catch (error) {
         console.error({
@@ -723,15 +726,25 @@ async function savePostToDB(req, res) {
       uniqueId: uniqueId
     });
 
-    try {
-      await newPost.save();
-    } catch (error) {
-      console.error(`Could not save post data: ${error.message}`);
-      if (error.code === 11000 && error.keyPattern?.uniqueId) {
-        req.flash('error', 'A post with a similar title already exists. Please try a slightly different title.');
-        return res.status(409).redirect('/dashboard');
+    const maxInsertRetries = 10;
+    let inserted = false;
+    for (let attempt = 0; attempt <= maxInsertRetries; attempt++) {
+      try {
+        await newPost.save();
+        inserted = true;
+        break;
+      } catch (error) {
+        if (error.code === 11000 && error.keyPattern?.uniqueId) {
+          console.warn(`Collision detected on uniqueId for attempt ${attempt + 1}. Regenerating...`);
+          newPost.uniqueId = generateUniquePostId(req.body.title.trim());
+          continue;
+        } else {
+          throw error;
+        }
       }
-      throw error;
+    }
+    if (!inserted) {
+      throw new Error('Failed to insert post after retries');
     }
 
     console.log(`New post added by ${currentUser.username} \n`, newPost);
@@ -739,7 +752,7 @@ async function savePostToDB(req, res) {
   } catch (error) {
     console.error(`Could not save post data: ${error.message}`);
     req.flash('error', 'Internal Server error');
-    return res.redirect(301, '/dashboard');
+    return res.redirect('/dashboard');
   }
 }
 
@@ -1306,13 +1319,13 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       throw new Error('Webmaster tried adding ill-formed email address');
     }
 
-    const paginationLimit = Number.parseInt(req.body.defaultPaginationLimit, 10) || 10;
+    const paginationLimit = Number.parseInt(req.body.defaultPaginationLimit, 10);
     if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
       console.error('Invalid pagination limit');
       throw new Error('Webmaster tried updating invalid pagination limit');
     }
 
-    const searchLimit = Number.parseInt(req.body.searchLimit, 10) || 10;
+    const searchLimit = Number.parseInt(req.body.searchLimit, 10);
     if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
       console.error('Invalid search limit');
       throw new Error('Webmaster tried updating invalid search limit');
@@ -1323,7 +1336,8 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
     const resolveUri = (incoming, fallback) => (incoming && isValidURI(incoming)) ? incoming : fallback;
     const validUrl = resolveUri(req.body.siteDefaultThumbnailUri, globalSiteConfig?.siteDefaultThumbnailUri ?? process.env.DEFAULT_POST_THUMBNAIL_LINK);
     const validHomePageImageUri = resolveUri(req.body.homepageWelcomeImage, globalSiteConfig?.homepageWelcomeImage ?? validUrl);
-    const siteVisitCounter = isValidURI(req.body.siteVisitCounter) ? req.body.siteVisitCounter : CONSTANTS.EMPTY_STRING;
+    const siteVisitCounter = (typeof req.body.siteVisitCounter === 'string' && isValidURI(req.body.siteVisitCounter)) ? req.body.siteVisitCounter : CONSTANTS.EMPTY_STRING;
+    const defaultPaginationLimit = Number.parseInt(req.body.defaultPaginationLimit, 10);
 
     const configData = {
       isRegistrationEnabled: req.body.isRegistrationEnabled === 'on',
@@ -1337,7 +1351,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
       siteAdminEmail: sanitizeHtml(String(req.body.siteAdminEmail), CONSTANTS.SANITIZE_FILTER),
       siteDefaultThumbnailUri: validUrl,
-      defaultPaginationLimit: req.body.defaultPaginationLimit,
+      defaultPaginationLimit: Number.isFinite(defaultPaginationLimit) ? defaultPaginationLimit : globalSiteConfig?.defaultPaginationLimit,
       lastModifiedDate: Date.now(),
       lastModifiedBy: currentUser.username,
       inspectletScript: isValidTrackingScript(req.body.inspectletScript),
@@ -1434,13 +1448,13 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
     if (!isUserIdValid) {
-      console.error({ code: 404, Status: 'Not found', message: `userID: ${req.params.id} is not valid` });
+      console.error({ code: 404, Status: 'Not found', message: `userID: ${sanitizeLogParams(req.params.id)} is not valid` });
       throw new Error('User ID is invalid');
     }
     const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
-      console.error('User not found', req.params.id);
-      throw new Error('Current user not found');
+      console.error('User not found', sanitizeLogParams(req.params.id));
+      throw new Error('User to be deleted not found');
     }
 
     //prevent self deletion

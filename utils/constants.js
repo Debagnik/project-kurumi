@@ -17,6 +17,8 @@ const CONSTANTS = Object.freeze({
   CLAMP_COMMENT_MAX: 50,
   EMAIL_REGEX: /^[a-zA-Z0-9][a-zA-Z0-9._%+-]*[a-zA-Z0-9]@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/,
   TAGS_REGEX: /[^a-zA-Z0-9-_]/g,
+  ESCAPE_REGEX_REGEX: /[.*+?^${}()|[\]\\]/g,
+  LOGS_ESCAPE_REGEX:/[\r\n]/g,
   /**
   * Enum for privilege levels used to determine user roles.
   * @readonly

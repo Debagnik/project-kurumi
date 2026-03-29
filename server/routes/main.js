@@ -170,7 +170,8 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         }
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
-        let page = Number.parseInt(req.query.page, 10) || 1;
+        const rawPage = Number.parseInt(req.query.page, 10);
+        let page = Number.isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
 
         const data = await post.aggregate([
             { $match: { isApproved: true } },
@@ -615,9 +616,9 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             config: res.locals.siteConfig
         };
 
-        const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
-        const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
-        const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
+        const keyword = escapeRegexCharsInSearch(sanitizeHtml(searchTerm.trim(), CONSTANTS.SANITIZE_FILTER));
+        const sanitizedTitle = escapeRegexCharsInSearch(sanitizeHtml(title.trim(), CONSTANTS.SANITIZE_FILTER));
+        const sanitizedAuthor = escapeRegexCharsInSearch(sanitizeHtml(author.trim(), CONSTANTS.SANITIZE_FILTER));
         const tagArray = utils.parseTags(tags);
 
         let filter = { $and: [{ isApproved: true }] };
@@ -765,6 +766,10 @@ function validateCommentInput(commenterName, commentBody) {
     return null;
 }
 
+function escapeRegexCharsInSearch(input){
+    return input.replaceAll(CONSTANTS.ESCAPE_REGEX_REGEX, String.raw`\$&`);
+}
+
 async function executeAdvancedSearch(filter, keyword, sanitizedTitle, sanitizedAuthor, tagArray, skip, searchLimit) {
     const orConditions = [];
 
@@ -804,12 +809,18 @@ async function executeAdvancedSearch(filter, keyword, sanitizedTitle, sanitizedA
 
     // Fallback: regex-only search if no results
     if (data.length === 0 && keyword) {
-        const fallbackRegex = new RegExp(keyword, 'i');
-        filter.$and = filter.$and.filter(condition => !condition.$text);
-        filter.$and.push({ $or: [{ title: fallbackRegex }, { body: fallbackRegex }] });
+        const fallbackFilter = { 
+            $and: [
+                { isApproved: true }, // only approved posts
+                { $or: [
+                    { title: new RegExp(keyword, 'i') }, 
+                    { body: new RegExp(keyword, 'i') }
+                ]}
+            ] 
+        };
 
-        data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
-        count = await post.countDocuments(filter);
+        data = await post.find(fallbackFilter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
+        count = await post.countDocuments(fallbackFilter);
     }
 
     return { data, count };
