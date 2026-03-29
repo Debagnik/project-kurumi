@@ -86,8 +86,8 @@ function markdownToHtml(markdownString) {
         img: ['src', 'alt', 'title']
       }
     });
-    return htmlString.replace(/<(\/?)h([1-3])>/g, (match, p1, p2) => {
-      const newLevel = parseInt(p2) + 1;
+    return htmlString.replaceAll(/<(\/?)h([1-3])>/g, (match, p1, p2) => {
+      const newLevel = Number.parseInt(p2, 10) + 1;
       return `<${p1}h${newLevel}>`;
     });
   } catch (error) {
@@ -207,7 +207,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     const usernameErrorMessage = 'Username can only contain letters, numbers, hyphens, underscores, dots, plus signs, and at-symbols!'
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
-      if (env && env.toLowerCase() === "production") {
+      if (env?.toLowerCase() === "production") {
         console.error(400, 'Invalid username format');
       } else {
         console.error(400, 'Invalid username format', username);
@@ -215,15 +215,17 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       throw new Error(usernameErrorMessage);
     }
 
+    let sanitizedUsername = sanitizeHtml(username, CONSTANTS.SANITIZE_FILTER);
+
     // checking for existing user
-    const existingUser = await user.findOne({ username: { $eq: username } })
+    const existingUser = await user.findOne({ username: { $eq: sanitizedUsername } })
     if (existingUser) {
       console.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
     }
 
     //check password and confirm password match
-    if (!(password === confirm_password)) {
+    if (password !== confirm_password) {
       console.error('Password and confirm passwords do not match');
       throw new Error('Passwords and Confirm Password do not match!');
     }
@@ -236,9 +238,9 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     if (res.locals.siteConfig.isRegistrationEnabled) {
       const hashedPassword = await bcrypt.hash(password, 10);
       try {
-        const newUser = await user.create({ username, password: hashedPassword, name });
+        const newUser = await user.create({ sanitizedUsername, password: hashedPassword, name });
         console.log('User created', newUser, 201);
-        req.flash('success', `new user ${username} is created, try signing in`)
+        req.flash('success', `new user ${sanitizedUsername} is created, try signing in`)
         res.redirect('/admin');
       } catch (error) {
         console.error({
@@ -250,7 +252,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
         res.redirect('/admin');
       }
     } else {
-      console.warn(`Someone with username ${username} tryied registering when it is turned off`);
+      console.warn(`Someone with username ${sanitizedUsername} tried registering when it is turned off`);
       req.flash('info', 'Registration not enabled, Contact with Site admin, User not created, This incedent will be reported');
       res.redirect('/admin');
     }
@@ -311,8 +313,8 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     }
 
     //sanitize User Input username
-    if (typeof (username) !== 'string') {
-      throw Error('Chica, Its not this easy to dupe me, Try harder');
+    if (typeof username !== 'string') {
+      throw new TypeError('Chica, Its not this easy to dupe me, Try harder');
     }
 
     //checks if the user exists
@@ -574,6 +576,39 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
   }
 });
 
+
+/**
+ * Helper to determine default thumbnail URI
+ */
+function getDefaultThumbnailURI(currentSiteConfig, userProvidedURI) {
+  let siteConfigDefaultThumbnail;
+  if (currentSiteConfig) {
+    siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
+  } else {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Site configuration not found');
+    }
+    siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK;
+  }
+  return isValidURI(userProvidedURI) ? userProvidedURI : siteConfigDefaultThumbnail;
+}
+
+/**
+ * Helper to generate a unique post identifier with retries.
+ */
+async function generateUniquePostId(title) {
+  const maxRetries = 10;
+  for (let count = 0; count <= maxRetries; count++) {
+    const uniqueId = createUniqueId(title);
+    const existingPost = await post.findOne({ uniqueId: uniqueId });
+    if (!existingPost) {
+      return uniqueId;
+    }
+  }
+  console.error('Failed to generate unique ID after maximum retries');
+  throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
+}
+
 /**
  * @function savePostToDB
  * @description Handles the complete workflow for creating and saving a new post,
@@ -657,46 +692,21 @@ async function savePostToDB(req, res) {
       throw new Error("User not found while saving post.");
     }
 
-    const currentSiteConfig = res.locals.siteConfig;
-    let siteConfigDefaultThumbnail;
-    if (!currentSiteConfig) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Site configuration not found');
-      }
-      siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
-    } else {
-      siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
-    }
-
-    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail
+    const defaultThumbnailImageURI = getDefaultThumbnailURI(res.locals.siteConfig, req.body.thumbnailImageURI);
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       console.error('Missing required fields!');
       throw new Error("Title, body, and description are required!");
     }
-    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
-    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
-    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
+    const MAX_TITLE_LENGTH = Number.parseInt(process.env.MAX_TITLE_LENGTH, 10) || 50;
+    const MAX_DESCRIPTION_LENGTH = Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10) || 1000;
+    const MAX_BODY_LENGTH = Number.parseInt(process.env.MAX_BODY_LENGTH, 10) || 100000;
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       console.error('Title, body, and description must not exceed their respective limits!');
       throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
-    let uniqueId = null;
-    let count = 0;
-    const maxRetries = 10;
-    while (count <= maxRetries) {
-      uniqueId = createUniqueId(req.body.title.trim());
-      count += 1;
-      const existingPost = await post.findOne({ uniqueId: uniqueId });
-      if (!existingPost) {
-        break;
-      }
-      if (count >= maxRetries) {
-        console.error('Failed to generate unique ID after maximum retries');
-        throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
-      }
-    }
+    const uniqueId = await generateUniquePostId(req.body.title.trim());
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
@@ -717,19 +727,19 @@ async function savePostToDB(req, res) {
       await newPost.save();
     } catch(error){
       console.error(`Could not save post data: ${error.message}`);
-      if(error.code === 11000 && error.keyPattern && error.keyPattern.uniqueId){
+      if(error.code === 11000 && error.keyPattern?.uniqueId){
         req.flash('error', 'A post with a similar title already exists. Please try a slightly different title.');
         return res.status(409).redirect('/dashboard');
       }
       throw error;
     }
 
-    console.log(`New post added by ${currentUser.username} \n ${newPost}`);
+    console.log(`New post added by ${currentUser.username} \n`, newPost);
     return newPost._id.toString();
   } catch (error) {
     console.error(`Could not save post data: ${error.message}`);
     req.flash('error', 'Internal Server error');
-    return res.redirect(500, '/dashboard');
+    return res.redirect(301, '/dashboard');
   }
 }
 
@@ -800,7 +810,7 @@ router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, asyn
     const data = await post.findOne({ uniqueId: sanitizedUniqueId });
 
     if (!data) {
-      throw Error(`No posts found with uniqueId: ${sanitizedUniqueId}`);
+      throw new Error(`No posts found with uniqueId: ${sanitizedUniqueId}`);
     }
 
     const locals = {
@@ -930,17 +940,8 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     }
 
     const currentSiteConfig = res.locals.siteConfig;
-    let siteConfigDefaultThumbnail;
-    if (!currentSiteConfig) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Site configuration not found');
-      }
-      siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK
-    } else {
-      siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
-    }
-    const defaultThumbnailImageURI = isValidURI(req.body.thumbnailImageURI) ? req.body.thumbnailImageURI : siteConfigDefaultThumbnail;
-
+    let defaultThumbnailImageURI = getDefaultThumbnailURI(currentSiteConfig, req.body.thumbnailImageURI);
+    
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
       if (process.env.NODE_ENV !== 'production') {
         console.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
@@ -949,9 +950,9 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
       return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`)
     }
 
-    const MAX_TITLE_LENGTH = parseInt(process.env.MAX_TITLE_LENGTH) || 50;
-    const MAX_DESCRIPTION_LENGTH = parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 1000;
-    const MAX_BODY_LENGTH = parseInt(process.env.MAX_BODY_LENGTH) || 100000;
+    const MAX_TITLE_LENGTH = Number.parseInt(process.env.MAX_TITLE_LENGTH, 10) || 50;
+    const MAX_DESCRIPTION_LENGTH = Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10) || 1000;
+    const MAX_BODY_LENGTH = Number.parseInt(process.env.MAX_BODY_LENGTH, 10) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
       if (process.env.NODE_ENV !== 'production') {
@@ -961,26 +962,10 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
       return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`);
     }
 
-    const generateUniqueId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId
-    let uniqueId = null;
-    if (generateUniqueId) {
-      let count = 0;
-      const maxRetries = 10;
-      while (count <= maxRetries) {
-        uniqueId = createUniqueId(req.body.title.trim());
-        count += 1;
-        const existingPost = await post.findOne({ uniqueId: uniqueId });
-        if (!existingPost) {
-          break;
-        }
-        if (count >= maxRetries) {
-          console.error('Failed to generate unique ID after maximum retries');
-          throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
-        }
-      }
-    } else {
-      uniqueId = postToUpdate.uniqueId;
-    }
+    const shouldRegenerateId = postToUpdate.title !== req.body.title.trim() || !postToUpdate.uniqueId;
+    const uniqueId = shouldRegenerateId
+      ? await generateUniquePostId(req.body.title.trim())
+      : postToUpdate.uniqueId;
 
     const htmlBody = markdownToHtml(req.body.markdownbody.trim());
 
@@ -1110,7 +1095,7 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
     console.log(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);
 
     await post.deleteOne({ _id: postToDelete._id });
-    console.log(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${postToDelete}`);
+    console.log(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${JSON.stringify(postToDelete)}`);
     req.flash('success', `Post Successfully Deleted with Id ${postToDelete.uniqueId}`);
     res.redirect('/dashboard');
   } catch (error) {
@@ -1307,88 +1292,75 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
       throw new Error('User not found');
     }
 
-    if (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      // Update site settings in the database
-      let globalSiteConfig = await siteConfig.findOne();
-
-      // Validate critical fields
-      const emailRegex = CONSTANTS.EMAIL_REGEX;
-      if (req.body.siteAdminEmail && !emailRegex.test(req.body.siteAdminEmail)) {
-        console.warn('webmaster tried putting invalid email');
-        throw new Error('Webmaster tried adding ill-formed email address');
-      }
-      const paginationLimit = parseInt(req.body.defaultPaginationLimit);
-      if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
-        console.warn('Invalid pagination limit');
-        throw new Error('Webmaster tried updating invalid pagination limit')
-      }
-
-      const searchLimit = parseInt(req.body.searchLimit);
-      if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
-        console.warn('Invalid search limit');
-        throw new Error('Webmaster tried updating invalid pagination limit')
-      }
-
-
-      let validUrl = globalSiteConfig.siteDefaultThumbnailUri;
-      if (req.body.siteDefaultThumbnailUri) {
-        validUrl = isValidURI(req.body.siteDefaultThumbnailUri) ? req.body.siteDefaultThumbnailUri : process.env.DEFAULT_POST_THUMBNAIL_LINK;
-      }
-      const registrationEnable = req.body.isRegistrationEnabled === 'on';
-      const commentsEnabled = req.body.isCommentsEnabled === 'on';
-      const captchaEnabled = req.body.isCaptchaEnabled === 'on';
-      const aISummerizerEnabled = req.body.isAISummerizerEnabled === 'on';
-      const siteVisitCounter = isValidURI(req.body.siteVisitCounter) ? req.body.siteVisitCounter : CONSTANTS.EMPTY_STRING;
-
-      let validHomePageImageUri = globalSiteConfig.homepageWelcomeImage;
-      if (req.body.homepageWelcomeImage) {
-        validHomePageImageUri = isValidURI(req.body.homepageWelcomeImage) ? req.body.homepageWelcomeImage : validUrl;
-      }
-
-      // global site settings helper
-      const createConfigObject = (req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled) => ({
-        isRegistrationEnabled: registrationEnable,
-        isCommentsEnabled: commentsEnabled,
-        isCaptchaEnabled: captchaEnabled,
-        siteName: sanitizeHtml(String(req.body.siteName), CONSTANTS.SANITIZE_FILTER),
-        siteMetaDataKeywords: sanitizeHtml(String(req.body.siteMetaDataKeywords), CONSTANTS.SANITIZE_FILTER),
-        siteMetaDataAuthor: sanitizeHtml(String(req.body.siteMetaDataAuthor), CONSTANTS.SANITIZE_FILTER),
-        siteMetaDataDescription: sanitizeHtml(String(req.body.siteMetaDataDescription), CONSTANTS.SANITIZE_FILTER),
-        googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
-        siteAdminEmail: sanitizeHtml(String(req.body.siteAdminEmail), CONSTANTS.SANITIZE_FILTER),
-        siteDefaultThumbnailUri: validUrl,
-        defaultPaginationLimit: req.body.defaultPaginationLimit,
-        lastModifiedDate: Date.now(),
-        lastModifiedBy: currentUser.username,
-        inspectletScript: isValidTrackingScript(req.body.inspectletScript),
-        homeWelcomeText: sanitizeHtml(String(req.body.homeWelcomeText), CONSTANTS.SANITIZE_FILTER),
-        homeWelcomeSubText: sanitizeHtml(String(req.body.homeWelcomeSubText), CONSTANTS.SANITIZE_FILTER),
-        homepageWelcomeImage: validHomePageImageUri,
-        copyrightText: sanitizeHtml(String(req.body.copyrightText), CONSTANTS.SANITIZE_FILTER),
-        searchLimit: searchLimit,
-        cloudflareSiteKey: sanitizeHtml(String(req.body.cloudflareSiteKey), CONSTANTS.SANITIZE_FILTER),
-        cloudflareServerKey: sanitizeHtml(String(req.body.cloudflareServerKey), CONSTANTS.SANITIZE_FILTER),
-        isAISummerizerEnabled: aISummerizerEnabled,
-        siteVisitCounter: siteVisitCounter
-      });
-
-      if (!globalSiteConfig) {
-        globalSiteConfig = new siteConfig(createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled));
-        await globalSiteConfig.save();
-        invalidateCache();
-      } else {
-        await siteConfig.findOneAndUpdate({}, createConfigObject(req, currentUser, validUrl, validHomePageImageUri, registrationEnable, commentsEnabled, captchaEnabled, aISummerizerEnabled), { new: true });
-        invalidateCache();
-      }
-      console.log(`Site settings updated successfully by user: ${currentUser.username}`);
-      req.flash('success', `Site settings are sucessfully updated`);
-      res.redirect('/admin/webmaster');
-    } else {
+    // Guard: reject non-webmaster users immediately
+    if (currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       console.error(`Unauthorised user tried to update site settings`);
       req.flash('error', `you dont have sufficient privilage/permission to update global site settings`);
       req.flash('info', `This incedent will be reported`);
-      res.redirect('/dashboard');
+      return res.redirect('/dashboard');
     }
+
+    // Validate critical fields
+    if (req.body.siteAdminEmail && !CONSTANTS.EMAIL_REGEX.test(req.body.siteAdminEmail)) {
+      console.error('webmaster tried putting invalid email');
+      throw new Error('Webmaster tried adding ill-formed email address');
+    }
+
+    const paginationLimit = Number.parseInt(req.body.defaultPaginationLimit, 10) || 10;
+    if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
+      console.error('Invalid pagination limit');
+      throw new Error('Webmaster tried updating invalid pagination limit');
+    }
+
+    const searchLimit = Number.parseInt(req.body.searchLimit, 10) || 10;
+    if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
+      console.error('Invalid search limit');
+      throw new Error('Webmaster tried updating invalid search limit');
+    }
+
+    // Resolve and validate URIs
+    const globalSiteConfig = await siteConfig.findOne();
+    const resolveUri = (incoming, fallback) => (incoming && isValidURI(incoming)) ? incoming : fallback;
+    const validUrl = resolveUri(req.body.siteDefaultThumbnailUri, globalSiteConfig?.siteDefaultThumbnailUri ?? process.env.DEFAULT_POST_THUMBNAIL_LINK);
+    const validHomePageImageUri = resolveUri(req.body.homepageWelcomeImage, globalSiteConfig?.homepageWelcomeImage ?? validUrl);
+    const siteVisitCounter = isValidURI(req.body.siteVisitCounter) ? req.body.siteVisitCounter : CONSTANTS.EMPTY_STRING;
+
+    const configData = {
+      isRegistrationEnabled: req.body.isRegistrationEnabled === 'on',
+      isCommentsEnabled: req.body.isCommentsEnabled === 'on',
+      isCaptchaEnabled: req.body.isCaptchaEnabled === 'on',
+      isAISummerizerEnabled: req.body.isAISummerizerEnabled === 'on',
+      siteName: sanitizeHtml(String(req.body.siteName), CONSTANTS.SANITIZE_FILTER),
+      siteMetaDataKeywords: sanitizeHtml(String(req.body.siteMetaDataKeywords), CONSTANTS.SANITIZE_FILTER),
+      siteMetaDataAuthor: sanitizeHtml(String(req.body.siteMetaDataAuthor), CONSTANTS.SANITIZE_FILTER),
+      siteMetaDataDescription: sanitizeHtml(String(req.body.siteMetaDataDescription), CONSTANTS.SANITIZE_FILTER),
+      googleAnalyticsScript: isValidTrackingScript(req.body.googleAnalyticsScript),
+      siteAdminEmail: sanitizeHtml(String(req.body.siteAdminEmail), CONSTANTS.SANITIZE_FILTER),
+      siteDefaultThumbnailUri: validUrl,
+      defaultPaginationLimit: req.body.defaultPaginationLimit,
+      lastModifiedDate: Date.now(),
+      lastModifiedBy: currentUser.username,
+      inspectletScript: isValidTrackingScript(req.body.inspectletScript),
+      homeWelcomeText: sanitizeHtml(String(req.body.homeWelcomeText), CONSTANTS.SANITIZE_FILTER),
+      homeWelcomeSubText: sanitizeHtml(String(req.body.homeWelcomeSubText), CONSTANTS.SANITIZE_FILTER),
+      homepageWelcomeImage: validHomePageImageUri,
+      copyrightText: sanitizeHtml(String(req.body.copyrightText), CONSTANTS.SANITIZE_FILTER),
+      searchLimit: searchLimit,
+      cloudflareSiteKey: sanitizeHtml(String(req.body.cloudflareSiteKey), CONSTANTS.SANITIZE_FILTER),
+      cloudflareServerKey: sanitizeHtml(String(req.body.cloudflareServerKey), CONSTANTS.SANITIZE_FILTER),
+      siteVisitCounter: siteVisitCounter
+    };
+
+    if (globalSiteConfig) {
+      await siteConfig.findOneAndUpdate({}, configData, { new: true });
+    } else {
+      await new siteConfig(configData).save();
+    }
+    invalidateCache();
+
+    console.log(`Site settings updated successfully by user: ${currentUser.username}`);
+    req.flash('success', `Site settings are sucessfully updated`);
+    res.redirect('/admin/webmaster');
   } catch (error) {
     console.error(error);
     req.flash('error', error.message);
@@ -1456,7 +1428,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.warn('Unauthorized user tried to delete different user', req.userId);
+      console.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
     }
 
@@ -1467,7 +1439,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
     const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
-      console.warn('User not found', req.params.id);
+      console.error('User not found', req.params.id);
       throw new Error('Current user not found');
     }
 
@@ -1647,7 +1619,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.warn('Unauthorized user tried to delete different user', req.userId);
+      console.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
     }
 
@@ -1660,12 +1632,12 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
 
     const updateUser = await user.findById(req.params.id);
     if (!updateUser) {
-      console.warn('User To be updated not found');
+      console.error('User To be updated not found');
       throw new Error('User to be updated not found');
     }
 
-    if (!req.body.name || !req.body.name.trim()) {
-      console.warn('Name is a required field');
+    if (!req.body.name?.trim()) {
+      console.error('Name is a required field');
       throw new Error('Name is a required field');
     }
 
@@ -1675,7 +1647,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       hasAdminResettedPassword = true;
       const tempPassword = req.body.adminTempPassword.trim();
       if (!isStrongPassword(tempPassword)) {
-        console.warn(`Webmaster User ${currentUser.username} tried resetting password of User ${updateUser.username} with a weak password`);
+        console.error(`Webmaster User ${currentUser.username} tried resetting password of User ${updateUser.username} with a weak password`);
         throw new Error('Password is not strong enough, Must contain at least 8 characters, must contain a mix of uppercase, lowercase, numeric and special characters');
       }
       hashedTempPassword = await bcrypt.hash(tempPassword, 10);
@@ -1684,14 +1656,14 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     const sanitizedName = sanitizeHtml(String(req.body.name).trim(), CONSTANTS.SANITIZE_FILTER);
 
     if (sanitizedName !== req.body.name.trim()) {
-      console.warn(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
+      console.error(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
       req.flash('error', `you cannot add scripts on the user's name`);
       req.flash('info', `This incedent will be reported`);
     }
 
-    const privilageLevel = (typeof req.body.privilege !== 'undefined' && !isNaN(parseInt(req.body.privilege))) ? parseInt(req.body.privilege) : parseInt(updateUser.privilege);
-    if (!Object.values(CONSTANTS.PRIVILEGE_LEVELS_ENUM).includes(parseInt(privilageLevel))) {
-      console.warn('Invalid Privilage level');
+    const privilageLevel = (req.body.privilege !== undefined && !Number.isNaN(Number.parseInt(req.body.privilege, 10))) ? Number.parseInt(req.body.privilege, 10) : Number.parseInt(updateUser.privilege, 10);
+    if (!Object.values(CONSTANTS.PRIVILEGE_LEVELS_ENUM).includes(Number.parseInt(privilageLevel, 10))) {
+      console.error('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
     }
 
@@ -1699,7 +1671,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     updateUser.privilege = privilageLevel;
     updateUser.isPasswordReset = hasAdminResettedPassword;
     updateUser.adminTempPassword = hashedTempPassword;
-    updateUser.password = !hasAdminResettedPassword ? updateUser.password : resettedPassword;
+    updateUser.password = hasAdminResettedPassword ? resettedPassword : updateUser.password;
     updateUser.modifiedAt = Date.now();
 
     try {
@@ -1736,7 +1708,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
  *
  */
 function isStrongPassword(password) {
-  const minLength = parseInt(CONSTANTS.PASSWORD_MIN_LENGTH);
+  const minLength = Number.parseInt(CONSTANTS.PASSWORD_MIN_LENGTH, 10) || 8;
   const hasUppercase = CONSTANTS.HAS_UPPERCASE_REGEX.test(password);
   const hasLowercase = CONSTANTS.HAS_LOWERCASE_REGEX.test(password);
   const hasNumber = CONSTANTS.HAS_NUMBERS_REGEX.test(password);
@@ -1965,10 +1937,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     }
 
     const isPasswordValid = await bcrypt.compare(tempPassword, userModel.adminTempPassword);
-    if (!isPasswordValid) {
-      console.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
-      throw new Error('Either the username or the Temp password combination might be incorrect');
-    } else {
+    if (isPasswordValid) {
       console.log(`User: ${sanitizedUserName} has successfully validated temp password`);
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       userModel.password = hashedPassword;
@@ -1985,6 +1954,9 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
         req.flash('error', 'Something went wrong while resetting password, Internal Server Error');
         res.redirect('/admin/reset-password');
       }
+    } else {
+      console.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
+      throw new Error('Either the username or the Temp password combination might be incorrect');
     }
   } catch (error) {
     console.error("Internal Server Error", error);
@@ -2053,7 +2025,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     }
     if (req.userId !== currentUser.id) {
       req.flash('error', 'Unauthorized, This incedent will be reported');
-      console.warn('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
+      console.error('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
       return res.redirect('/dashboard');
     }
     res.render('admin/edit-my-profile', {
@@ -2147,8 +2119,8 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
 
       // Then check length limits
       if (
-        description.length > (parseInt(process.env.MAX_DESCRIPTION_LENGTH) || 50000) ||
-        name.length > (parseInt(process.env.MAX_NAME_LENGTH) || 100)
+        description.length > (Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10) || 50000) ||
+        name.length > (Number.parseInt(process.env.MAX_NAME_LENGTH, 10) || 100)
       ) {
         req.flash('error', 'Field length exceeds maximum limit');
         return res.redirect('/dashboard');
@@ -2161,7 +2133,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
       });
       const HTMLDescription = markdownToHtml(description);
       currentUser.name = sanitizedName;
-      currentUser.portfolioLink = sanitizedLink ? sanitizedLink : (currentUser.portfolioLink || CONSTANTS.EMPTY_STRING);
+      currentUser.portfolioLink = sanitizedLink || currentUser.portfolioLink || CONSTANTS.EMPTY_STRING;
       currentUser.description = sanitizedDesc;
       currentUser.htmlDesc = HTMLDescription;
 

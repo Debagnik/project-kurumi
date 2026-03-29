@@ -109,6 +109,11 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
     let app;
     let mockPost, mockUser, mockComment, mockJwt, mockSanitizeHtml, mockMongoose, mockPostCache, mockUtils, mockCaptcha;
 
+    afterAll(async () => {
+        // Ensure handles are completely cleaned up
+        jest.restoreAllMocks();
+    });
+
     beforeAll(() => {
         // Get mocked modules
         mockPost = require('../../../server/models/posts.js');
@@ -167,7 +172,6 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
         app.use((req, res, next) => {
             req.flash = jest.fn();
             req.ip = '127.0.0.1';
-            req.cookies = {};
             next();
         });
 
@@ -1204,7 +1208,6 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             testApp.use((req, res, next) => {
                 req.flash = jest.fn();
                 req.ip = '127.0.0.1';
-                req.cookies = {};
                 next();
             });
             
