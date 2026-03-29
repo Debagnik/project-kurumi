@@ -103,6 +103,7 @@ jest.mock('csurf', () => () => (req, res, next) => {
 });
 
 const request = require('supertest');
+const logger = require('../../../utils/logger');
 const express = require('express');
 
 describe('Comprehensive Route Tests for 90%+ Coverage', () => {
@@ -232,7 +233,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
         });
 
         test('GET / should log posts data fetched', async () => {
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
             
             const response = await request(app).get('/');
             
@@ -368,8 +369,6 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
         test('GET /posts/:uniqueId should allow approved posts for logged users', async () => {
             // Mock cookie parser to extract token
-            const originalCookieParser = require('cookie-parser');
-            
             mockJwt.verify.mockReturnValue({ userId: 'user123' });
             mockUser.findById.mockResolvedValue({ _id: 'user123', privilege: 1 });
             mockPostCache.getPostFromCache.mockReturnValue({
@@ -674,7 +673,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                 isApproved: true
             });
             
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = jest.spyOn(logger, 'error').mockImplementation();
             
             await request(app)
                 .post('/posts/507f1f77bcf86cd799439011/post-comments')
@@ -1119,7 +1118,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
         });
 
         test('getUserFromCookieToken should handle missing token', async () => {
-            const response = await request(app).get('/posts/test-unique-id');
+            await request(app).get('/posts/test-unique-id');
             
             expect(mockJwt.verify).not.toHaveBeenCalled();
         });
@@ -1370,7 +1369,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                 authorName: 'Test Author'
             });
             
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
             
             await request(app).get('/posts/test-unique-id');
             
@@ -1394,13 +1393,15 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             mockUser.findOne.mockResolvedValue({ name: 'Test Author' });
             
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
+            const debugSpy = jest.spyOn(logger, 'debug').mockImplementation();
             
             await request(app).get('/posts/test-unique-id');
             
-            expect(consoleSpy).toHaveBeenCalledWith('Post with UniqueId: test-unique-id not found on cache, trying to fetch from DB');
+            expect(debugSpy).toHaveBeenCalledWith('Post with UniqueId: test-unique-id not found on cache, trying to fetch from DB');
             
             consoleSpy.mockRestore();
+            debugSpy.mockRestore();
             process.env.NODE_ENV = originalEnv;
         });
 
@@ -1417,7 +1418,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                 uniqueId: 'test-unique-id'
             });
             
-            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+            const consoleWarnSpy = jest.spyOn(logger, 'warn').mockImplementation();
             
             await request(app).get('/posts/test-unique-id');
             
@@ -1431,13 +1432,15 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             const originalEnv = process.env.NODE_ENV;
             process.env.NODE_ENV = 'development';
             
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
+            const debugSpy = jest.spyOn(logger, 'debug').mockImplementation();
             
             await request(app).get('/posts/test-unique-id');
             
-            expect(consoleSpy).toHaveBeenCalledWith('Fetching post by uniqueId: test-unique-id');
+            expect(debugSpy).toHaveBeenCalledWith('Fetching post by uniqueId: test-unique-id');
             
             consoleSpy.mockRestore();
+            debugSpy.mockRestore();
             process.env.NODE_ENV = originalEnv;
         });
 
@@ -1522,7 +1525,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                 privilege: 1 // WEBMASTER
             });
             
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
             
             const response = await request(app)
                 .post('/posts/delete-comment/comment123')
@@ -1552,8 +1555,8 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                 privilege: 1 // WEBMASTER
             });
             
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleSpy = jest.spyOn(logger, 'info').mockImplementation();
+            const consoleErrorSpy = jest.spyOn(logger, 'error').mockImplementation();
             
             const response = await request(app)
                 .post('/posts/delete-comment/comment123')
@@ -1600,7 +1603,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             });
             
             // Test the exact validation conditions that trigger console.error
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = jest.spyOn(logger, 'error').mockImplementation();
             
             // Test case 1: commenterName.length < 3
             await request(app)

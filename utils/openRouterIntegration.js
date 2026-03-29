@@ -17,6 +17,7 @@
 const { OpenAI } = require('openai');
 const user = require('../server/models/user');
 const { CONSTANTS } = require('./constants');
+const logger = require('./logger');
 
 const openRouterApiSecretKey = process.env.OPENROUTER_API_KEY;
 const systemPrompt = process.env.SYSTEM_PROMPT;
@@ -29,7 +30,7 @@ if (!openRouterApiSecretKey) {
     throw new Error('OPENAISDK_API_KEY is not set in environment variables');
 }
 
-if (!process.env.MAX_DESCRIPTION_LENGTH || isNaN(parseInt(process.env.MAX_DESCRIPTION_LENGTH))) {
+if (!process.env.MAX_DESCRIPTION_LENGTH || Number.isNaN(Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10))) {
     throw new Error('MAX_DESCRIPTION_LENGTH is not set in environment variables')
 }
 
@@ -79,15 +80,13 @@ async function summarizeMarkdownBody(markdown) {
 
         const completion = await openai.chat.completions.create(outgoingMessage);
 
-        if(process.env.NODE_ENV !== 'production'){
-            console.log("Outgoing Message to LLM:\n", outgoingMessage);
-            console.log("Incomming Message from LLM:\n", completion.choices[0].message)
-        }
+        logger.debug("Outgoing Message to LLM:\n", outgoingMessage);
+        logger.debug("Incomming Message from LLM:\n", completion.choices[0].message);
         return { summary: completion.choices[0].message.content,
                  attribute: CONSTANTS.AI_ATTRIBUTE
          };
     } catch (error) {
-        console.error('Error from OpenRouter:', error);
+        logger.error('Error from OpenRouter:', error);
         throw new Error(`Failed to summarize markdown with AI: ${error.message || 'Unknown error'}`);
 
     }

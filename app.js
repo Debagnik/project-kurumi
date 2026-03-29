@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const logger = require('./utils/logger');
 const express = require('express');
 const helmet = require('helmet');
 const expressLayout = require('express-ejs-layouts');
@@ -130,7 +131,7 @@ app.use(function (err, req, res, next) {
         return next(err);
     }
 
-    console.error('CSRF attempt detected:', {
+    logger.error('CSRF attempt detected:', {
         path: req.path,
         ip: req.ip,
         timestamp: new Date().toISOString()
@@ -155,5 +156,5 @@ app.use((req, res, next) => {
 
 // Start the server
 app.listen(PORT , () => {
-    console.log(`App is listening to PORT ${PORT}`);
+    logger.info(`App is listening to PORT ${PORT}`);
 });

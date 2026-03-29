@@ -19,6 +19,7 @@ const postCache = require('../../utils/postCache.js');
 const openRouterIntegration = require('../../utils/openRouterIntegration');
 const { aiSummaryRateLimiter, authRateLimiter, genericAdminRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 const adminLayout = '../views/layouts/admin';
@@ -59,7 +60,7 @@ const authToken = (req, res, next) => {
     req.userId = decoded.userId;
     next();
   } catch (error) {
-    console.error('Invalid token', error);
+    logger.error('Invalid token', error);
     req.flash('error', error.message);
     return res.redirect('/admin');
   }
@@ -94,7 +95,7 @@ function markdownToHtml(markdownString) {
       return `<${p1}h${newLevel}>`;
     });
   } catch (error) {
-    console.error("Markdown to HTML conversion error", error.message);
+    logger.error("Markdown to HTML conversion error", error.message);
     throw new Error('Failed to process markdown content');
   }
 }
@@ -143,7 +144,7 @@ router.get('/admin', genericAdminRateLimiter, async (req, res) => {
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    console.error("Admin Page error", error.message);
+    logger.error("Admin Page error", error.message);
     req.flash('error', 'Internal Server Error');
     res.redirect('/');
   }
@@ -201,7 +202,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
 
     //check for empty field
     if (!name || !username || !password || !confirm_password) {
-      console.error(401, 'empty mandatory fields');
+      logger.error(401, 'empty mandatory fields');
       throw new Error('One or more mandatory fields are missing');
     }
 
@@ -211,10 +212,10 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
       if (env?.toLowerCase() === "production") {
-        console.error(400, 'Invalid username format');
-      } else {
-        console.error(400, 'Invalid username format', username);
-      }
+      logger.error(400, 'Invalid username format');
+    } else {
+      logger.error(400, 'Invalid username format', username);
+    }
       throw new Error(usernameErrorMessage);
     }
 
@@ -223,13 +224,13 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     // checking for existing user
     const existingUser = await user.findOne({ username: { $eq: sanitizedUsername } });
     if (existingUser) {
-      console.error(409, 'Username already exists');
+      logger.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
     }
 
     //check password and confirm password match
     if (password !== confirm_password) {
-      console.error('Password and confirm passwords do not match');
+      logger.error('Password and confirm passwords do not match');
       throw new Error('Passwords and Confirm Password do not match!');
     }
 
@@ -242,11 +243,11 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
       try {
         const newUser = await user.create({ username: sanitizedUsername, password: hashedPassword, name });
-        console.log('User created', newUser, 201);
+        logger.info('User created', newUser, 201);
         req.flash('success', `new user ${sanitizedUsername} is created, try signing in`);
         res.redirect('/admin');
       } catch (error) {
-        console.error({
+        logger.error({
           status: 500,
           message: 'Internal server error',
           reason: error.message
@@ -255,12 +256,12 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
         res.redirect('/admin');
       }
     } else {
-      console.warn(`Someone with username ${sanitizedUsername} tried registering when it is turned off`);
+      logger.warn(`Someone with username ${sanitizedUsername} tried registering when it is turned off`);
       req.flash('info', 'Registration not enabled, Contact with Site admin, User not created, This incedent will be reported');
       res.redirect('/admin');
     }
   } catch (error) {
-    console.error('errors during registration', error);
+    logger.error('errors during registration', error);
     req.flash('error', error.message);
     res.redirect('/admin');
   }
@@ -323,31 +324,31 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     //checks if the user exists
     const currentUser = await user.findOne({ username: { $eq: username } });
     if (!currentUser) {
-      console.error('invalid Username for user: ', username);
+      logger.error('invalid Username for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
     }
 
     if (currentUser.isPasswordReset) {
-      console.error('Login Disabled for this Username:', username);
+      logger.error('Login Disabled for this Username:', username);
       throw new Error('Login Disabled for this Username, Contact Webmaster');
     }
 
     //password validity check
     const isPasswordValid = await bcrypt.compare(password, currentUser.password);
     if (!isPasswordValid) {
-      console.error('invalid password for user: ', username);
+      logger.error('invalid password for user: ', username);
       throw new Error('Either username or password dont match, Invalid credentials');
     }
 
     //adds session
     const token = jwt.sign({ userId: currentUser._id }, jwtSecretKey);
     res.cookie('token', token, { httpOnly: true });
-    console.log("Successful Log In", (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() !== "production") ? username : '');
+    logger.info("Successful Log In", (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() !== "production") ? username : '');
     req.flash('success', `Sign in successful, welcome ${currentUser.name}`);
     res.redirect('/dashboard');
   } catch (error) {
     //for any other errors
-    console.error({
+    logger.error({
       status: 500,
       message: 'Internal Server Error',
       Reason: error.message
@@ -413,7 +414,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
     };
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph`);
       return res.redirect('/admin');
     }
@@ -429,7 +430,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
         data = await post.find().sort({ createdAt: -1 });
         break;
       default:
-        console.error({
+        logger.error({
           status: 403,
           message: 'Invalid privilage level',
           reason: 'User did not have adequate permission to view this page'
@@ -448,7 +449,7 @@ router.get('/dashboard', authToken, genericGetRequestRateLimiter, async (req, re
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     res.redirect('/admin');
   }
@@ -506,7 +507,7 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
 
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       req.flash('error', `I-It's not like I want you to be here or anything! B-But you’re not allowed on this page, okay?! So just go away before I really get mad! Hmph!`);
       return res.redirect('/admin');
     }
@@ -520,7 +521,7 @@ router.get('/admin/add-post', authToken, genericGetRequestRateLimiter, async (re
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     res.redirect('/dashboard');
   }
@@ -573,7 +574,7 @@ router.post('/admin/add-post', authToken, genericAdminRateLimiter, async (req, r
     req.flash('success', 'New Post Created')
     return res.redirect('/dashboard');
   } catch (error) {
-    console.error({ status: 500, message: 'Internal Server Error', reason: error.message });
+    logger.error({ status: 500, message: 'Internal Server Error', reason: error.message });
     req.flash('error', error.message)
     res.redirect('/dashboard');
   }
@@ -588,9 +589,7 @@ function getDefaultThumbnailURI(currentSiteConfig, userProvidedURI) {
   if (currentSiteConfig) {
     siteConfigDefaultThumbnail = currentSiteConfig.siteDefaultThumbnailUri;
   } else {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Site configuration not found');
-    }
+    logger.warn('Site configuration not found');
     siteConfigDefaultThumbnail = process.env.DEFAULT_POST_THUMBNAIL_LINK;
   }
   return isValidURI(userProvidedURI) ? userProvidedURI : siteConfigDefaultThumbnail;
@@ -608,7 +607,7 @@ async function generateUniquePostId(title) {
       return uniqueId;
     }
   }
-  console.error('Failed to generate unique ID after maximum retries');
+  logger.error('Failed to generate unique ID after maximum retries');
   throw new Error('Unable to generate a unique post identifier. Please try a slightly different title.');
 }
 
@@ -691,21 +690,21 @@ async function savePostToDB(req, res) {
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found');
+      logger.error('User not found');
       throw new Error("User not found while saving post.");
     }
 
     const defaultThumbnailImageURI = getDefaultThumbnailURI(res.locals.siteConfig, req.body.thumbnailImageURI);
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
-      console.error('Missing required fields!');
+      logger.error('Missing required fields!');
       throw new Error("Title, body, and description are required!");
     }
     const MAX_TITLE_LENGTH = Number.parseInt(process.env.MAX_TITLE_LENGTH, 10) || 50;
     const MAX_DESCRIPTION_LENGTH = Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10) || 1000;
     const MAX_BODY_LENGTH = Number.parseInt(process.env.MAX_BODY_LENGTH, 10) || 100000;
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
-      console.error('Title, body, and description must not exceed their respective limits!');
+      logger.error('Title, body, and description must not exceed their respective limits!');
       throw new Error('Title, body, and description must not exceed their respective limits!')
     }
 
@@ -735,7 +734,7 @@ async function savePostToDB(req, res) {
         break;
       } catch (error) {
         if (error.code === 11000 && error.keyPattern?.uniqueId) {
-          console.warn(`Collision detected on uniqueId for attempt ${attempt + 1}. Regenerating...`);
+          logger.warn(`Collision detected on uniqueId for attempt ${attempt + 1}. Regenerating...`);
           newPost.uniqueId = generateUniquePostId(req.body.title.trim());
           continue;
         } else {
@@ -747,10 +746,10 @@ async function savePostToDB(req, res) {
       throw new Error('Failed to insert post after retries');
     }
 
-    console.log(`New post added by ${currentUser.username} \n`, newPost);
+    logger.info(`New post added by ${currentUser.username} \n`, newPost);
     return newPost._id.toString();
   } catch (error) {
-    console.error(`Could not save post data: ${error.message}`);
+    logger.error(`Could not save post data: ${error.message}`);
     req.flash('error', 'Internal Server error');
     return res.redirect('/dashboard');
   }
@@ -845,7 +844,7 @@ router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, asyn
     })
 
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     req.flash('error', 'Internal Server Error');
     res.redirect('/dashboard');
   }
@@ -933,21 +932,17 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       throw new Error(`No User Found for: ${req.userId}`);
     }
 
     const sanitizedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
-    }
+    logger.debug('Editing Post, Invalidating cache for post:', sanitizedUniqueId);
     postCache.invalidateCache(sanitizedUniqueId);
 
     const postToUpdate = await post.findOne({ uniqueId: sanitizedUniqueId });
     if (!postToUpdate) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Post not found with uniqueId:', sanitizedUniqueId);
-      }
+      logger.error('Post not found with uniqueId:', sanitizedUniqueId);
       req.flash('error', `Post not found with id: ${sanitizedUniqueId}, Post not updated`);
       return res.redirect('/dashboard');
     }
@@ -956,9 +951,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     let defaultThumbnailImageURI = getDefaultThumbnailURI(currentSiteConfig, req.body.thumbnailImageURI);
 
     if (!req.body.title?.trim() || !req.body.markdownbody?.trim() || !req.body.desc?.trim()) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
-      }
+      logger.error(`Title, body, and description are missing while editing /post/${sanitizedUniqueId}`);
       req.flash('error', 'Title, body, and description are required!, Post is not updated');
       return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`)
     }
@@ -968,9 +961,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     const MAX_BODY_LENGTH = Number.parseInt(process.env.MAX_BODY_LENGTH, 10) || 100000;
 
     if (req.body.title.length > MAX_TITLE_LENGTH || req.body.markdownbody.length > MAX_BODY_LENGTH || req.body.desc.length > MAX_DESCRIPTION_LENGTH) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Title, body, and description must not exceed their respective limits while editing /post/', sanitizedUniqueId);
-      }
+      logger.error('Title, body, and description must not exceed their respective limits while editing /post/', sanitizedUniqueId);
       req.flash('error', 'Title, body, and description must not exceed their respective limits!, Post is not updated');
       return res.redirect(`/admin/edit-post/${sanitizedUniqueId}`);
     }
@@ -1006,7 +997,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
 
     const updatedPost = await post.findById(postToUpdate._id);
     if (!updatedPost) {
-      console.error('Failed to update post', uniqueId);
+      logger.error('Failed to update post', uniqueId);
       req.flash('error', 'Something went wrong, Post not updated')
       return res.redirect(`/admin/edit-post/${uniqueId}`);
     }
@@ -1015,7 +1006,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     res.redirect(`/dashboard`);
 
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     req.flash('error', 'Something Went Wrong');
     res.redirect('/dashboard');
   }
@@ -1085,7 +1076,7 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       req.flash('error', `User not found/User Logged out`);
       return res.redirect('/admin');
     }
@@ -1094,25 +1085,23 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
 
     const postToDelete = await post.findOne({ uniqueId: cleanedUniqueId });
     if (!postToDelete) {
-      console.error('Post not found', cleanedUniqueId);
+      logger.error('Post not found', cleanedUniqueId);
       req.flash('error', `post not found`);
       return res.redirect('/dashboard');
     }
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Deleting Post, Invalidating cache for post:', cleanedUniqueId);
-    }
+    logger.debug('Deleting Post, Invalidating cache for post:', cleanedUniqueId);
     postCache.invalidateCache(cleanedUniqueId);
 
     //Comments of the posts are also deleted
     const deletedComments = await comment.deleteMany({ postId: postToDelete._id });
-    console.log(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);
+    logger.info(`Deleted ${deletedComments.deletedCount} comments for post ${postToDelete.uniqueId}`);
 
     await post.deleteOne({ _id: postToDelete._id });
-    console.log(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${JSON.stringify(postToDelete)}`);
+    logger.info(`Post deleted successfully\nDeletion Request: ${currentUser.username}\nDeleted Post: ${JSON.stringify(postToDelete)}`);
     req.flash('success', `Post Successfully Deleted with Id ${postToDelete.uniqueId}`);
     res.redirect('/dashboard');
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     req.flash(`error`, `Something went wrong`);
     res.redirect('/dashboard');
   }
@@ -1192,7 +1181,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       req.flash('error', 'User not found');
       return res.redirect('/admin');
     }
@@ -1222,7 +1211,7 @@ router.get('/admin/webmaster', authToken, genericGetRequestRateLimiter, async (r
       isUserLoggedIn: Boolean(req.userId)
     });
   } catch (error) {
-    console.error("Webmaster Page error", error);
+    logger.error("Webmaster Page error", error);
     req.flash('error', 'Something went wrong, Internal server error');
     res.redirect('/dashboard');
   }
@@ -1301,13 +1290,13 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser) {
-      console.error('User not found', req.userId);
+      logger.error('User not found', req.userId);
       throw new Error('User not found');
     }
 
     // Guard: reject non-webmaster users immediately
     if (currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.error(`Unauthorised user tried to update site settings`);
+      logger.error(`Unauthorised user tried to update site settings`);
       req.flash('error', `you dont have sufficient privilage/permission to update global site settings`);
       req.flash('info', `This incedent will be reported`);
       return res.redirect('/dashboard');
@@ -1315,19 +1304,19 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
 
     // Validate critical fields
     if (req.body.siteAdminEmail && !CONSTANTS.EMAIL_REGEX.test(req.body.siteAdminEmail)) {
-      console.error('webmaster tried putting invalid email');
+      logger.error('webmaster tried putting invalid email');
       throw new Error('Webmaster tried adding ill-formed email address');
     }
 
     const paginationLimit = Number.parseInt(req.body.defaultPaginationLimit, 10);
     if (Number.isNaN(paginationLimit) || paginationLimit < 1 || paginationLimit > 100) {
-      console.error('Invalid pagination limit');
+      logger.error('Invalid pagination limit');
       throw new Error('Webmaster tried updating invalid pagination limit');
     }
 
     const searchLimit = Number.parseInt(req.body.searchLimit, 10);
     if (Number.isNaN(searchLimit) || searchLimit < 1 || searchLimit > 50) {
-      console.error('Invalid search limit');
+      logger.error('Invalid search limit');
       throw new Error('Webmaster tried updating invalid search limit');
     }
 
@@ -1372,11 +1361,11 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
     }
     invalidateCache();
 
-    console.log(`Site settings updated successfully by user: ${currentUser.username}`);
+    logger.info(`Site settings updated successfully by user: ${currentUser.username}`);
     req.flash('success', `Site settings are sucessfully updated`);
     res.redirect('/admin/webmaster');
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', error.message);
     res.redirect('/dashboard');
   }
@@ -1442,24 +1431,24 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.error('Unauthorized user tried to delete different user', req.userId);
+      logger.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
     }
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
     if (!isUserIdValid) {
-      console.error({ code: 404, Status: 'Not found', message: `userID: ${sanitizeLogParams(req.params.id)} is not valid` });
+      logger.error({ code: 404, Status: 'Not found', message: `userID: ${sanitizeLogParams(req.params.id)} is not valid` });
       throw new Error('User ID is invalid');
     }
     const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
-      console.error('User not found', sanitizeLogParams(req.params.id));
+      logger.error('User not found', sanitizeLogParams(req.params.id));
       throw new Error('User to be deleted not found');
     }
 
     //prevent self deletion
     if (currentUser._id.toString() === userToDelete._id.toString()) {
-      console.warn({
+      logger.warn({
         status: 403,
         message: 'Invalid Operation',
         reason: 'user tried to delete itself'
@@ -1470,11 +1459,11 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
 
     await user.deleteOne({ _id: req.params.id });
-    console.log('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
+    logger.info('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
     req.flash('info', `User ${userToDelete.username} is deleted`);
     res.redirect('/admin/webmaster');
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', error.message);
     res.redirect('/admin/webmaster');
   }
@@ -1535,13 +1524,13 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
   try {
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
     if (!isUserIdValid) {
-      console.error("Invalid username");
+      logger.error("Invalid username");
       throw new Error("User id to be edited is invalid");
     }
 
     const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
-      console.error('User not found', req.params.id);
+      logger.error('User not found', req.params.id);
       throw new Error('User not found');
     }
 
@@ -1566,7 +1555,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
     })
 
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', 'Something went wrong, Internal Server Error');
     res.redirect(`/dashboard`);
   }
@@ -1633,25 +1622,25 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
   try {
     const currentUser = await user.findById(req.userId);
     if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
-      console.error('Unauthorized user tried to delete different user', req.userId);
+      logger.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
     }
 
     const isUserIdValid = mongoose.Types.ObjectId.isValid(req.params.id);
 
     if (!isUserIdValid) {
-      console.error("Invalid userID");
+      logger.error("Invalid userID");
       throw new Error('User ID is not valid');
     }
 
     const updateUser = await user.findById(req.params.id);
     if (!updateUser) {
-      console.error('User To be updated not found');
+      logger.error('User To be updated not found');
       throw new Error('User to be updated not found');
     }
 
     if (!req.body.name?.trim()) {
-      console.error('Name is a required field');
+      logger.error('Name is a required field');
       throw new Error('Name is a required field');
     }
 
@@ -1661,7 +1650,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
       hasAdminResettedPassword = true;
       const tempPassword = req.body.adminTempPassword.trim();
       if (!isStrongPassword(tempPassword)) {
-        console.error(`Webmaster User ${currentUser.username} tried resetting password of User ${updateUser.username} with a weak password`);
+        logger.error(`Webmaster User ${currentUser.username} tried resetting password of User ${updateUser.username} with a weak password`);
         throw new Error('Password is not strong enough, Must contain at least 8 characters, must contain a mix of uppercase, lowercase, numeric and special characters');
       }
       hashedTempPassword = await bcrypt.hash(tempPassword, 10);
@@ -1670,14 +1659,14 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     const sanitizedName = sanitizeHtml(String(req.body.name).trim(), CONSTANTS.SANITIZE_FILTER);
 
     if (sanitizedName !== req.body.name.trim()) {
-      console.error(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
+      logger.error(`Webmaster user ${updateUser.username} tried to add scripts on User's name`);
       req.flash('error', `you cannot add scripts on the user's name`);
       req.flash('info', `This incedent will be reported`);
     }
 
     const privilageLevel = (req.body.privilege !== undefined && !Number.isNaN(Number.parseInt(req.body.privilege, 10))) ? Number.parseInt(req.body.privilege, 10) : Number.parseInt(updateUser.privilege, 10);
     if (!Object.values(CONSTANTS.PRIVILEGE_LEVELS_ENUM).includes(Number.parseInt(privilageLevel, 10))) {
-      console.error('Invalid Privilage level');
+      logger.error('Invalid Privilage level');
       throw new Error('Invalid Privilage Level');
     }
 
@@ -1690,17 +1679,17 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
 
     try {
       await updateUser.save();
-      console.log('User Updated successfully');
+      logger.info('User Updated successfully');
       req.flash('success', 'User Updated Successfully');
       res.redirect('/admin/webmaster');
     } catch (error) {
-      console.error('Issue occured while updating user info', error);
+      logger.error('Issue occured while updating user info', error);
       req.flash('error', 'Something went wrong while updating user, please try again');
       return res.redirect(`/edit-user/${req.params.id}`)
     }
 
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     req.flash('error', error.message);
     return res.redirect(`/edit-user/${req.params.id}`);
   }
@@ -1792,7 +1781,7 @@ router.post('/admin/generate-post-summary', authToken, aiSummaryRateLimiter, asy
       'message': htmlResponse
     });
   } catch (error) {
-    console.error('error generating summary: ', error);
+    logger.error('error generating summary: ', error);
     return res.status(500).json({
       'code': 500,
       'message': 'Internal Server Error'
@@ -1852,7 +1841,7 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/admin');
   }
@@ -1921,7 +1910,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
 
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
-      console.log({ 'status': 400, 'message': 'one or more required feild missing' })
+      logger.info({ 'status': 400, 'message': 'one or more required feild missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
 
@@ -1952,28 +1941,28 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
 
     const isPasswordValid = await bcrypt.compare(tempPassword, userModel.adminTempPassword);
     if (isPasswordValid) {
-      console.log(`User: ${sanitizedUserName} has successfully validated temp password`);
+      logger.info(`User: ${sanitizedUserName} has successfully validated temp password`);
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       userModel.password = hashedPassword;
       userModel.isPasswordReset = false;
       userModel.adminTempPassword = '';
       try {
         await userModel.save();
-        console.log('user reset successful');
+        logger.info('user reset successful');
         req.flash('success', 'User password successfully resetted');
         req.flash('info', `login is enabled for user: ${sanitizedUserName}, please sign in`);
         return res.redirect('/admin');
       } catch (error) {
-        console.log('error while password reset', error);
+        logger.info('error while password reset', error);
         req.flash('error', 'Something went wrong while resetting password, Internal Server Error');
         res.redirect('/admin/reset-password');
       }
     } else {
-      console.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
+      logger.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
       throw new Error('Either the username or the Temp password combination might be incorrect');
     }
   } catch (error) {
-    console.error("Internal Server Error", error);
+    logger.error("Internal Server Error", error);
     req.flash('error', error.message);
     return res.redirect('/admin/reset-password');
   }
@@ -2024,7 +2013,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     const sanitizedUserName = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
     if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       req.flash("error", "Invalid username");
-      console.error(`Invalid username ${req.params.username}`);
+      logger.error(`Invalid username ${req.params.username}`);
       return res.redirect('/dashboard');
     }
     const currentUser = await user.findOne({ username: sanitizedUserName });
@@ -2039,7 +2028,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     }
     if (req.userId !== currentUser.id) {
       req.flash('error', 'Unauthorized, This incedent will be reported');
-      console.error('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
+      logger.error('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
       return res.redirect('/dashboard');
     }
     res.render('admin/edit-my-profile', {
@@ -2051,7 +2040,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/dashboard');
 
@@ -2127,7 +2116,7 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
         !portfolioLink || typeof portfolioLink !== 'string'
       ) {
         req.flash('info', 'No changes applied to user profile');
-        console.warn('No changes applied to user profile');
+        logger.warn('No changes applied to user profile');
         return res.redirect('/dashboard');
       }
 
@@ -2153,21 +2142,21 @@ router.post('/admin/edit-profile/:username', authToken, genericAdminRateLimiter,
 
       try {
         await currentUser.save();
-        console.log('User Updated successfully');
+        logger.info('User Updated successfully');
         req.flash('success', 'User Profile Updated Successfully');
         return res.redirect('/dashboard');
       } catch (error) {
-        console.error(error);
+        logger.error(error);
         req.flash('error', 'Failed to save the profile changes');
         return res.redirect('/dashboard');
       }
     } else {
       req.flash("error", `Hmph! Don’t get ahead of yourself — you’re not allowed to edit someone else’s profile, got it?!`);
-      console.error({ code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}` });
+      logger.error({ code: 400, status: 'Unauthorized', message: `User ${req.userId} attempted to edit profile of ${sanitizedUsername}` });
       return res.redirect('/dashboard');
     }
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/dashboard');
   }

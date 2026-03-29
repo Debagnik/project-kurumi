@@ -6,6 +6,7 @@
 
 const sanitizeHtml = require('sanitize-html');
 const {CONSTANTS} = require('./constants')
+const logger = require('./logger');
 
 
 /**
@@ -37,7 +38,7 @@ exports.isValidURI = (string) => {
     }
     return true;
   } catch (_) {
-    console.error(`Invalid or unsafe URI: "${string.substring(0, 100)}"`);
+    logger.error(`Invalid or unsafe URI: "${string.substring(0, 100)}"`);
     return false;
   }
 };
@@ -81,7 +82,7 @@ exports.isValidTrackingScript = (script) => {
   let errorString = process.env.TRACKING_SCRIPT_ERROR_MSG;
   if(!errorString){
     errorString = 'Error on script validation'
-    console.warn('Environment Variable TRACKING_SCRIPT_ERROR_MSG that is the default error message for when tracking script fails is not set, please report to Webmaster');
+    logger.warn('Environment Variable TRACKING_SCRIPT_ERROR_MSG that is the default error message for when tracking script fails is not set, please report to Webmaster');
   }
 
   // Basic validation
@@ -108,7 +109,7 @@ exports.isValidTrackingScript = (script) => {
     // None matched
     return errorString;
   } catch (error) {
-    console.error('Error validating tracking script:', error);
+    logger.error('Error validating tracking script:', error);
     return errorString;
   }
 };

@@ -1,5 +1,6 @@
 const NodeCache = require('node-cache');
 const siteConfig = require('../server/models/config');
+const logger = require('./logger');
 
 // Cache with 5 minute TTL
 const configCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
@@ -33,16 +34,14 @@ const fetchSiteConfigCached = async (req, res, next) => {
 
     // Bypass for health check endpoint
     if(req.path === '/healthz'){
-      if(process.env.NODE_ENV !== 'production'){
-        console.log('Health check endpoint accessed, bypassing site config fetch.');
-      }
+      logger.debug('Health check endpoint accessed, bypassing site config fetch.');
       return next();
     }
     
     if (!config) {
       const found = await siteConfig.findOne().lean();
       if (!found) {
-        console.warn('Site config is not available in database, creating a default one.');
+        logger.warn('Site config is not available in database, creating a default one.');
         const defaultConfig = {
           isRegistrationEnabled: true,
           lastModifiedBy: 'System',
@@ -56,26 +55,22 @@ const fetchSiteConfigCached = async (req, res, next) => {
           config = createConfigObject.toObject();
           configCache.set('siteConfig', config);
         } catch(err){
-          console.error("Error creating default site config:", err.message);
+          logger.error("Error creating default site config:", err.message);
           throw new Error(`Failed to create default site configuration: ${err.message}`);
         }
       } else {
         config = found;
-        if(process.env.NODE_ENV !== 'production'){
-          console.log('Site config fetched from database.');
-        }
+        logger.debug('Site config fetched from database.');
         configCache.set('siteConfig', config);
       }
     } else {
-      if(process.env.NODE_ENV !== 'production'){
-        console.log('Site config fetched from cache.');
-      }
+      logger.debug('Site config fetched from cache.');
     }
     
     res.locals.siteConfig = config;
     next();
   } catch (error) {
-    console.error("Critical: Site Config Cache error", error.message);
+    logger.error("Critical: Site Config Cache error", error.message);
     return res.status(500).render('error', {
       locals: {
         title: 'Configuration Error',

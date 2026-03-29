@@ -1,5 +1,6 @@
 const axios = require('axios');
 const verifyCloudflareTurnstileToken = require('../../utils/cloudflareTurnstileServerVerify');
+const logger = require('../../utils/logger');
 
 // Mock axios
 jest.mock('axios');
@@ -64,6 +65,7 @@ describe('Cloudflare Turnstile Server Verify', () => {
 
     test('should log detailed response in non-production environment', async () => {
       process.env.NODE_ENV = 'development';
+      const debugSpy = jest.spyOn(logger, 'debug').mockImplementation(() => {});
       const mockResponse = {
         data: { success: false, 'error-codes': ['timeout-or-duplicate'] }
       };
@@ -71,11 +73,13 @@ describe('Cloudflare Turnstile Server Verify', () => {
 
       await verifyCloudflareTurnstileToken('token', '127.0.0.1', 'secret-key');
       
-      expect(console.log).toHaveBeenCalledWith('Turnstile verification response:', mockResponse.data);
+      expect(debugSpy).toHaveBeenCalledWith('Turnstile verification response:', mockResponse.data);
+      debugSpy.mockRestore();
     });
 
     test('should log only success status in production environment', async () => {
       process.env.NODE_ENV = 'production';
+      const infoSpy = jest.spyOn(logger, 'info').mockImplementation(() => {});
       const mockResponse = {
         data: { success: true }
       };
@@ -83,7 +87,8 @@ describe('Cloudflare Turnstile Server Verify', () => {
 
       await verifyCloudflareTurnstileToken('token', '127.0.0.1', 'secret-key');
       
-      expect(console.log).toHaveBeenCalledWith('Turnstile verification response:', true);
+      expect(infoSpy).toHaveBeenCalledWith('Turnstile verification response:', true);
+      infoSpy.mockRestore();
     });
 
     test('should send correct parameters to Cloudflare API', async () => {
