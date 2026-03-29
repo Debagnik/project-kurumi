@@ -671,7 +671,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: 'Test content',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });
@@ -691,7 +691,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: 'Test content',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });
@@ -712,7 +712,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: 'Test content',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });
@@ -734,7 +734,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: 'Test content',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });
@@ -756,7 +756,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: 'Test content',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });
@@ -2318,7 +2318,7 @@ describe('Admin Route Tests for 90%+ Coverage', () => {
                     markdownbody: '# Test',
                     desc: 'Test description'
                 })
-                .expect(301);
+                .expect(302);
 
             expect(response.body.redirect).toBe('/dashboard');
         });

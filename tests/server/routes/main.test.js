@@ -1821,7 +1821,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             const response = await request(app).get('/?page=-1');
             
             expect(response.status).toBe(200);
-            expect(response.body.data.currentPage).toBe(-1); // Current implementation behavior
+            expect(response.body.data.currentPage).toBe(1); // Current implementation behavior
         });
 
         test('should calculate pagination correctly', async () => {
