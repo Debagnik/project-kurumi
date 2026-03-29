@@ -3,3 +3,4 @@ node_modules/
 .vscode
 Documentation
 coverage
+package-lock.json
