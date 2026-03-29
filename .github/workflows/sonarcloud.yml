@@ -58,13 +58,13 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --ignore-scripts
 
       - name: Run tests with coverage
         # Generates the coverage report required
@@ -73,7 +73,7 @@ jobs:
           NODE_ENV: test
 
       - name: Sonar Scan
-        uses: sonarsource/sonarqube-scan-action@0303d74044229074033d59666f7734138e05c24e # v4.1.0
+        uses: sonarsource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
