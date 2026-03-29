@@ -994,9 +994,10 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
  */
 router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
     const { commentId } = req.params;
+    let thisComment = null;
     try {
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
-        const thisComment = await comment.findById(commentId);
+        thisComment = await comment.findById(commentId);
         if (!thisComment) {
             console.error({ "status": "404", "message": "No comment found", "commentid": commentId });;
             return res.status(404).redirect(`/404`);
