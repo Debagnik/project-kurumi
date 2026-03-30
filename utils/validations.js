@@ -30,7 +30,7 @@ exports.isValidURI = (string) => {
     // Check for common attack patterns
     const suspicious = /[<>'";\(\)]|javascript:|data:|vbscript:/i;
     if (suspicious.test(string)) {
-      throw new Error('Suspicious URL pattern detected');
+      throw new Error('Suspicious URL pattern detected', String.raw(suspicious));
     }
     // Validate hostname
     if (!url.hostname || url.hostname.length < 1) {

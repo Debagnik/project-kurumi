@@ -1006,7 +1006,7 @@ router.put('/edit-post/:uniqueId', authToken, genericAdminRateLimiter, async (re
     res.redirect(`/dashboard`);
 
   } catch (error) {
-    logger.info(error);
+    logger.error(error);
     req.flash('error', 'Something Went Wrong');
     res.redirect('/dashboard');
   }
@@ -1689,7 +1689,7 @@ router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res
     }
 
   } catch (error) {
-    logger.info(error);
+    logger.error(error);
     req.flash('error', error.message);
     return res.redirect(`/edit-user/${req.params.id}`);
   }
@@ -1841,7 +1841,7 @@ router.get('/admin/reset-password', genericGetRequestRateLimiter, async (req, re
       isUserLoggedIn: req.userId
     });
   } catch (error) {
-    logger.info(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     return res.redirect('/admin');
   }
@@ -1953,7 +1953,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
         req.flash('info', `login is enabled for user: ${sanitizedUserName}, please sign in`);
         return res.redirect('/admin');
       } catch (error) {
-        logger.info('error while password reset', error);
+        logger.error('error while password reset', error);
         req.flash('error', 'Something went wrong while resetting password, Internal Server Error');
         res.redirect('/admin/reset-password');
       }
