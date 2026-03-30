@@ -844,7 +844,7 @@ router.get('/edit-post/:uniqueId', authToken, genericGetRequestRateLimiter, asyn
     })
 
   } catch (error) {
-    logger.info(error);
+    logger.error(error);
     req.flash('error', 'Internal Server Error');
     res.redirect('/dashboard');
   }
@@ -1101,7 +1101,7 @@ router.delete('/delete-post/:uniqueId', authToken, genericAdminRateLimiter, asyn
     req.flash('success', `Post Successfully Deleted with Id ${postToDelete.uniqueId}`);
     res.redirect('/dashboard');
   } catch (error) {
-    logger.info(error);
+    logger.error(error);
     req.flash(`error`, `Something went wrong`);
     res.redirect('/dashboard');
   }
