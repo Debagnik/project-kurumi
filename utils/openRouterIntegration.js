@@ -81,7 +81,7 @@ async function summarizeMarkdownBody(markdown) {
         const completion = await openai.chat.completions.create(outgoingMessage);
 
         logger.debug("Outgoing Message to LLM:\n", outgoingMessage);
-        logger.debug("Incomming Message from LLM:\n", completion.choices[0].message);
+        logger.debug("Incoming Message from LLM:\n", completion.choices[0].message);
         return { summary: completion.choices[0].message.content,
                  attribute: CONSTANTS.AI_ATTRIBUTE
          };

@@ -1005,7 +1005,7 @@ router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
         thisComment = await comment.findById(commentId);
         if (!thisComment) {
-            logger.error({ "status": "404", "message": "No comment found", "commentid": commentId });;
+            logger.error({ "status": "404", "message": "No comment found", "commentid": commentId });
             return res.status(404).redirect(`/404`);
         }
         // check if user is authorized to delete the comment

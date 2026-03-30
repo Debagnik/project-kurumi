@@ -37,8 +37,8 @@ exports.isValidURI = (string) => {
       throw new Error('Invalid hostname');
     }
     return true;
-  } catch (_) {
-    logger.error(`Invalid or unsafe URI: "${string.substring(0, 100)}"`);
+  } catch (error) {
+    logger.error("Invalid or unsafe entered", error);
     return false;
   }
 };
