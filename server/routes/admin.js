@@ -342,8 +342,8 @@ router.post('/admin', authRateLimiter, async (req, res) => {
 
     //adds session
     const token = jwt.sign({ userId: currentUser._id }, jwtSecretKey);
-    res.cookie('token', token, { httpOnly: true });
-    logger.info("Successful Log In", (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() !== "production") ? username : '');
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+    logger.info("Successful Log In");
     req.flash('success', `Sign in successful, welcome ${currentUser.name}`);
     res.redirect('/dashboard');
   } catch (error) {
