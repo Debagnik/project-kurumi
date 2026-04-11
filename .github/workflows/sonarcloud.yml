@@ -64,7 +64,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: Run tests with coverage
         # Generates the coverage report required

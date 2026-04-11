@@ -39,9 +39,15 @@ const fetchSiteConfigCached = async (req, res, next) => {
       return next();
     }
     
-    if (!config) {
+    if (config) {
+      logger.debug('Site config fetched from cache.');
+    } else {
       const found = await siteConfig.findOne().lean();
-      if (!found) {
+      if (found) {
+        config = found;
+        logger.debug('Site config fetched from database.');
+        configCache.set('siteConfig', config);
+      } else {
         logger.warn('Site config is not available in database, creating a default one.');
         const defaultConfig = {
           isRegistrationEnabled: true,
@@ -59,25 +65,18 @@ const fetchSiteConfigCached = async (req, res, next) => {
           logger.error("Error creating default site config:", {errorMessage: err.message, error: err});
           throw new Error(`Failed to create default site configuration: ${err.message}`);
         }
-      } else {
-        config = found;
-        logger.debug('Site config fetched from database.');
-        configCache.set('siteConfig', config);
       }
-    } else {
-      logger.debug('Site config fetched from cache.');
     }
     
     res.locals.siteConfig = config;
     next();
   } catch (error) {
     logger.error("Critical: Site Config Cache error", error.message);
-    config = {};
     return res.status(500).render('error', {
       locals: {
         title: 'Configuration Error',
         description: 'Unable to load site configuration',
-        config: config
+        config: {}
       },
       csrfToken: CONSTANTS.EMPTY_STRING
     });

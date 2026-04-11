@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const MAX_RETRY = 3;
-const RETRY_DELAY = 5000;
+const RETRY_DELAY = 500;
 const https = require('node:https');
 
 
 const connectDB = async (req, res, next) => {
     // If the database is already connected, continue to the next middleware
-    if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
+    if (mongoose.connection.readyState === 1) {
         return next();
     }
 
@@ -41,8 +41,6 @@ const connectDB = async (req, res, next) => {
             }
             logger.error('Max retry attempts reached. Rendering error page...');
             const locals = {
-                title: '500 - Internal Server Error',
-                description: 'Configuration Error',
                 config: {}
             };
             return res.status(500).render('error', { locals });

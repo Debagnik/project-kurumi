@@ -324,19 +324,19 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     //checks if the user exists
     const currentUser = await user.findOne({ username: { $eq: username } });
     if (!currentUser) {
-      logger.error('invalid Username for user: ', username);
+      logger.error(`invalid Username for user: ${username}`);
       throw new Error('Either username or password dont match, Invalid credentials');
     }
 
     if (currentUser.isPasswordReset) {
-      logger.error('Login Disabled for this Username:', username);
+      logger.error(`Login Disabled for this Username: ${username}`);
       throw new Error('Login Disabled for this Username, Contact Webmaster');
     }
 
     //password validity check
     const isPasswordValid = await bcrypt.compare(password, currentUser.password);
     if (!isPasswordValid) {
-      logger.error('invalid password for user: ', username);
+      logger.error(`invalid password for user: ${username}`);
       throw new Error('Either username or password dont match, Invalid credentials');
     }
 
@@ -746,7 +746,7 @@ async function savePostToDB(req, res) {
       throw new Error('Failed to insert post after retries');
     }
 
-    logger.info(`New post added by ${currentUser.username} \n`, newPost);
+    logger.info({ author: currentUser.username, postId: newPost._id?.toString(), uniqueId: newPost.uniqueId }, 'New post added');
     return newPost._id.toString();
   } catch (error) {
     logger.error(`Could not save post data: ${error.message}`);
@@ -1459,7 +1459,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
 
     await user.deleteOne({ _id: req.params.id });
-    logger.info('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete.username);
+    logger.info({ actor: currentUser.username, deletedUser: userToDelete.username }, 'User deleted successfully');
     req.flash('info', `User ${userToDelete.username} is deleted`);
     res.redirect('/admin/webmaster');
   } catch (error) {
@@ -1910,7 +1910,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
 
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
-      logger.info({ 'status': 400, 'message': 'one or more required feild missing' })
+      logger.warn({ 'status': 400, 'message': 'one or more required field missing' })
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
 
@@ -2028,7 +2028,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     }
     if (req.userId !== currentUser.id) {
       req.flash('error', 'Unauthorized, This incedent will be reported');
-      logger.error('user with ', req.userId, ' tried to access user profile ', sanitizedUserName);
+      logger.error(`user with ${req.userId} tried to access user profile ${sanitizedUserName}`);
       return res.redirect('/dashboard');
     }
     res.render('admin/edit-my-profile', {
