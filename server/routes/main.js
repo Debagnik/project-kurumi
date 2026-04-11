@@ -18,6 +18,9 @@ const logger = require('../../utils/logger');
 const jwtSecretKey = process.env.JWT_SECRET;
 
 
+// adding admin CSRF protection middleware
+const csrfProtection = csrf({ cookie: true });
+router.use(csrfProtection);
 //Use Middleware.
 router.use(fetchSiteConfigCached);
 
@@ -60,10 +63,6 @@ if (!jwtSecretKey) {
     // You might want to exit the process gracefully
     process.exit(1);
 }
-
-// adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
-router.use(csrfProtection);
 
 //Routes
 
@@ -345,9 +344,9 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  */
 router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
     try {
-        logger.debug(`Fetching post by uniqueId: ${req.params.uniqueId}`);
         const currentUser = await getUserFromCookieToken(req);
         let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+        logger.debug(`Fetching post by uniqueId: ${cleanedUniqueId}`);
 
         //check if post exist on postCache
         let data = null;
@@ -406,7 +405,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
  */
 async function resolveAuthorName(data) {
     const postAuthor = await user.findOne({ username: data.author });
-    data.authorName = (postAuthor && postAuthor.name) ? postAuthor.name : 'Anonymous';
+    data.authorName = (postAuthor?.name) ? postAuthor.name : 'Anonymous';
 }
 
 /**
@@ -933,20 +932,11 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
             commentTimestamp: Date.now()
         });
         await newComment.save();
-        if (process.env.NODE_ENV === 'production') {
-            logger.info({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
-        } else {
-            logger.debug({ "status": "200", "message": "Comment added successfully", "comment": newComment });
-        }
+        logger.debug({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
         req.flash('success', 'Comment submitted successfully');
         res.status(200).redirect(`/posts/${existingPost.uniqueId}`);
     } catch (error) {
-        logger.error('Error adding comment:', error);
-        if (process.env.NODE_ENV === 'production') {
-            logger.error({ "status": "500", "message": "Unable to add comment at this time" });
-        } else {
-            logger.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
-        }
+        logger.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
         res.status(500).redirect(`/posts/${existingPost.uniqueId}`);
     }

@@ -38,7 +38,7 @@ exports.isValidURI = (string) => {
     }
     return true;
   } catch (error) {
-    logger.error("Invalid or unsafe entered", error);
+    logger.error("Invalid or unsafe URL entered", { err: error });
     return false;
   }
 };
@@ -109,7 +109,7 @@ exports.isValidTrackingScript = (script) => {
     // None matched
     return errorString;
   } catch (error) {
-    logger.error('Error validating tracking script:', error);
+    logger.error('Error validating tracking script:', { err: error });
     return errorString;
   }
 };

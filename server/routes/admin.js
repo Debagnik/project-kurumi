@@ -243,7 +243,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
       try {
         const newUser = await user.create({ username: sanitizedUsername, password: hashedPassword, name });
-        logger.info('User created', newUser, 201);
+        logger.info('User created', newUser.username, 201);
         req.flash('success', `new user ${sanitizedUsername} is created, try signing in`);
         res.redirect('/admin');
       } catch (error) {
@@ -735,7 +735,7 @@ async function savePostToDB(req, res) {
       } catch (error) {
         if (error.code === 11000 && error.keyPattern?.uniqueId) {
           logger.warn(`Collision detected on uniqueId for attempt ${attempt + 1}. Regenerating...`);
-          newPost.uniqueId = generateUniquePostId(req.body.title.trim());
+          newPost.uniqueId = await generateUniquePostId(req.body.title.trim());
           continue;
         } else {
           throw error;
@@ -1430,7 +1430,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
 router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
-    if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser?.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       logger.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorised, User not deleted');
     }
@@ -1459,7 +1459,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
 
     await user.deleteOne({ _id: req.params.id });
-    logger.info('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete);
+    logger.info('User deleted successfully\nDeletion Request: ', currentUser.username, '\nDeleted user: ', userToDelete.username);
     req.flash('info', `User ${userToDelete.username} is deleted`);
     res.redirect('/admin/webmaster');
   } catch (error) {
@@ -1621,7 +1621,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 router.put('/edit-user/:id', authToken, genericAdminRateLimiter, async (req, res) => {
   try {
     const currentUser = await user.findById(req.userId);
-    if (!currentUser || currentUser.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
+    if (currentUser?.privilege !== CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER) {
       logger.error('Unauthorized user tried to delete different user', req.userId);
       throw new Error('Unauthorized User cannot edit other users');
     }

@@ -1,6 +1,7 @@
 const NodeCache = require('node-cache');
 const siteConfig = require('../server/models/config');
 const logger = require('./logger');
+const { CONSTANTS } = require('./constants');
 
 // Cache with 5 minute TTL
 const configCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
@@ -55,7 +56,7 @@ const fetchSiteConfigCached = async (req, res, next) => {
           config = createConfigObject.toObject();
           configCache.set('siteConfig', config);
         } catch(err){
-          logger.error("Error creating default site config:", err.message);
+          logger.error("Error creating default site config:", {errorMessage: err.message, error: err});
           throw new Error(`Failed to create default site configuration: ${err.message}`);
         }
       } else {
@@ -71,11 +72,14 @@ const fetchSiteConfigCached = async (req, res, next) => {
     next();
   } catch (error) {
     logger.error("Critical: Site Config Cache error", error.message);
+    config = {};
     return res.status(500).render('error', {
       locals: {
         title: 'Configuration Error',
-        description: 'Unable to load site configuration'
-      }
+        description: 'Unable to load site configuration',
+        config: config
+      },
+      csrfToken: CONSTANTS.EMPTY_STRING
     });
   }
 };

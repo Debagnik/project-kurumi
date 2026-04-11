@@ -30,7 +30,7 @@ if (!openRouterApiSecretKey) {
     throw new Error('OPENAISDK_API_KEY is not set in environment variables');
 }
 
-if (!process.env.MAX_DESCRIPTION_LENGTH || Number.isNaN(Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH, 10))) {
+if (!process.env.MAX_DESCRIPTION_LENGTH || Number.isNaN(Number.parseInt(process.env.MAX_DESCRIPTION_LENGTH))) {
     throw new Error('MAX_DESCRIPTION_LENGTH is not set in environment variables')
 }
 
@@ -69,11 +69,11 @@ async function summarizeMarkdownBody(markdown) {
             messages: [
                 {
                     role: 'system',
-                    content: `${systemPrompt} ${process.env.MAX_DESCRIPTION_LENGTH * 0.8} characters`,
+                    content: `${systemPrompt} ${Math.max(process.env.MAX_DESCRIPTION_LENGTH, 10) * 0.8} characters`,
                 },
                 {
                     role: 'user',
-                    content: `${userPrompt} ${process.env.MAX_DESCRIPTION_LENGTH * 0.8} ${userPrompt2}:\n\n${markdown}`,
+                    content: `${userPrompt} ${Math.max(process.env.MAX_DESCRIPTION_LENGTH, 10) * 0.8} ${userPrompt2}:\n\n${markdown}`,
                 },
             ],
         };
