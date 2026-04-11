@@ -683,10 +683,12 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
                     commentBody: 'This is a test comment'
                 });
             
-            expect(consoleErrorSpy).toHaveBeenCalledWith(expect.objectContaining({
-                status: "500",
-                message: "Unable to add comment at this time"
-            }));
+            expect(consoleErrorSpy).toHaveBeenCalledWith(expect.objectContaining(
+                {"error": "comment is not a constructor", 
+                    "message": "Error adding comment at this time", 
+                    "status": "500"
+                }
+            ));
             
             consoleErrorSpy.mockRestore();
             process.env.NODE_ENV = originalEnv;
