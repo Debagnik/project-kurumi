@@ -19,7 +19,12 @@ const jwtSecretKey = process.env.JWT_SECRET;
 
 
 // adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
+const csrfProtection = csrf({ cookie:{
+        maxAge: 3600000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    } });
 router.use(csrfProtection);
 //Use Middleware.
 router.use(fetchSiteConfigCached);

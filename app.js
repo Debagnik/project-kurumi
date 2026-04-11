@@ -71,7 +71,7 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
         scriptSrcAttr: ["'none'"],
-        upgradeInsecureRequests: []
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
       }
     })
   );

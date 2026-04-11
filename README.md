@@ -1,5 +1,8 @@
 # Project Walnut (クルミ)
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Debagnik_project-kurumi&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Debagnik_project-kurumi)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Debagnik_project-kurumi&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Debagnik_project-kurumi)
+
 ![Walnut_Lycoris-Recoil](public/img/kurumi.png)
 
 [Walnut the mascot](https://lycoris-recoil.fandom.com/wiki/Kurumi)

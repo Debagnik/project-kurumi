@@ -8,7 +8,7 @@ const CommentSchema = new schema({
         minlength: [3, 'Commenter name must be at least 3 characters!'],
         maxlength: [50, 'Commenter name is too long!'],
         trim: true,
-        set: value => value.replace(/<\/?[^>]+(>|$)/g, '')
+        set: value => value.replaceAll(/<\/?[^>]+>?/g, '')
 
     },
     commentBody: {
@@ -17,7 +17,7 @@ const CommentSchema = new schema({
         minlength: [1, 'Comment must be at least 1 character!'],
         maxlength: [500, 'Comment is too long!'],
         trim: true,
-        set: value => value.replace(/<\/?[^>]+(>|$)/g, '')
+        set: value => value.replaceAll(/<\/?[^>]+>?/g, '')
     },
     commentTimestamp: {
         type: Date,

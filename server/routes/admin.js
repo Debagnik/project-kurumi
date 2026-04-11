@@ -38,7 +38,12 @@ if (!jwtSecretKey) {
 }
 
 // adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
+const csrfProtection = csrf({ cookie:{
+        maxAge: 3600000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    } });
 router.use(csrfProtection);
 
 /**
@@ -222,7 +227,7 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     let sanitizedUsername = sanitizeHtml(username, CONSTANTS.SANITIZE_FILTER);
 
     // checking for existing user
-    const existingUser = await user.findOne({ username: { $eq: sanitizedUsername } });
+    const existingUser = await user.findOne({ username: { $eq: String(sanitizedUsername) } });
     if (existingUser) {
       logger.error(409, 'Username already exists');
       throw new Error('Username already Exists, try a new username');
