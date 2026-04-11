@@ -5,11 +5,12 @@
  */
 
 const axios = require('axios');
+const logger = require('./logger');
 
 async function verifyCloudflareTurnstileToken(token, remoteIp, secretKey) {
     // Validate inputs
     if (!token || !secretKey) {
-        console.error('Turnstile verification error: Missing required parameters');
+        logger.error('Turnstile verification error: Missing required parameters');
         return false;
     }
     
@@ -22,15 +23,15 @@ async function verifyCloudflareTurnstileToken(token, remoteIp, secretKey) {
             }),
             { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
-        if(!(process.env.NODE_ENV === 'production') && response.data.success === false) {
-            console.log('Turnstile verification response:', response.data);
+        if (response.data.success === false) {
+            logger.debug('Turnstile verification response:', response.data);
         } else {
-            console.log('Turnstile verification response:', response.data.success);
+            logger.info('Turnstile verification response:', response.data.success);
         }
 
         return response.data.success;
     } catch (error) {
-        console.error('Turnstile verification error:', error.message);
+        logger.error('Turnstile verification error:', error.message);
         return false;
     }
 }

@@ -13,10 +13,14 @@ const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSite
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
 const postCache = require('../../utils/postCache.js');
+const logger = require('../../utils/logger');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
 
+// adding admin CSRF protection middleware
+const csrfProtection = csrf({ cookie: true });
+router.use(csrfProtection);
 //Use Middleware.
 router.use(fetchSiteConfigCached);
 
@@ -55,14 +59,10 @@ router.use(fetchSiteConfigCached);
  * @applied router.use(csrfProtection)
  */
 if (!jwtSecretKey) {
-    console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
+    logger.error('JWT_SECRET is not defined. Please set it in your environment variables.');
     // You might want to exit the process gracefully
     process.exit(1);
 }
-
-// adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
-router.use(csrfProtection);
 
 //Routes
 
@@ -195,9 +195,9 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
             csrfToken: req.csrfToken(),
             totalPages: Math.ceil(count / perPage)
         });
-        console.log(`DB Posts Data fetched`);
+        logger.info(`DB Posts Data fetched`);
     } catch (error) {
-        console.log(error);
+        logger.error(error);
     }
 });
 
@@ -344,21 +344,17 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
  */
 router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
     try {
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`Fetching post by uniqueId: ${req.params.uniqueId}`);
-        }
         const currentUser = await getUserFromCookieToken(req);
         let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+        logger.debug(`Fetching post by uniqueId: ${cleanedUniqueId}`);
 
         //check if post exist on postCache
         let data = null;
         data = postCache.getPostFromCache(cleanedUniqueId);
         if (data) {
-            console.log(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
+            logger.info(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
         } else {
-            if (process.env.NODE_ENV !== 'production') {
-                console.log(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
-            }
+            logger.debug(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
             data = await post.findOne({ uniqueId: cleanedUniqueId });
             if (!data) {
                 throw new Error('404 - No such post found');
@@ -390,13 +386,11 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
                 currentUser: isCurrentUserAModOrAdmin
             });
         } else {
-            if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Unlogged user tried fetching unapproved post`);
-            }
+            logger.warn(`Unlogged user tried fetching unapproved post`);
             return res.status(404).redirect('/404');
         }
     } catch (error) {
-        console.error('Post Fetch error', error);
+        logger.error('Post Fetch error', error);
         return res.status(404).redirect('/404');
     }
 
@@ -411,7 +405,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
  */
 async function resolveAuthorName(data) {
     const postAuthor = await user.findOne({ username: data.author });
-    data.authorName = (postAuthor && postAuthor.name) ? postAuthor.name : 'Anonymous';
+    data.authorName = (postAuthor?.name) ? postAuthor.name : 'Anonymous';
 }
 
 /**
@@ -460,7 +454,7 @@ async function getUserFromCookieToken(req) {
             const decoded = jwt.verify(token, jwtSecretKey);
             userId = decoded.userId;
         } catch (err) {
-            console.error('Invalid token:', err.message);
+            logger.error('Invalid token:', err.message);
         }
     }
     if (userId) {
@@ -512,7 +506,7 @@ async function getCommentsFromPostId(postId) {
         const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(limit);
         return comments;
     } catch (error) {
-        console.error('Comment Fetch error', postId, error.message);
+        logger.error('Comment Fetch error', postId, error.message);
         return [];
     }
 }
@@ -672,7 +666,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Search error:', error);
+        logger.error('Search error:', error);
         return res.status(500).render('error', {
             locals: {
                 title: 'Error',
@@ -739,7 +733,7 @@ async function verifyCaptchaIfEnabled(req, res, siteConfig, redirectId) {
     if (!siteConfig.isCaptchaEnabled) return null;
     const isUserHuman = await verifyCloudflareTurnstileToken(req.body['cf-turnstile-response'], req.ip, siteConfig.cloudflareServerKey);
     if (!isUserHuman) {
-        console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': req.ip });
+        logger.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': req.ip });
         req.flash('error', 'CAPTCHA verification failed, please try again.');
         return res.status(403).redirect(`/posts/${redirectId}`);
     }
@@ -892,7 +886,7 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
     try {
         existingPost = await post.findById(paramId);
     } catch (error) {
-        console.error('Error fetching post for comment addition:', error);
+        logger.error('Error fetching post for comment addition:', error);
     }
     if (!existingPost) {
         req.flash('error', 'No post found to comment on');
@@ -901,13 +895,13 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
 
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
-        console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
+        logger.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
         req.flash('error', 'Comments are disabled or Cloudflare keys are not set');
         return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     if (!isCaptchaConfigValid(siteConfig)) {
-        console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
+        logger.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
         req.flash('error', 'CAPTCHA config error, contact the webmaster.');
         return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
@@ -917,14 +911,14 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
 
     const commentError = validateCommentInput(commenterName, commentBody);
     if (commentError) {
-        console.error(400, 'Invalid comment data');
+        logger.error(400, 'Invalid comment data');
         req.flash('error', commentError);
         return res.status(400).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     try {
         if (!existingPost.isApproved) {
-            console.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost.uniqueId });
+            logger.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost.uniqueId });
             return res.status(403).redirect(`/404`);
         }
 
@@ -938,20 +932,11 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
             commentTimestamp: Date.now()
         });
         await newComment.save();
-        if (process.env.NODE_ENV === 'production') {
-            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
-        } else {
-            console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
-        }
+        logger.debug({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
         req.flash('success', 'Comment submitted successfully');
         res.status(200).redirect(`/posts/${existingPost.uniqueId}`);
     } catch (error) {
-        console.error('Error adding comment:', error);
-        if (process.env.NODE_ENV === 'production') {
-            console.error({ "status": "500", "message": "Unable to add comment at this time" });
-        } else {
-            console.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
-        }
+        logger.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
         res.status(500).redirect(`/posts/${existingPost.uniqueId}`);
     }
@@ -1010,22 +995,22 @@ router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
         thisComment = await comment.findById(commentId);
         if (!thisComment) {
-            console.error({ "status": "404", "message": "No comment found", "commentid": commentId });;
+            logger.error({ "status": "404", "message": "No comment found", "commentid": commentId });
             return res.status(404).redirect(`/404`);
         }
         // check if user is authorized to delete the comment
         const currentUser = await getUserFromCookieToken(req);
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (!isCurrentUserAModOrAdmin) {
-            console.error({ "status": "403", "message": "Unauthorized to delete comment" });
+            logger.error({ "status": "403", "message": "Unauthorized to delete comment" });
             return res.status(403).redirect('/admin');
         }
 
         await thisComment.deleteOne()
-        console.log({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+        logger.info({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
         req.flash('info', `Comment deleted successfully by ${currentUser.username}`);
         if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 8:', req.session);
+            logger.debug('Session after flash 8:', req.session);
         }
         // Get the post to find its uniqueId for proper redirect
         const thisPost = await post.findById(thisComment.postId);
@@ -1033,10 +1018,10 @@ router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (
         return res.status(200).redirect(redirectUrl);
 
     } catch (err) {
-        console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
+        logger.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
         req.flash('error', 'Error deleting comment, contact the webmaster. Internal Server Error');
         if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 9:', req.session);
+            logger.debug('Session after flash 9:', req.session);
         }
         const redirectUrl = thisComment?.postId ? await getPostRedirectUrl(thisComment.postId) : '/404';
         return res.status(500).redirect(redirectUrl);
@@ -1155,7 +1140,7 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
         });
     } catch (error) {
         req.flash('error', 'Internal server error');
-        console.error(error);
+        logger.error(error);
         return res.redirect('/');
     }
 });
@@ -1240,7 +1225,7 @@ router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
             memory,
         });
     } catch (error) {
-        console.error('Health check failed:', error);
+        logger.error('Health check failed:', error);
         res.status(500).json({
             status: 'error',
             message: 'Health check failed',

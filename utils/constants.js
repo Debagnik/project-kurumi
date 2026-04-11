@@ -32,8 +32,9 @@ const CONSTANTS = Object.freeze({
       MODERATOR : 2,
       EDITOR: 3
     },
-  UNIQUE_ID_GENERATION_REGEX: /[^A-Za-z0-9 ]+/,
-  REMOVE_ALL_SPACES_REGEX: /\s+/g
+  UNIQUE_ID_GENERATION_REGEX: /[^a-z0-9 ]+/g,
+  REMOVE_ALL_SPACES_REGEX: /\s+/g,
+  UNDERSCORE_SEPARATOR: '_'
 });
 
 module.exports = { CONSTANTS };

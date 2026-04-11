@@ -1,6 +1,8 @@
 require('dotenv').config();
 
+const logger = require('./utils/logger');
 const express = require('express');
+const mongoose = require('mongoose');
 const helmet = require('helmet');
 const expressLayout = require('express-ejs-layouts');
 const methodOverride = require('method-override');
@@ -76,8 +78,8 @@ app.use(
 
 const PORT = process.env.PORT || 5000;
 
-//connect Database
-connectDB();
+//connect Database as a middleware
+app.use(connectDB);
 
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
@@ -90,7 +92,11 @@ app.use(session({
     resave: false,
     saveUninitialized: process.env.NODE_ENV !== 'production',
     store: mongoStore.create({
-        mongoUrl: process.env.MONGO_DB_URI,
+        clientPromise: new Promise(resolve => {
+            mongoose.connection.once('connected', () => {
+                resolve(mongoose.connection.getClient());
+            });
+        }),
         ttl: 60 * 60,
         autoRemove: 'native',
         touchAfter: 24 * 60 * 60
@@ -130,7 +136,7 @@ app.use(function (err, req, res, next) {
         return next(err);
     }
 
-    console.error('CSRF attempt detected:', {
+    logger.error('CSRF attempt detected:', {
         path: req.path,
         ip: req.ip,
         timestamp: new Date().toISOString()
@@ -155,5 +161,5 @@ app.use((req, res, next) => {
 
 // Start the server
 app.listen(PORT , () => {
-    console.log(`App is listening to PORT ${PORT}`);
+    logger.info(`App is listening to PORT ${PORT}`);
 });

@@ -84,7 +84,7 @@ describe('Project Kurumi - Working Comprehensive Test Suite', () => {
         test('should validate tag and unique ID regexes', () => {
             expect('tag@#$'.replace(CONSTANTS.TAGS_REGEX, '')).toBe('tag');
             expect('normal_tag-123'.replace(CONSTANTS.TAGS_REGEX, '')).toBe('normal_tag-123');
-            expect('Title@#$%^&*()'.replace(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '')).toBe('Title');
+            expect('Title@#$%^&*()'.toLowerCase().replaceAll(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '')).toBe('title');
             expect('Normal Title 123'.replace(CONSTANTS.REMOVE_ALL_SPACES_REGEX, '_')).toBe('Normal_Title_123');
         });
     });
