@@ -159,7 +159,6 @@ jest.mock('../../../utils/constants', () => ({
 }));
 
 const request = require('supertest');
-const logger = require('../../../utils/logger');
 const express = require('express');
 
 // Get mocked modules
