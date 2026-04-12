@@ -6,10 +6,11 @@
  */
 
 const nodeCache = require('node-cache');
+const logger = require('./logger');
 
-const MAX_CACHE_SIZE = Math.max(1, parseInt(process.env.POST_CACHE_MAX_SIZE) || 100)
-const POST_TTL_SECONDS = Math.max(1, parseInt(process.env.POST_CACHE_TTL) || 3600); // default 1 hour TTL
-const HIT_RESET_INTERVAL_HOURS = Math.max(1, parseInt(process.env.POST_HIT_RESET_INTERVAL_HOURS) || 24);
+const MAX_CACHE_SIZE = Math.max(1, Number.parseInt(process.env.POST_CACHE_MAX_SIZE, 10) || 100)
+const POST_TTL_SECONDS = Math.max(1, Number.parseInt(process.env.POST_CACHE_TTL, 10) || 3600); // default 1 hour TTL
+const HIT_RESET_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.POST_HIT_RESET_INTERVAL_HOURS, 10) || 24);
 
 const cache = new nodeCache({stdTTL: POST_TTL_SECONDS, checkperiod: 60*60 });
 
@@ -48,9 +49,7 @@ function getPostFromCache(uniqueId){
  * @param {Object} processedData - Processed post data
  */
 function setPostToCache(uniqueId, processedData){
-    if(process.env.NODE_ENV !== 'production'){
-        console.log(`Saving Post data from DB to Cache for UniqueId: ${uniqueId}`);
-    }
+    logger.debug(`Saving Post data from DB to Cache for UniqueId: ${uniqueId}`);
     if(cache.has(uniqueId)){
         const entry = cache.get(uniqueId);
         cache.set(uniqueId, {data: processedData, hits: entry.hits + 1}, POST_TTL_SECONDS);
@@ -72,16 +71,12 @@ function setPostToCache(uniqueId, processedData){
         });
 
         if(keyToEvict && keyToEvict !== uniqueId){
-            if(process.env.NODE_ENV !== 'production'){
-                console.log(`Evicting post data with unique id: ${keyToEvict}. from post Cache`);
-            }
+            logger.debug(`Evicting post data with unique id: ${keyToEvict}. from post Cache`);
             cache.del(keyToEvict);
         }
     }
 
-    if(process.env.NODE_ENV !== 'production'){
-        console.log(`saving post processed data with unique id: ${uniqueId}. to post Cache`);
-    }
+    logger.debug(`saving post processed data with unique id: ${uniqueId}. to post Cache`);
     cache.set(uniqueId, {data: processedData, hits: 1}, POST_TTL_SECONDS);
 }
 
@@ -95,7 +90,6 @@ function invalidateCache(uniqueId) {
   if(cache.has(uniqueId)){
     cache.del(uniqueId);
   }
-  return;
 }
 
 /**
@@ -127,7 +121,7 @@ function resetHitsDaily() {
         cache.set(key, newEntry, remainingSeconds);
     });
 
-    console.log(`[Cache] Daily hit counts reset at ${new Date().toISOString()}`);
+    logger.info(`[Cache] Daily hit counts reset at ${new Date().toISOString()}`);
 
 }
 
@@ -149,7 +143,7 @@ if (hitResetIntervalId.unref){
  */
 function clearHitResetInterval() {
     clearInterval(hitResetIntervalId);
-    console.log('[Cache] Hit reset interval cleared.');
+    logger.info('[Cache] Hit reset interval cleared.');
 }
 
 module.exports = {

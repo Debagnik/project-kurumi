@@ -6,6 +6,7 @@
 
 const sanitizeHtml = require('sanitize-html');
 const {CONSTANTS} = require('./constants')
+const logger = require('./logger');
 
 
 /**
@@ -29,15 +30,15 @@ exports.isValidURI = (string) => {
     // Check for common attack patterns
     const suspicious = /[<>'";\(\)]|javascript:|data:|vbscript:/i;
     if (suspicious.test(string)) {
-      throw new Error('Suspicious URL pattern detected');
+      throw new Error('Suspicious URL pattern detected', String.raw(suspicious));
     }
     // Validate hostname
     if (!url.hostname || url.hostname.length < 1) {
       throw new Error('Invalid hostname');
     }
     return true;
-  } catch (_) {
-    console.error(`Invalid or unsafe URI: "${string.substring(0, 100)}"`);
+  } catch (error) {
+    logger.error("Invalid or unsafe URL entered", { err: error });
     return false;
   }
 };
@@ -81,7 +82,7 @@ exports.isValidTrackingScript = (script) => {
   let errorString = process.env.TRACKING_SCRIPT_ERROR_MSG;
   if(!errorString){
     errorString = 'Error on script validation'
-    console.warn('Environment Variable TRACKING_SCRIPT_ERROR_MSG that is the default error message for when tracking script fails is not set, please report to Webmaster');
+    logger.warn('Environment Variable TRACKING_SCRIPT_ERROR_MSG that is the default error message for when tracking script fails is not set, please report to Webmaster');
   }
 
   // Basic validation
@@ -108,7 +109,7 @@ exports.isValidTrackingScript = (script) => {
     // None matched
     return errorString;
   } catch (error) {
-    console.error('Error validating tracking script:', error);
+    logger.error('Error validating tracking script:', { err: error });
     return errorString;
   }
 };
@@ -146,7 +147,7 @@ exports.createUniqueId = (title) => {
   const sanitizedTitle = sanitizeHtml(title, CONSTANTS.SANITIZE_FILTER);
   const randomSuffix = '_' + Math.random().toString().substring(2, 6);
 
-  const cleanedTitle = sanitizedTitle.toLowerCase().replace(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, '').replace(CONSTANTS.REMOVE_ALL_SPACES_REGEX, "_").trim();
+  const cleanedTitle = sanitizedTitle.toLowerCase().replaceAll(CONSTANTS.UNIQUE_ID_GENERATION_REGEX, CONSTANTS.EMPTY_STRING).replaceAll(CONSTANTS.REMOVE_ALL_SPACES_REGEX, CONSTANTS.UNDERSCORE_SEPARATOR).trim();
   const uniqueId = cleanedTitle + randomSuffix;
   return uniqueId;
 }

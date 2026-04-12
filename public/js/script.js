@@ -1,3 +1,29 @@
+// Helper functions (outer scope)
+function formatTags(value) {
+    let formatted = value.toLowerCase();
+    formatted = formatted.replaceAll(/[^a-z0-9\-_,\s]/g, '');
+    let tags = formatted.split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+    return tags.join(', ');
+}
+
+function showError(input, message) {
+    const existingError = input.parentElement.querySelector('.tag-error');
+    if (existingError) {
+        existingError.remove();
+    }
+    if (/[A-Z]/.test(input.value)) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'tag-error';
+        errorDiv.style.color = 'var(--red)';
+        errorDiv.style.fontSize = '0.8rem';
+        errorDiv.style.marginTop = '0.25rem';
+        errorDiv.textContent = message;
+        input.parentElement.appendChild(errorDiv);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // Search functionality
     const allButtons = document.querySelectorAll('.searchBtn');
@@ -6,8 +32,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchClose = document.getElementById('searchClose');
 
     if (searchBar && searchInput && searchClose) {
-        for (var i = 0; i < allButtons.length; i++) {
-            allButtons[i].addEventListener('click', function () {
+        for (const button of allButtons) {
+            button.addEventListener('click', function () {
                 searchBar.style.visibility = 'visible';
                 searchBar.classList.add('open');
                 this.setAttribute('aria-expanded', 'true');
@@ -25,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Escape key handler
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && searchBar && searchBar.classList.contains('open')) {
+        if (e.key === 'Escape' && searchBar?.classList.contains('open')) {
             searchClose.click();
         }
     });
@@ -84,24 +110,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
 
-                if (!e.shiftKey) {
+                if (e.shiftKey) {
+                    const beforeCursor = this.value.substring(0, start);
+                    const afterCursor = this.value.substring(end);
+
+                    // Remove 4 spaces before cursor if they exist
+                    if (beforeCursor.endsWith('    ')) {
+                        const newBefore = beforeCursor.slice(0, -4);
+                        this.value = newBefore + afterCursor;
+                        this.selectionStart = this.selectionEnd = start - 4;
+                    }
+
+                } else {
                     // Insert 4 spaces at cursor position
                     const spaces = "    ";
                     this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
                     // Move cursor
                     this.selectionStart = this.selectionEnd = start + spaces.length;
-                } else {
-                    const beforeCursor = this.value.substring(0, start);
-                    const afterCursor = this.value.substring(end);
-
-                    // Match the last group of 4+ spaces before cursor
-                    const match = beforeCursor.match(/( {4,})$/);
-                    if (match) {
-                        const spacesToRemove = match[0].length >= 4 ? 4 : 0;
-                        const newBefore = beforeCursor.slice(0, -spacesToRemove);
-                        this.value = newBefore + afterCursor;
-                        this.selectionStart = this.selectionEnd = start - spacesToRemove;
-                    }
                 }
             }
         });
@@ -163,56 +188,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+
     // Function to handle tag input restrictions and formatting
     function initializeTagInputs() {
-        // Find all tag input fields across different pages
         const tagInputs = document.querySelectorAll('input[name="tags"]');
-        
+
         tagInputs.forEach(input => {
-            // Function to format tags properly
-            function formatTags(value) {
-                // Convert to lowercase
-                let formatted = value.toLowerCase();
-                
-                // Only allow letters, numbers, hyphens, underscores, and commas
-                formatted = formatted.replace(/[^a-z0-9\-_,\s]/g, '');
-                
-                // Split by comma, trim whitespace, and filter out empty tags
-                let tags = formatted.split(',')
-                    .map(tag => tag.trim())
-                    .filter(tag => tag.length > 0);
-                
-                // Join back with ", " format
-                return tags.join(', ');
-            }
-
-            // Show error message for capital letters
-            function showError(input, message) {
-                // Remove any existing error message
-                const existingError = input.parentElement.querySelector('.tag-error');
-                if (existingError) {
-                    existingError.remove();
-                }
-
-                // Create and show new error message if there are capital letters
-                if (/[A-Z]/.test(input.value)) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'tag-error';
-                    errorDiv.style.color = 'var(--red)';
-                    errorDiv.style.fontSize = '0.8rem';
-                    errorDiv.style.marginTop = '0.25rem';
-                    errorDiv.textContent = message;
-                    input.parentElement.appendChild(errorDiv);
-                }
-            }
-
-            // Handle input events to show error for capital letters
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 showError(this, 'Please use lowercase letters only');
             });
 
             // Format tags when input loses focus
-            input.addEventListener('blur', function() {
+            input.addEventListener('blur', function () {
                 this.value = formatTags(this.value);
                 // Remove error message after formatting
                 const errorDiv = this.parentElement.querySelector('.tag-error');
@@ -238,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const minLength = 8;
             const hasUppercase = /[A-Z]/.test(password);
             const hasLowercase = /[a-z]/.test(password);
-            const hasNumber = /[0-9]/.test(password);
+            const hasNumber = /\d/.test(password);
             const hasSpecialChar = /[!@#$%^&*()]/.test(password);
             return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
         }
@@ -248,23 +235,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 'at least 8 characters': password.length >= 8,
                 'uppercase letter': /[A-Z]/.test(password),
                 'lowercase letter': /[a-z]/.test(password),
-                'number': /[0-9]/.test(password),
+                'number': /\d/.test(password),
                 'special character (!@#$%^&*())': /[!@#$%^&*()]/.test(password)
             };
-            
+
             const failed = Object.entries(checks)
                 .filter(([, passes]) => !passes)
                 .map(([requirement]) => requirement);
-            
-            return failed.length > 0 
-                ? `Password must contain ${failed.join(' and ')}` 
+
+            return failed.length > 0
+                ? `Password must contain ${failed.join(' and ')}`
                 : 'Password is strong';
         }
 
         function checkPasswordMatch() {
             const match = newPassword.value === confirmPassword.value;
             const isStrong = isStrongPassword(newPassword.value);
-            
+
             if (newPassword.value) {
                 const strengthMessage = getPasswordStrengthMessage(newPassword.value);
                 if (!isStrong) {
@@ -274,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
             }
-            
+
             if (confirmPassword.value) {
                 passwordMatch.textContent = match ? 'Passwords match' : 'Passwords do not match';
                 passwordMatch.className = `password-match-indicator ${match ? 'match' : 'no-match'}`;
@@ -282,14 +269,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 passwordMatch.textContent = '';
                 passwordMatch.className = 'password-match-indicator';
             }
-            
+
             submitButton.disabled = (!match && confirmPassword.value) || !isStrong;
         }
 
         newPassword?.addEventListener('input', checkPasswordMatch);
         confirmPassword?.addEventListener('input', checkPasswordMatch);
 
-        passwordResetForm.addEventListener('submit', function(e) {
+        passwordResetForm.addEventListener('submit', function (e) {
             if (!isStrongPassword(newPassword.value)) {
                 e.preventDefault();
                 passwordMatch.textContent = getPasswordStrengthMessage(newPassword.value);

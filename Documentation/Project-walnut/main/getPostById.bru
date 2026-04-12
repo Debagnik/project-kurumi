@@ -1,17 +1,17 @@
 meta {
-  name: getPostById
+  name: getPostByUniqueId
   type: http
   seq: 5
 }
 
 get {
-  url: {{url}}/post/:id
+  url: {{url}}/posts/:uniqueId
   body: none
   auth: inherit
 }
 
 params:path {
-  id: 680148bc20abde10df2bb054
+  uniqueId: hiding_in_your_wifi_6263
 }
 
 headers {
@@ -33,18 +33,17 @@ headers {
 }
 
 docs {
-  # Deprecated
-  GET /post/:id
+  GET /post/:uniqueId
   
   Description:
-  Displays a specific blog post based on its MongoDB _id. Includes post metadata, author details, comments, and conditionally shows the post based on approval status or user privileges.
+  Displays a specific blog post based on its unique Id generated based on title. Includes post metadata, author details, comments, and conditionally shows the post based on approval status or user privileges.
   
   Middleware:
   * fetchSiteConfig: Attaches site-wide config to res.locals.
   * csrfProtection: Adds CSRF protection to the rendered post page.
   
   Parameters:
-  * :id (Path Param): MongoDB _id of the blog post to retrieve.
+  * :uniqueId (Path Param): Unique Id of the blog post to retrieve.
   
   Access:
   * Public if post is approved.

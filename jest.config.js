@@ -10,6 +10,8 @@ module.exports = {
     'utils/rateLimiter.js',
     'server/routes/main.js',
     'server/routes/admin.js',
+    'server/config/db.js',
+    'app.js',
     '!**/node_modules/**',
     '!coverage/**',
     '!jest.config.js'
@@ -36,7 +38,9 @@ module.exports = {
     '**/tests/utils/rateLimiter.test.js',
     '**/tests/utils/postCache.test.js',
     '**/tests/server/routes/main.test.js',
-    '**/tests/server/routes/admin.test.js'
+    '**/tests/server/routes/admin.test.js',
+    '**/tests/server/config/db.test.js',
+    '**/tests/app.test.js'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 30000

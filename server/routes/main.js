@@ -13,10 +13,19 @@ const { fetchSiteConfigCached, getCacheStatus } = require('../../utils/fetchSite
 const { genericOpenRateLimiter, genericAdminRateLimiter, commentsRateLimiter, genericGetRequestRateLimiter } = require('../../utils/rateLimiter');
 const { CONSTANTS } = require('../../utils/constants.js');
 const postCache = require('../../utils/postCache.js');
+const logger = require('../../utils/logger');
 
 const jwtSecretKey = process.env.JWT_SECRET;
 
 
+// adding admin CSRF protection middleware
+const csrfProtection = csrf({ cookie:{
+        maxAge: 3600000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    } });
+router.use(csrfProtection);
 //Use Middleware.
 router.use(fetchSiteConfigCached);
 
@@ -55,14 +64,10 @@ router.use(fetchSiteConfigCached);
  * @applied router.use(csrfProtection)
  */
 if (!jwtSecretKey) {
-    console.error('JWT_SECRET is not defined. Please set it in your environment variables.');
+    logger.error('JWT_SECRET is not defined. Please set it in your environment variables.');
     // You might want to exit the process gracefully
     process.exit(1);
 }
-
-// adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie: true });
-router.use(csrfProtection);
 
 //Routes
 
@@ -170,7 +175,8 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         }
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
-        let page = parseInt(req.query.page) || 1;
+        const rawPage = Number.parseInt(req.query.page, 10);
+        let page = Number.isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
 
         const data = await post.aggregate([
             { $match: { isApproved: true } },
@@ -178,10 +184,10 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         ]).skip(perPage * page - perPage).limit(perPage).exec();
 
         const count = await post.countDocuments({ isApproved: true });
-        const nextPage = parseInt(page) + 1;
+        const nextPage = Number.parseInt(page, 10) + 1;
         const hasNextPage = nextPage <= Math.ceil(count / perPage);
 
-        const previousPage = parseInt(page) - 1;
+        const previousPage = Number.parseInt(page, 10) - 1;
         const hasPreviousPage = previousPage >= 1;
 
 
@@ -194,9 +200,9 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
             csrfToken: req.csrfToken(),
             totalPages: Math.ceil(count / perPage)
         });
-        console.log(`DB Posts Data fetched`);
+        logger.info(`DB Posts Data fetched`);
     } catch (error) {
-        console.log(error);
+        logger.error(error);
     }
 });
 
@@ -282,109 +288,6 @@ router.get('/contact', genericOpenRateLimiter, (req, res) => {
 });
 
 /**
- * @route GET /post/:id
- * @description Fetches and renders a single blog post by its MongoDB `_id`. 
- *              Enriches the post with author details, site config, captcha settings, 
- *              and associated comments before rendering.
- * @deprecated Since 3.0.0 - Use `/posts/:uniqueId` instead
- * @middleware
- * @chain genericOpenRateLimiter - Protects route from abuse with rate limiting
- * 
- * @params
- * @param {string} id - MongoDB `_id` of the post to retrieve
- * 
- * @process
- * @step Extracts post ID from `req.params.id`
- * @step Fetches post data by `_id` from the database
- * @step Retrieves author details; defaults to "Anonymous" if missing
- * @step Constructs locals for title, description, keywords, and site config
- * @step Checks if captcha is enabled in `siteConfig`
- * @step Determines if the current user is Admin/Moderator
- * @step Fetches comments for the given post ID
- * 
- * @conditions
- * @check Post existence - throws error if not found
- * @check Post visibility - allowed if `data.isApproved` or current user is logged in
- * @check Redirects - non-approved post without logged-in user redirects to `/404`
- * 
- * @visibilityRules
- * @rule Approved posts → Publicly visible
- * @rule Unapproved posts → Only visible if:
- *       - Current user is logged in
- *       - OR Current user has elevated privileges (Admin/Moderator)
- * 
- * @response
- * @success {200} Renders the `posts` EJS template with:
- *   - locals (title, description, keywords, config)
- *   - data (post content + authorName)
- *   - csrfToken for secure interactions
- *   - isCaptchaEnabled flag
- *   - commentsData (fetched from `getCommentsFromPostId`)
- *   - currentUser (boolean for moderator/admin)
- * @failure {404} Redirects to `/404` on:
- *   - Missing post
- *   - Fetch errors
- * 
- * @security
- * @csrfToken Injected into template for form security
- * @rateLimited Prevents abuse via `genericOpenRateLimiter`
- * 
- * @logging
- * @errorLogs Logs post fetch errors and missing posts
- * 
- * @access Public (restricted for unapproved posts)
- */
-router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
-    try {
-        console.warn('[DEPRECATED] The route /post/:id is deprecated since version 3.0.0. Please use /post/:uniqueId instead. Sunset date: TBD');
-        const currentUser = await getUserFromCookieToken(req);
-
-        let slug = req.params.id;
-        const data = await post.findById({ _id: slug });
-        if (!data) {
-            throw new Error('404 - No such post found');
-        }
-        const locals = {
-            title: data.title,
-            description: data.desc,
-            keywords: data.tags,
-            config: res.locals.siteConfig
-        }
-        const postAuthor = await user.findOne({ username: data.author });
-        if (!postAuthor) {
-            data.authorName = 'Anonymous'
-        } else {
-            data.authorName = postAuthor.name;
-        }
-
-        const isCaptchaEnabled = res.locals.siteConfig.isCaptchaEnabled && !!res.locals.siteConfig.cloudflareSiteKey && !!res.locals.siteConfig.cloudflareServerKey;
-        const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
-        if (currentUser || data.isApproved) {
-            res.set('Deprecation', 'true');
-            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
-            res.render('posts', {
-                locals,
-                data,
-                csrfToken: req.csrfToken(),
-                isCaptchaEnabled,
-                commentsData: await getCommentsFromPostId(data._id),
-                currentUser: isCurrentUserAModOrAdmin
-            });
-        } else {
-            res.set('Deprecation', 'true');
-            res.set('Link', '/posts/:uniqueId; rel="successor-version"');
-            res.redirect('/404');
-        }
-
-    } catch (error) {
-        console.error('Post Fetch error', error);
-        res.set('Deprecation', 'true');
-        res.set('Link', '/posts/:uniqueId; rel="successor-version"');
-        res.status(404).redirect('/404');
-    }
-});
-
-/**
  * @route GET /posts/:uniqueId
  * @description Retrieves and renders a single blog post identified by its `uniqueId`.  
  *              Integrates author information, site configuration, captcha status, and 
@@ -446,35 +349,26 @@ router.get('/post/:id', genericOpenRateLimiter, async (req, res) => {
  */
 router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
     try {
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`Fetching post by uniqueId: ${req.params.uniqueId}`);
-        }
         const currentUser = await getUserFromCookieToken(req);
         let cleanedUniqueId = sanitizeHtml(req.params.uniqueId, CONSTANTS.SANITIZE_FILTER);
+        logger.debug(`Fetching post by uniqueId: ${cleanedUniqueId}`);
 
         //check if post exist on postCache
         let data = null;
         data = postCache.getPostFromCache(cleanedUniqueId);
-        if (!data) {
-            if (process.env.NODE_ENV !== 'production') {
-                console.log(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
-            }
+        if (data) {
+            logger.info(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
+        } else {
+            logger.debug(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
             data = await post.findOne({ uniqueId: cleanedUniqueId });
             if (!data) {
                 throw new Error('404 - No such post found');
             }
 
-            const postAuthor = await user.findOne({ username: data.author });
-            if (!postAuthor || !postAuthor.name) {
-                data.authorName = 'Anonymous';
-            } else {
-                data.authorName = postAuthor.name;
-            }
+            await resolveAuthorName(data);
 
             postCache.setPostToCache(cleanedUniqueId, data);
 
-        } else {
-            console.log(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
         }
 
         const locals = {
@@ -497,17 +391,27 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
                 currentUser: isCurrentUserAModOrAdmin
             });
         } else {
-            if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Unlogged user tried fetching unapproved post`);
-            }
+            logger.warn(`Unlogged user tried fetching unapproved post`);
             return res.status(404).redirect('/404');
         }
     } catch (error) {
-        console.error('Post Fetch error', error);
+        logger.error('Post Fetch error', error);
         return res.status(404).redirect('/404');
     }
 
 });
+
+/**
+ * @function resolveAuthorName
+ * @description Resolves the display name of a post's author and assigns it to `data.authorName`.
+ *              Falls back to `'Anonymous'` if the author user record is not found or has no name.
+ * @param {Object} data - The post document to annotate with `authorName`
+ * @returns {Promise<void>}
+ */
+async function resolveAuthorName(data) {
+    const postAuthor = await user.findOne({ username: data.author });
+    data.authorName = (postAuthor?.name) ? postAuthor.name : 'Anonymous';
+}
 
 /**
  * @function getUserFromCookieToken
@@ -532,7 +436,7 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
  * @check If user not found → Returns `null`
  * 
  * @response
- * @returns {Object|null} Current user document from database, or `null` if:
+ * @returns {Promise<Object|null>} Current user document from database, or `null` if:
  *   - No token present
  *   - Token invalid/expired
  *   - User does not exist
@@ -546,16 +450,16 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
  * 
  * @access Private (utility function, not an exposed route)
  */
-const getUserFromCookieToken = async (req) => {
+async function getUserFromCookieToken(req) {
     let currentUser = null;
-    const token = req.cookies.token;
     let userId = null;
+    const token = req.cookies?.token?.toString() || null;
     if (token) {
         try {
             const decoded = jwt.verify(token, jwtSecretKey);
             userId = decoded.userId;
         } catch (err) {
-            console.error('Invalid token:', err.message);
+            logger.error('Invalid token:', err.message);
         }
     }
     if (userId) {
@@ -584,7 +488,7 @@ const getUserFromCookieToken = async (req) => {
  * @step Applies the computed `limit` to the query
  * 
  * @response
- * @returns {Array} List of comment documents for the specified post.
+ * @returns {Promise<Array>} List of comment documents for the specified post.
  *                  Returns an empty array if no comments are found or if an error occurs.
  * 
  * @conditions
@@ -599,15 +503,15 @@ const getUserFromCookieToken = async (req) => {
  * 
  * @access Private (utility function, intended for internal route helpers)
  */
-const getCommentsFromPostId = async (postId) => {
+async function getCommentsFromPostId(postId) {
     try {
-        const rawLimit = parseInt(process.env.MAX_COMMENTS_LIMIT, 10);
+        const rawLimit = Number.parseInt(process.env.MAX_COMMENTS_LIMIT, 10);
         const limit = Number.isFinite(rawLimit) ? Math.max(CONSTANTS.CLAMP_COMMENT_MIN, Math.min(rawLimit, CONSTANTS.CLAMP_COMMENT_MAX)) : CONSTANTS.DEFAULT_COMMENT_LIMIT;
 
         const comments = await comment.find({ postId }).sort({ commentTimestamp: -1 }).limit(limit);
         return comments;
     } catch (error) {
-        console.error('Comment Fetch error', postId, error.message);
+        logger.error('Comment Fetch error', postId, error.message);
         return [];
     }
 }
@@ -693,11 +597,15 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         } = req.body;
 
         const searchLimit = res.locals.siteConfig.searchLimit;
-        const rawPage = parseInt(req.body.page, 10);
-        const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
-        const page = isNextPage !== undefined
-            ? (isNextPage === 'yes' ? currentPage + 1 : currentPage - 1)
-            : currentPage;
+        const rawPage = Number.parseInt(req.body.page, 10);
+        let currentPage = (Number.isNaN(rawPage) || rawPage < 1) ? 1 : rawPage;
+        let page;
+        if (isNextPage === undefined) {
+            page = currentPage;
+        } else {
+            const pageOffset = isNextPage === 'yes' ? 1 : -1;
+            page = currentPage + pageOffset;
+        }
 
         const skip = Math.max((page - 1) * searchLimit, 0);
 
@@ -707,9 +615,9 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
             config: res.locals.siteConfig
         };
 
-        const keyword = sanitizeHtml(searchTerm.trim(), { allowedTags: [], allowedAttributes: [] });
-        const sanitizedTitle = sanitizeHtml(title.trim(), { allowedTags: [], allowedAttributes: [] });
-        const sanitizedAuthor = sanitizeHtml(author.trim(), { allowedTags: [], allowedAttributes: [] });
+        const keyword = escapeRegexCharsInSearch(sanitizeHtml(searchTerm.trim(), CONSTANTS.SANITIZE_FILTER));
+        const sanitizedTitle = escapeRegexCharsInSearch(sanitizeHtml(title.trim(), CONSTANTS.SANITIZE_FILTER));
+        const sanitizedAuthor = escapeRegexCharsInSearch(sanitizeHtml(author.trim(), CONSTANTS.SANITIZE_FILTER));
         const tagArray = utils.parseTags(tags);
 
         let filter = { $and: [{ isApproved: true }] };
@@ -718,53 +626,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
 
         // === Advanced Search Logic ===
         if (isAdvancedSearch === 'true' || isAdvancedSearch === true) {
-            const orConditions = [];
-
-            // Keyword search (title/body)
-            if (keyword) {
-                const regex = new RegExp(keyword.replace(/[^a-zA-Z0-9 ]/g, ''), 'i');
-                orConditions.push({ title: regex }, { body: regex });
-            }
-
-            // Title-specific search
-            if (sanitizedTitle) {
-                orConditions.push({ title: new RegExp(sanitizedTitle, 'i') });
-            }
-
-            // Tag search
-            if (tagArray.length > 0) {
-                filter.$and.push({ tags: { $in: tagArray } });
-            }
-
-            // Author name -> username resolution
-            if (sanitizedAuthor) {
-                const userModel = await user.findOne({
-                    name: new RegExp('^' + sanitizedAuthor + '$', 'i')
-                });
-
-                if (userModel) {
-                    filter.$and.push({ author: userModel.username });
-                }
-            }
-
-            if (orConditions.length > 0) {
-                filter.$and.push({ $or: orConditions });
-            }
-
-            // Initial query
-            data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
-            count = await post.countDocuments(filter);
-
-            // Fallback: regex-only search if no results
-            if (data.length === 0 && keyword) {
-                const fallbackRegex = new RegExp(keyword, 'i');
-                filter.$and = filter.$and.filter(condition => !condition.$text); // remove any accidental $text usage
-                filter.$and.push({ $or: [{ title: fallbackRegex }, { body: fallbackRegex }] });
-
-                data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
-                count = await post.countDocuments(filter);
-            }
-
+            ({ data, count } = await executeAdvancedSearch(filter, keyword, sanitizedTitle, sanitizedAuthor, tagArray, skip, searchLimit));
         }
         // === Simple Search Logic ===
         else if (isAdvancedSearch === 'false' || isAdvancedSearch === false) {
@@ -772,7 +634,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
                 return res.status(400).json({ error: 'Invalid keyword for simple search' });
             }
 
-            filter.$and.push({ $text: { $search: keyword.replace(/[^a-zA-Z0-9 ]/g, '') } });
+            filter.$and.push({ $text: { $search: keyword.replaceAll(/[^a-zA-Z0-9 ]/g, '') } });
 
             data = await post.find(filter, { score: { $meta: 'textScore' } })
                 .sort({ score: { $meta: 'textScore' } })
@@ -809,7 +671,7 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Search error:', error);
+        logger.error('Search error:', error);
         return res.status(500).render('error', {
             locals: {
                 title: 'Error',
@@ -819,6 +681,149 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
         });
     }
 });
+
+/**
+ * @function executeAdvancedSearch
+ * @description Builds the MongoDB filter and executes the advanced search query.
+ *              Applies keyword, title, tag, and author conditions, then falls back to a
+ *              regex-only search if the initial query returns no results.
+ * @param {Object} filter - Base MongoDB filter (modified in-place)
+ * @param {string} keyword - Sanitized keyword for full-text/regex matching
+ * @param {string} sanitizedTitle - Sanitized title substring for title-specific matching
+ * @param {string} sanitizedAuthor - Sanitized display name for author resolution
+ * @param {Array}  tagArray - Array of tags to match against post tags
+ * @param {number} skip - Number of documents to skip (pagination offset)
+ * @param {number} searchLimit - Maximum number of documents to return
+ * @returns {Promise<{data: Array, count: number}>}
+ */
+/**
+ * @function getPostRedirectUrl
+ * @description Resolves the redirect URL for a given postId.
+ *              Looks up the post's uniqueId and returns the post URL, or '/404' if not found.
+ * @param {string} postId - MongoDB _id of the post
+ * @returns {Promise<string>} Redirect URL
+ */
+async function getPostRedirectUrl(postId) {
+    try {
+        const thisPost = await post.findById(postId);
+        return thisPost ? `/posts/${thisPost.uniqueId}` : '/404';
+    } catch {
+        return '/404';
+    }
+}
+
+/**
+ * @function isCaptchaConfigValid
+ * @description Returns true if CAPTCHA is disabled, or if it is enabled and both Cloudflare keys are set.
+ * @param {Object} siteConfig - Site configuration object
+ * @returns {boolean}
+ */
+function isCaptchaConfigValid(siteConfig) {
+    if (!siteConfig.isCaptchaEnabled) return true;
+    return !!(siteConfig.cloudflareSiteKey && siteConfig.cloudflareServerKey);
+}
+
+/**
+ * @function verifyCaptchaIfEnabled
+ * @description Runs Cloudflare Turnstile verification when CAPTCHA is enabled.
+ *              Returns null if CAPTCHA is disabled or the token is valid.
+ *              Returns a 403 Response redirect if verification fails.
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Object} siteConfig - Site configuration object
+ * @param {string} redirectId - Post uniqueId to redirect back to on failure
+ * @returns {Promise<Response|null>}
+ */
+async function verifyCaptchaIfEnabled(req, res, siteConfig, redirectId) {
+    if (!siteConfig.isCaptchaEnabled) return null;
+    const isUserHuman = await verifyCloudflareTurnstileToken(req.body['cf-turnstile-response'], req.ip, siteConfig.cloudflareServerKey);
+    if (!isUserHuman) {
+        logger.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': req.ip });
+        req.flash('error', 'CAPTCHA verification failed, please try again.');
+        return res.status(403).redirect(`/posts/${redirectId}`);
+    }
+    return null;
+}
+
+/**
+ * @function validateCommentInput
+ * @description Validates commenter name and comment body fields.
+ *              Returns an error string if invalid, or null if valid.
+ * @param {string} commenterName
+ * @param {string} commentBody
+ * @returns {string|null}
+ */
+function validateCommentInput(commenterName, commentBody) {
+    if (!commenterName || !commentBody) {
+        return 'Invalid comment data, please ensure all fields are filled out.';
+    }
+    const nameInvalid = commenterName.length < 3 || commenterName.length > 50;
+    const bodyInvalid = commentBody.length < 1 || commentBody.length > 500;
+    if (nameInvalid || bodyInvalid) {
+        return 'Invalid comment data, please ensure comment length is between 1 and 500 characters and commenter name length is between 3 and 50 characters.';
+    }
+    return null;
+}
+
+function escapeRegexCharsInSearch(input){
+    return input.replaceAll(CONSTANTS.ESCAPE_REGEX_REGEX, String.raw`\$&`);
+}
+
+async function executeAdvancedSearch(filter, keyword, sanitizedTitle, sanitizedAuthor, tagArray, skip, searchLimit) {
+    const orConditions = [];
+
+    // Keyword search (title/body)
+    if (keyword) {
+        const regex = new RegExp(keyword.replaceAll(/[^a-zA-Z0-9 ]/g, ''), 'i');
+        orConditions.push({ title: regex }, { body: regex });
+    }
+
+    // Title-specific search
+    if (sanitizedTitle) {
+        orConditions.push({ title: new RegExp(sanitizedTitle, 'i') });
+    }
+
+    // Tag search
+    if (tagArray.length > 0) {
+        filter.$and.push({ tags: { $in: tagArray } });
+    }
+
+    // Author name -> username resolution
+    if (sanitizedAuthor) {
+        const userModel = await user.findOne({
+            name: new RegExp('^' + sanitizedAuthor + '$', 'i')
+        });
+        if (userModel) {
+            filter.$and.push({ author: userModel.username });
+        }
+    }
+
+    if (orConditions.length > 0) {
+        filter.$and.push({ $or: orConditions });
+    }
+
+    // Initial query
+    let data = await post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
+    let count = await post.countDocuments(filter);
+
+    // Fallback: regex-only search if no results
+    if (data.length === 0 && keyword) {
+        const fallbackFilter = { 
+            $and: [
+                { isApproved: true }, // only approved posts
+                { $or: [
+                    { title: new RegExp(keyword, 'i') }, 
+                    { body: new RegExp(keyword, 'i') }
+                ]}
+            ] 
+        };
+
+        data = await post.find(fallbackFilter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();
+        count = await post.countDocuments(fallbackFilter);
+    }
+
+    return { data, count };
+}
 
 /**
  * @route POST /post/:id/post-comments
@@ -875,64 +880,50 @@ router.post('/search', genericOpenRateLimiter, async (req, res) => {
 router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) => {
     const { postId, commenterName, commentBody } = req.body;
     const paramId = req.params.id;
-    if (!mongoose.Types.ObjectId.isValid(paramId) || postId !== paramId) {
+
+    // Merge the two ObjectId checks: paramId must be valid and must match postId
+    if (!mongoose.Types.ObjectId.isValid(paramId) || !mongoose.Types.ObjectId.isValid(postId) || postId !== paramId) {
         req.flash('error', 'Invalid post reference');
         return res.status(404).redirect('/404');
     }
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-        req.flash('error', 'Invalid post reference');
-        return res.status(404).redirect('/404');
-    }
+
     let existingPost = null;
     try {
         existingPost = await post.findById(paramId);
-    }
-    catch (error) {
-        console.error('Error fetching post for comment addition:', error);
+    } catch (error) {
+        logger.error('Error fetching post for comment addition:', error);
     }
     if (!existingPost) {
         req.flash('error', 'No post found to comment on');
         return res.status(404).redirect('/404');
     }
+
     const siteConfig = res.locals.siteConfig;
     if (!siteConfig.isCommentsEnabled) {
-        console.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
+        logger.error({ "error": "403", "message": "Comments are disabled or Cloudflare keys are not set" });
         req.flash('error', 'Comments are disabled or Cloudflare keys are not set');
         return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
-    if (siteConfig.isCaptchaEnabled && (!siteConfig.cloudflareSiteKey || !siteConfig.cloudflareServerKey)) {
-        console.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
+    if (!isCaptchaConfigValid(siteConfig)) {
+        logger.error(403, 'CAPTCHA is enabled but Cloudflare keys are not set');
         req.flash('error', 'CAPTCHA config error, contact the webmaster.');
         return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
-    const captchaToken = req.body['cf-turnstile-response'];
-    const remoteIp = req.ip;
-    const secretKey = siteConfig.cloudflareServerKey;
-    if (siteConfig.isCaptchaEnabled) {
-        const isUserHuman = await verifyCloudflareTurnstileToken(captchaToken, remoteIp, secretKey);
-        if (!isUserHuman) {
-            console.warn({ 'status': 403, 'message': 'CAPTCHA verification failed', 'originIP': remoteIp });
-            req.flash('error', 'CAPTCHA verification failed, please try again.');
-            return res.status(403).redirect(`/posts/${existingPost.uniqueId}`);
-        }
-    }
+    const captchaResult = await verifyCaptchaIfEnabled(req, res, siteConfig, existingPost.uniqueId);
+    if (captchaResult) return captchaResult;
 
-    if (!commenterName || !commentBody) {
-        console.error(400, 'Invalid comment data');
-        req.flash('error', 'Invalid comment data, please ensure all fields are filled out.');
-        return res.status(400).redirect(`/posts/${existingPost.uniqueId}`);
-    }
-    if (commentBody.length > 500 || commenterName.length > 50 || commenterName.length < 3 || commentBody.length < 1) {
-        console.error(400, 'Invalid comment data', 'Size mismatch');
-        req.flash('error', 'Invalid comment data, please ensure comment length is between 1 and 500 characters and commenter name length is between 3 and 50 characters.');
+    const commentError = validateCommentInput(commenterName, commentBody);
+    if (commentError) {
+        logger.error(400, 'Invalid comment data');
+        req.flash('error', commentError);
         return res.status(400).redirect(`/posts/${existingPost.uniqueId}`);
     }
 
     try {
         if (!existingPost.isApproved) {
-            console.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost.uniqueId });
+            logger.error({ "error": 403, "message": 'Post is not approved', "Post_Id": existingPost.uniqueId });
             return res.status(403).redirect(`/404`);
         }
 
@@ -946,20 +937,11 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
             commentTimestamp: Date.now()
         });
         await newComment.save();
-        if (process.env.NODE_ENV === 'production') {
-            console.log({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
-        } else {
-            console.log({ "status": "200", "message": "Comment added successfully", "comment": newComment });
-        }
+        logger.debug({ "status": "200", "message": "Comment added successfully", "CommenterName": newComment.commenterName });
         req.flash('success', 'Comment submitted successfully');
         res.status(200).redirect(`/posts/${existingPost.uniqueId}`);
     } catch (error) {
-        console.error('Error adding comment:', error);
-        if (process.env.NODE_ENV === 'production') {
-            console.error({ "status": "500", "message": "Unable to add comment at this time" });
-        } else {
-            console.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
-        }
+        logger.error({ "status": "500", "message": "Error adding comment at this time", "error": error.message });
         req.flash('error', 'Unable to add comment at this time, contact the webmaster. Internal Server Error');
         res.status(500).redirect(`/posts/${existingPost.uniqueId}`);
     }
@@ -1013,26 +995,27 @@ router.post('/posts/:id/post-comments', commentsRateLimiter, async (req, res) =>
  */
 router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (req, res) => {
     const { commentId } = req.params;
+    let thisComment = null;
     try {
         // verify if the comment exists before deleting. If not, redirect to the post page. 404 status to be logged in console
-        const thisComment = await comment.findById(commentId);
+        thisComment = await comment.findById(commentId);
         if (!thisComment) {
-            console.error({ "status": "404", "message": "No comment found", "commentid": commentId });;
+            logger.error({ "status": "404", "message": "No comment found", "commentid": commentId });
             return res.status(404).redirect(`/404`);
         }
         // check if user is authorized to delete the comment
         const currentUser = await getUserFromCookieToken(req);
         const isCurrentUserAModOrAdmin = currentUser && (currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.WEBMASTER || currentUser.privilege === CONSTANTS.PRIVILEGE_LEVELS_ENUM.MODERATOR);
         if (!isCurrentUserAModOrAdmin) {
-            console.error({ "status": "403", "message": "Unauthorized to delete comment" });
+            logger.error({ "status": "403", "message": "Unauthorized to delete comment" });
             return res.status(403).redirect('/admin');
         }
 
         await thisComment.deleteOne()
-        console.log({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
+        logger.info({ "status": "200", "message": "Comment deleted successfully", user: currentUser.username });
         req.flash('info', `Comment deleted successfully by ${currentUser.username}`);
         if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 8:', req.session);
+            logger.debug('Session after flash 8:', req.session);
         }
         // Get the post to find its uniqueId for proper redirect
         const thisPost = await post.findById(thisComment.postId);
@@ -1040,23 +1023,13 @@ router.post('/posts/delete-comment/:commentId', genericAdminRateLimiter, async (
         return res.status(200).redirect(redirectUrl);
 
     } catch (err) {
-        console.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
+        logger.error({ "status": "500", "message": "Error deleting comment", "error": err.message });
         req.flash('error', 'Error deleting comment, contact the webmaster. Internal Server Error');
         if (process.env.NODE_ENV !== 'production') {
-            console.log('Session after flash 9:', req.session);
+            logger.debug('Session after flash 9:', req.session);
         }
-        if (thisComment && thisComment.postId) {
-            // Get the post to find its uniqueId for proper redirect
-            try {
-                const thisPost = await post.findById(thisComment.postId);
-                const redirectUrl = thisPost ? `/posts/${thisPost.uniqueId}` : '/404';
-                return res.status(500).redirect(redirectUrl);
-            } catch (postErr) {
-                return res.status(500).redirect('/404');
-            }
-        } else {
-            return res.status(404).redirect('/404');
-        }
+        const redirectUrl = thisComment?.postId ? await getPostRedirectUrl(thisComment.postId) : '/404';
+        return res.status(500).redirect(redirectUrl);
     }
 
 });
@@ -1172,7 +1145,7 @@ router.get('/users/:username', genericGetRequestRateLimiter, async (req, res) =>
         });
     } catch (error) {
         req.flash('error', 'Internal server error');
-        console.error(error);
+        logger.error(error);
         return res.redirect('/');
     }
 });
@@ -1241,8 +1214,8 @@ router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
             heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2),
         };
 
-        const environment = process.env.NODE_ENV !== 'production' ? process.env.NODE_ENV : 'hidden';
-        const nodeVersion = process.env.NODE_ENV !== 'production' ? process.version : 'hidden';
+        const environment = process.env.NODE_ENV === 'production' ? 'hidden' : process.env.NODE_ENV;
+        const nodeVersion = process.env.NODE_ENV === 'production' ? 'hidden' : process.version;
 
         res.status(200).json({
             status: 'ok',
@@ -1257,7 +1230,7 @@ router.get('/healthz', genericGetRequestRateLimiter, async (req, res) => {
             memory,
         });
     } catch (error) {
-        console.error('Health check failed:', error);
+        logger.error('Health check failed:', error);
         res.status(500).json({
             status: 'error',
             message: 'Health check failed',
