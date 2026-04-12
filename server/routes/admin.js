@@ -38,12 +38,14 @@ if (!jwtSecretKey) {
 }
 
 // adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie:{
-        maxAge: 3600000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-    } });
+const csrfProtection = csrf({
+  cookie: {
+    maxAge: 3600000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  }
+});
 router.use(csrfProtection);
 
 /**
@@ -217,10 +219,10 @@ router.post('/register', genericAdminRateLimiter, async (req, res) => {
     if (!usernameRegex.test(username)) {
       const env = process.env.NODE_ENV;
       if (env?.toLowerCase() === "production") {
-      logger.error(400, 'Invalid username format');
-    } else {
-      logger.error(400, 'Invalid username format', username);
-    }
+        logger.error(400, 'Invalid username format');
+      } else {
+        logger.error({ errorCode: 400, errorMessage: 'Invalid username format', actorUser: String(username) });
+      }
       throw new Error(usernameErrorMessage);
     }
 
@@ -329,12 +331,12 @@ router.post('/admin', authRateLimiter, async (req, res) => {
     //checks if the user exists
     const currentUser = await user.findOne({ username: { $eq: username } });
     if (!currentUser) {
-      logger.error(`invalid Username for user: ${username}`);
+      logger.error(`invalid Username for user: ${String(username)}`);
       throw new Error('Either username or password dont match, Invalid credentials');
     }
 
     if (currentUser.isPasswordReset) {
-      logger.error(`Login Disabled for this Username: ${username}`);
+      logger.error(`Login Disabled for this Username: ${String(username)}`);
       throw new Error('Login Disabled for this Username, Contact Webmaster');
     }
 
@@ -1360,7 +1362,7 @@ router.post('/edit-site-config', authToken, genericAdminRateLimiter, async (req,
     };
 
     if (globalSiteConfig) {
-      await siteConfig.findOneAndUpdate({}, configData, { new: true });
+      await siteConfig.findOneAndUpdate({}, { $set: configData }, { new: true });
     } else {
       await new siteConfig(configData).save();
     }
@@ -1447,7 +1449,7 @@ router.delete('/delete-user/:id', authToken, genericAdminRateLimiter, async (req
     }
     const userToDelete = await user.findById(req.params.id);
     if (!userToDelete) {
-      logger.error('User not found', sanitizeLogParams(req.params.id));
+      logger.error({ error: 'User not found', actorId: sanitizeLogParams(String(req.params.id)) });
       throw new Error('User to be deleted not found');
     }
 
@@ -1535,7 +1537,7 @@ router.get('/edit-user/:id', authToken, genericGetRequestRateLimiter, async (req
 
     const selectedUser = await user.findOne({ _id: req.params.id });
     if (!selectedUser) {
-      logger.error('User not found', req.params.id);
+      logger.error({ error: 'User not found', actorId: String(req.params.id) });
       throw new Error('User not found');
     }
 
@@ -1915,7 +1917,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
     const { username, tempPassword, newPassword, confirmPassword } = req.body;
 
     if (!username || !tempPassword || !newPassword || !confirmPassword) {
-      logger.warn({ 'status': 400, 'message': 'one or more required field missing' })
+      logger.warn({ 'status': 400, 'message': 'one or more required field missing' });
       throw new Error('Username, temporary password, new password and confirmation are all required fields');
     }
 
@@ -1963,7 +1965,7 @@ router.post('/admin/reset-password', genericAdminRateLimiter, async (req, res) =
         res.redirect('/admin/reset-password');
       }
     } else {
-      logger.error(`User: ${sanitizedUserName} is trying to reset password with incorrect temp password`, username);
+      logger.error({ error: "Someone is trying to reset password with incorrect temp password", user: String(sanitizedUserName) });
       throw new Error('Either the username or the Temp password combination might be incorrect');
     }
   } catch (error) {
@@ -2018,7 +2020,7 @@ router.get('/admin/profile/:username', authToken, genericGetRequestRateLimiter, 
     const sanitizedUserName = sanitizeHtml(String(req.params.username).trim(), CONSTANTS.SANITIZE_FILTER);
     if (!CONSTANTS.USERNAME_REGEX.test(sanitizedUserName)) {
       req.flash("error", "Invalid username");
-      logger.error(`Invalid username ${req.params.username}`);
+      logger.error({ error: `Invalid username`, user: String(req.params.username) });
       return res.redirect('/dashboard');
     }
     const currentUser = await user.findOne({ username: sanitizedUserName });

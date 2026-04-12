@@ -30,7 +30,7 @@ const connectDB = async (req, res, next) => {
                             logger.info("My public IP address is: " + ipAddress);
                         });
                     }).on('error', function(error) {
-                        logger.error("Failed to get IP address:", error.message);
+                        logger.error({message: "Failed to get IP address", error: error.message});
                     });
                 } catch (error) {
                     logger.error("Error during IP fetch setup:", error.message);
