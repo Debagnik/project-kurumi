@@ -19,12 +19,14 @@ const jwtSecretKey = process.env.JWT_SECRET;
 
 
 // adding admin CSRF protection middleware
-const csrfProtection = csrf({ cookie:{
+const csrfProtection = csrf({
+    cookie: {
         maxAge: 3600000,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
-    } });
+    }
+});
 router.use(csrfProtection);
 //Use Middleware.
 router.use(fetchSiteConfigCached);
@@ -176,31 +178,43 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
 
         let perPage = res.locals.siteConfig.defaultPaginationLimit || 1;
         const rawPage = Number.parseInt(req.query.page, 10);
-        let page = Number.isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+        let page = Number.isNaN(rawPage) ? 1 : rawPage;
 
-        const data = await post.aggregate([
-            { $match: { isApproved: true } },
-            { $sort: { createdAt: -1 } }
-        ]).skip(perPage * page - perPage).limit(perPage).exec();
+        if (page >= 1) {
+            const data = await post.aggregate([
+                { $match: { isApproved: true } },
+                { $sort: { createdAt: -1 } }
+            ]).skip(perPage * page - perPage).limit(perPage).exec();
 
-        const count = await post.countDocuments({ isApproved: true });
-        const nextPage = Number.parseInt(page, 10) + 1;
-        const hasNextPage = nextPage <= Math.ceil(count / perPage);
+            const count = await post.countDocuments({ isApproved: true });
+            const nextPage = Number.parseInt(page, 10) + 1;
+            const hasNextPage = nextPage <= Math.ceil(count / perPage);
 
-        const previousPage = Number.parseInt(page, 10) - 1;
-        const hasPreviousPage = previousPage >= 1;
+            const previousPage = Number.parseInt(page, 10) - 1;
+            const hasPreviousPage = previousPage >= 1;
+            const totPages = Math.ceil(count / perPage);
+
+            if (totPages < page) {
+                res.redirect(`/?page=${totPages}`);
+                return;
+            }
 
 
-        res.render('index', {
-            locals,
-            data,
-            currentPage: page,
-            nextPage: hasNextPage ? nextPage : null,
-            previousPage: hasPreviousPage ? previousPage : null,
-            csrfToken: req.csrfToken(),
-            totalPages: Math.ceil(count / perPage)
-        });
-        logger.info(`DB Posts Data fetched`);
+            res.render('index', {
+                locals,
+                data,
+                currentPage: page,
+                nextPage: hasNextPage ? nextPage : null,
+                previousPage: hasPreviousPage ? previousPage : null,
+                csrfToken: req.csrfToken(),
+                totalPages: totPages
+            });
+            logger.info(`DB Posts Data fetched`);
+        } else if(page <= 0){
+            res.redirect('/');
+        }
+
+
     } catch (error) {
         logger.error(error);
     }
@@ -765,7 +779,7 @@ function validateCommentInput(commenterName, commentBody) {
     return null;
 }
 
-function escapeRegexCharsInSearch(input){
+function escapeRegexCharsInSearch(input) {
     return input.replaceAll(CONSTANTS.ESCAPE_REGEX_REGEX, String.raw`\$&`);
 }
 
@@ -808,14 +822,16 @@ async function executeAdvancedSearch(filter, keyword, sanitizedTitle, sanitizedA
 
     // Fallback: regex-only search if no results
     if (data.length === 0 && keyword) {
-        const fallbackFilter = { 
+        const fallbackFilter = {
             $and: [
                 { isApproved: true }, // only approved posts
-                { $or: [
-                    { title: new RegExp(keyword, 'i') }, 
-                    { body: new RegExp(keyword, 'i') }
-                ]}
-            ] 
+                {
+                    $or: [
+                        { title: new RegExp(keyword, 'i') },
+                        { body: new RegExp(keyword, 'i') }
+                    ]
+                }
+            ]
         };
 
         data = await post.find(fallbackFilter).sort({ createdAt: -1 }).skip(skip).limit(searchLimit).exec();

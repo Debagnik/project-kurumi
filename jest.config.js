@@ -40,7 +40,8 @@ module.exports = {
     '**/tests/server/routes/main.test.js',
     '**/tests/server/routes/admin.test.js',
     '**/tests/server/config/db.test.js',
-    '**/tests/app.test.js'
+    '**/tests/app.test.js',
+    '**/tests/server/routes/commentRoutes.test.js'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 30000

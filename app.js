@@ -55,6 +55,7 @@ app.use(
         connectSrc: [
           "'self'",
           "https://www.google-analytics.com",
+          "https://www.google.com",
           "https://*.clarity.ms",
           "https://*.inspectlet.com",
           "https://*.cloudflareinsights.com",
