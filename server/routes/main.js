@@ -180,7 +180,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
         const rawPage = Number.parseInt(req.query.page, 10);
         let page = Number.isNaN(rawPage) ? 1 : rawPage;
 
-        if (page >= 1) {
+        if (Number.isNaN(rawPage) || page > 1) {
             const data = await post.aggregate([
                 { $match: { isApproved: true } },
                 { $sort: { createdAt: -1 } }
@@ -192,7 +192,7 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
 
             const previousPage = Number.parseInt(page, 10) - 1;
             const hasPreviousPage = previousPage >= 1;
-            const totPages = Math.ceil(count / perPage);
+            const totPages = Math.max(Math.ceil(count / perPage), 1);
 
             if (totPages < page) {
                 res.redirect(`/?page=${totPages}`);
@@ -210,8 +210,9 @@ router.get('', genericOpenRateLimiter, async (req, res) => {
                 totalPages: totPages
             });
             logger.info(`DB Posts Data fetched`);
-        } else if(page <= 0){
+        } else if(page <= 1){
             res.redirect('/');
+            return;
         }
 
 

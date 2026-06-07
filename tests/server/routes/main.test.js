@@ -1841,9 +1841,9 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
             const response = await request(app).get('/');
 
-            // totPages = Math.ceil(0/5) = 0, which is < page (1), so route redirects
-            expect(response.status).toBe(302);
-            expect(response.headers.location).toBe('/?page=0');
+            // totPages is clamped to 1, so it shouldn't redirect
+            expect(response.status).toBe(200);
+            expect(response.body.data.totalPages).toBe(1);
         });
 
         test('should handle invalid page numbers', async () => {
@@ -1881,11 +1881,11 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
             expect(response.body.data.previousPage).toBe(4);
         });
 
-        test('should handle first page correctly', async () => {
+        test('should handle first page correctly by redirecting to root', async () => {
             const response = await request(app).get('/?page=1');
 
-            expect(response.body.data.previousPage).toBe(null);
-            expect(response.body.data.nextPage).toBe(2);
+            expect(response.status).toBe(302);
+            expect(response.headers.location).toBe('/');
         });
 
         test('should include CSRF token in all responses', async () => {

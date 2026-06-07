@@ -17,7 +17,7 @@ process.env.MAX_COMMENTS_LIMIT = '10';
 process.env.TRACKING_SCRIPT_ERROR_MSG = 'Invalid tracking script';
 process.env.MAX_TITLE_LENGTH = '100';
 process.env.MAX_BODY_LENGTH = '50000';
-process.env.DEFAULT_POST_THUMBNAIL_LINK = 'https://via.placeholder.com/800x400';
+process.env.DEFAULT_POST_THUMBNAIL_LINK = 'https://placehold.co/800x400/transparent/FFA500?text=IMAGE+\nMISSING&font=poppins';
 
 // Suppress console logs during tests unless explicitly needed
 const originalConsole = console;
