@@ -372,9 +372,9 @@ router.get('/posts/:uniqueId', genericOpenRateLimiter, async (req, res) => {
         let data = null;
         data = postCache.getPostFromCache(cleanedUniqueId);
         if (data) {
-            logger.info(`Post with UniqueId: ${cleanedUniqueId} found on cache, skipping DB fetch`);
+            logger.info(`Post with UniqueId found on cache, skipping DB fetch`);
         } else {
-            logger.debug(`Post with UniqueId: ${cleanedUniqueId} not found on cache, trying to fetch from DB`);
+            logger.debug(`Post with UniqueId not found on cache, trying to fetch from DB`);
             data = await post.findOne({ uniqueId: cleanedUniqueId });
             if (!data) {
                 throw new Error('404 - No such post found');
