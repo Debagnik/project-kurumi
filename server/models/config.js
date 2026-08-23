@@ -35,7 +35,7 @@ const configSchema = new schema({
     },
     siteDefaultThumbnailUri:{
         type: String,
-        default: 'https://via.placeholder.com/1440x720',
+        default: 'https://placehold.co/1440x720/transparent/FFA500?text=IMAGE+\nMISSING&font=poppins',
         required: true
     },
     defaultPaginationLimit:{
@@ -72,7 +72,7 @@ const configSchema = new schema({
     },
     homepageWelcomeImage:{
         type: String,
-        default: 'https://via.placeholder.com/1440x720',
+        default: 'https://placehold.co/1440x720/transparent/FFA500?text=IMAGE+\nMISSING&font=poppins',
     },
     copyrightText:{
         type: String,
