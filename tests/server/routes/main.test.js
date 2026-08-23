@@ -1406,7 +1406,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
             await request(app).get('/posts/test-unique-id');
 
-            expect(consoleSpy).toHaveBeenCalledWith('Post with UniqueId: test-unique-id found on cache, skipping DB fetch');
+            expect(consoleSpy).toHaveBeenCalledWith('Post with UniqueId found on cache, skipping DB fetch');
 
             consoleSpy.mockRestore();
             process.env.NODE_ENV = originalEnv;
@@ -1431,7 +1431,7 @@ describe('Comprehensive Route Tests for 90%+ Coverage', () => {
 
             await request(app).get('/posts/test-unique-id');
 
-            expect(debugSpy).toHaveBeenCalledWith('Post with UniqueId: test-unique-id not found on cache, trying to fetch from DB');
+            expect(debugSpy).toHaveBeenCalledWith('Post with UniqueId not found on cache, trying to fetch from DB');
 
             consoleSpy.mockRestore();
             debugSpy.mockRestore();
